@@ -35,7 +35,8 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <assert.h>
 
-//#define inline      /*inline*/
+#undef inline /*inline*/
+#undef ALWAYS_USE_EFFECTS /**/
 
 #define TRACE(x)    x   /* enable/disable trace statements */
 #define DEBUG(x)        /* enable/disable debug statements */
@@ -139,6 +140,18 @@ config_new()
     return cfg;
 }
 
+inline void
+config_enqueue(Config cfg, Event e)
+{
+    queue_give(cfg->event_q, e);
+}
+
+inline void
+config_enlist(Config cfg, Actor a)
+{
+    cfg->actors = list_push(cfg->actors, a);
+}
+
 struct behavior {
     Action          action;     // code
     Any             context;    // data
@@ -165,6 +178,12 @@ actor_new(Behavior beh)
     return a;
 }
 
+inline void
+actor_become(Actor a, Behavior beh)
+{
+    a->behavior = beh;
+}
+
 struct event {
     Config          sponsor;    // sponsor configuration
     Actor           actor;      // target actor
@@ -181,6 +200,18 @@ event_new(Config cfg, Actor a, Any msg)
     return e;
 }
 
+inline void
+config_send(Config cfg, Actor target, Any msg)
+{
+    config_enqueue(cfg, event_new(cfg, target, msg));
+}
+
+inline void
+config_create(Config cfg, Behavior beh)
+{
+    config_enlist(cfg, actor_new(beh));
+}
+
 void
 act_sink(Event e)
 {
@@ -191,6 +222,7 @@ BEHAVIOR sink_behavior = { act_sink, NIL };
 ACTOR sink_actor = { &sink_behavior };
 
 struct effect {
+    Config          sponsor;    // sponsor configuration
     Actor           self;       // currently active (meta-)actor
     Pair            actors;     // list of actors created
     Pair            events;     // list of messages sent
@@ -198,9 +230,10 @@ struct effect {
 };
 
 inline Effect
-effect_new(Actor a)
+effect_new(Config cfg, Actor a)
 {
     Effect fx = NEW(EFFECT);
+    fx->sponsor = cfg;
     fx->self = a;
     fx->actors = NIL;
     fx->events = NIL;
@@ -208,18 +241,63 @@ effect_new(Actor a)
     return fx;
 }
 
+inline void
+effect_send(Effect fx, Actor target, Any msg)
+{
+    fx->events = list_push(fx->events, event_new(fx->sponsor, target, msg));
+}
+
+inline void
+effect_create(Effect fx, Behavior beh)
+{
+    fx->actors = list_push(fx->actors, actor_new(beh));
+}
+
+inline void
+effect_become(Effect fx, Behavior beh)
+{
+    fx->behavior = beh;
+}
+
+inline void
+effect_commit(Effect fx)
+{
+    Pair p;
+
+    // update actor behavior
+    fx->self->behavior = fx->behavior;
+    // add new actors to configuration
+    for (p = fx->actors; !list_empty_p(p); p = p->t) {
+        config_enlist(fx->sponsor, p->h);
+    }
+    // add new events to dispatch queue
+    for (p = fx->events; !list_empty_p(p); p = p->t) {
+        config_enqueue(fx->sponsor, p->h);
+    }
+}
+
+/**
+begin_beh(cust) = \_.[
+    SEND Effect.new() TO cust
+]
+**/
 void
 act_begin(Event e)
 {
     TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", e->actor, e->message));
     Actor cust = e->actor->behavior->context;  // cust
     // initialize effects
-    Effect fx = effect_new(e->actor);
+    Effect fx = effect_new(e->sponsor, e->actor);
     // trigger continuation
-    Event cont = event_new(e->sponsor, cust, fx);
-    queue_give(e->sponsor->event_q, cont);
+    config_send(e->sponsor, cust, fx);
 }
 
+/**
+send_beh(cust, target, message) = \fx.[
+    fx.send(target, message)
+    SEND fx TO cust
+]
+**/
 void
 act_send(Event e)
 {
@@ -231,14 +309,17 @@ act_send(Event e)
     Any message = p->t;
     TRACE(fprintf(stderr, "act_send: to=%p, msg=%p\n", target, message));
     // store new event in effects
-    Effect fx = e->message;
-    Event evt = event_new(e->sponsor, target, message);
-    fx->events = list_push(fx->events, evt);
+    effect_send(e->message, target, message);
     // trigger continuation
-    Event cont = event_new(e->sponsor, cust, e->message);
-    queue_give(e->sponsor->event_q, cont);
+    config_send(e->sponsor, cust, e->message);
 }
 
+/**
+create_beh(cust, beh) = \fx.[
+    fx.create(beh)
+    SEND fx TO cust
+]
+**/
 void
 act_create(Event e)
 {
@@ -247,14 +328,17 @@ act_create(Event e)
     Actor cust = p->h;
     Behavior beh = p->t;
     // store new actor in effects
-    Effect fx = e->message;
-    Actor a = actor_new(beh);
-    fx->actors = list_push(fx->actors, a);
+    effect_create(e->message, beh);
     // trigger continuation
-    Event cont = event_new(e->sponsor, cust, e->message);
-    queue_give(e->sponsor->event_q, cont);
+    config_send(e->sponsor, cust, e->message);
 }
 
+/**
+become_beh(cust, beh) = \fx.[
+    fx.become(beh)
+    SEND fx TO cust
+]
+**/
 void
 act_become(Event e)
 {
@@ -263,30 +347,23 @@ act_become(Event e)
     Actor cust = p->h;
     Behavior beh = p->t;
     // store new behavior in effects
-    Effect fx = e->message;
-    fx->behavior = beh;
+    effect_become(e->message, beh);
     // trigger continuation
-    Event cont = event_new(e->sponsor, cust, e->message);
-    queue_give(e->sponsor->event_q, cont);
+    config_send(e->sponsor, cust, e->message);
 }
 
+/**
+commit_beh(cust, beh) = \fx.[
+    fx.commit()
+]
+**/
 void
 act_commit(Event e)
 {
     Pair p;
 
     TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", e->actor, e->message));
-    Effect fx = e->message;
-    // update actor behavior
-    fx->self->behavior = fx->behavior;
-    // add new actors to configuration
-    for (p = fx->actors; !list_empty_p(p); p = p->t) {
-        e->sponsor->actors = list_push(e->sponsor->actors, p->h);
-    }
-    // add new events to dispatch queue
-    for (p = fx->events; !list_empty_p(p); p = p->t) {
-        queue_give(e->sponsor->event_q, p->h);
-    }
+    effect_commit(e->message);
 }
 
 BEHAVIOR commit_behavior = { act_commit, NIL };
@@ -302,13 +379,16 @@ act_forward(Event e)
     TRACE(fprintf(stderr, "act_forward{self=%p, msg=%p}\n", e->actor, e->message));
     Actor a = e->actor->behavior->context;  // target
     Any m = e->message;  // message
+#ifdef ALWAYS_USE_EFFECTS
     Pair args = pair_new(&commit_actor, pair_new(a, m));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "act_forward: delegate=%p\n", a_begin));
     // invoke delegate
-    Event d = event_new(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
-    queue_give(e->sponsor->event_q, d);
+    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+#else /*ALWAYS_USE_EFFECTS*/
+    config_send(e->sponsor, a, m);
+#endif /*ALWAYS_USE_EFFECTS*/
 }
 
 /**
@@ -323,6 +403,7 @@ act_oneshot(Event e)
     TRACE(fprintf(stderr, "act_oneshot{self=%p, msg=%p}\n", e->actor, e->message));
     Actor a = e->actor->behavior->context;  // target
     Any m = e->message;  // message
+#ifdef ALWAYS_USE_EFFECTS
     Pair args = pair_new(&commit_actor, pair_new(a, m));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
@@ -330,8 +411,11 @@ act_oneshot(Event e)
     // become sink
     e->actor->behavior = &sink_behavior;
     // invoke delegate
-    Event d = event_new(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
-    queue_give(e->sponsor->event_q, d);
+    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+#else /*ALWAYS_USE_EFFECTS*/
+    config_send(e->sponsor, a, m);
+    actor_become(e->actor, &sink_behavior);
+#endif /*ALWAYS_USE_EFFECTS*/
 }
 
 int
@@ -353,9 +437,6 @@ config_dispatch(Config cfg)
 void
 run_tests()
 {
-    Config cfg;
-    Event e;
-
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
 
 /**
@@ -377,11 +458,9 @@ CREATE doit WITH \_.[ SEND [] TO sink ]
     Actor a_doit = actor_new(behavior_new(act_oneshot, a_sink));
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     
-    cfg = config_new();
-    e = event_new(cfg, a_doit, NIL);
-    queue_give(cfg->event_q, e);
-    e = event_new(cfg, a_doit, a_doit);
-    queue_give(cfg->event_q, e);
+    Config cfg = config_new();
+    config_send(cfg, a_doit, NIL);
+    config_send(cfg, a_doit, a_doit);
     while (config_dispatch(cfg))
         ;
 }
