@@ -35,6 +35,8 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <assert.h>
 
+//#define inline      /*inline*/
+
 #define TRACE(x)    x   /* enable/disable trace statements */
 #define DEBUG(x)        /* enable/disable debug statements */
 
@@ -42,242 +44,251 @@ THE SOFTWARE.
 #define NEW(T)      ((T *)calloc(sizeof(T), 1))
 #define FREE(p)     ((p) = (free(p), NULL))
 
-struct actor;
-struct message;
-struct event;
+typedef void *Any;
 
-typedef void (*ACTION)(struct event * e);
+typedef struct pair PAIR, *Pair;
+typedef struct config CONFIG, *Config;
+typedef struct behavior BEHAVIOR, *Behavior;
+typedef struct actor ACTOR, *Actor;
+typedef struct event EVENT, *Event;
+typedef struct effect EFFECT, *Effect;
 
-struct link {
-    struct link *   next;       // singly-link structure
+typedef void (*Action)(Event e);
+
+#define NIL ((Pair)0)
+
+struct pair {
+    Any             h;
+    Any             t;
 };
 
-struct link nil = { &nil };     // list terminator (empty)
-#define NIL (&nil)
-
-struct list {
-    struct link     link;
-    void *          item;
-};
-
-#define EMPTY_LIST ((struct list *)NIL)
-
-inline int
-list_empty_p(struct list * list)
+inline Pair
+pair_new(Any h, Any t)
 {
-    return (list == EMPTY_LIST);
+    Pair q = NEW(PAIR);
+    q->h = h;
+    q->t = t;
+    return q;
 }
 
-inline struct list *
-list_pop(struct list * list)
+inline int
+list_empty_p(Pair list)
+{
+    return (list == NIL);
+}
+
+inline Pair
+list_pop(Pair list)
 {
     return list;
 }
 
-inline struct list *
-list_push(struct list * list, void * item)
+inline Pair
+list_push(Pair list, Any item)
 {
-    struct list * result = NEW(struct list);
-    result->item = item;
-    result->link.next = (struct link *)list;
-    return result;
+    return pair_new(item, list);
 }
 
-struct queue {
-    struct link *   head;
-    struct link *   tail;
-};
+inline Pair
+queue_new()
+{
+    return pair_new(NIL, NIL);
+}
 
 inline int
-queue_empty_p(struct queue * q)
+queue_empty_p(Pair q)
 {
-    return (q->head == NIL);
+    return (q->h == NIL);
 }
 
 inline void
-queue_give(struct queue * q, void * item)
+queue_give(Pair q, Any item)
 {
-    struct list * list = NEW(struct list);
-    list->item = item;
-    list->link.next = NIL;
+    Pair p = pair_new(item, NIL);
     if (queue_empty_p(q)) {
-        q->head = (struct link *)list;
+        q->h = p;
     } else {
-        q->tail->next = (struct link *)list;
+        Pair t = q->t;
+        t->t = p;
     }
-    q->tail = (struct link *)list;
+    q->t = p;
 }
 
-inline void *
-queue_take(struct queue * q)
+inline Any
+queue_take(Pair q)
 {
     // if (queue_empty_p(q)) ERROR("can't take from empty queue");
-    struct list * entry = (struct list *)q->head;
-    void * item = entry->item;
-    q->head = entry->link.next;
-    entry = FREE(entry);
+    Pair p = q->h;
+    Any item = p->h;
+    q->h = p->t;
+    p = FREE(p);
     return item;
 }
 
 struct config {
-    struct queue    event_q;    // messages in-transit
-    struct list *   actors;     // actors created
+    Pair            event_q;    // queue of messages in-transit
+    Pair            actors;     // list of actors created
 };
 
-inline struct config *
+inline Config
 config_new()
 {
-    struct config * cfg = NEW(struct config);
-    cfg->event_q.head = NIL;
-    cfg->event_q.tail = NIL;
-    cfg->actors = EMPTY_LIST;
+    Config cfg = NEW(CONFIG);
+    cfg->event_q = queue_new();
+    cfg->actors = NIL;
     return cfg;
 }
 
-struct actor {  // FIXME: refactor to extract "struct behavior" so "struct actor" becomes a single pointer
-    ACTION          action;     // behavior
-    void *          data;       // state
+struct behavior {
+    Action          action;     // code
+    Any             context;    // data
 };
+
+inline Behavior
+behavior_new(Action act, Any data)
+{
+    Behavior beh = NEW(BEHAVIOR);
+    beh->action = act;
+    beh->context = data;
+    return beh;
+}
+
+struct actor {
+    Behavior        behavior;   // current behavior
+};
+
+inline Actor
+actor_new(Behavior beh)
+{
+    Actor a = NEW(ACTOR);
+    a->behavior = beh;
+    return a;
+}
 
 struct event {
-    struct config * sponsor;    // sponsor configuration
-    struct actor *  actor;      // target actor
-    void *          message;    // message to deliver
+    Config          sponsor;    // sponsor configuration
+    Actor           actor;      // target actor
+    Any             message;    // message to deliver
 };
+
+inline Event
+event_new(Config cfg, Actor a, Any msg)
+{
+    Event e = NEW(EVENT);
+    e->sponsor = cfg;
+    e->actor = a;
+    e->message = msg;
+    return e;
+}
 
 struct effect {
-    struct actor *  self;       // currently active actor
-    struct list *   actors;     // actors created
-    struct list *   events;     // messages sent
-    ACTION          behavior;   // replacement behavior
-    void *          data;       // replacement state
+    Actor           self;       // currently active (meta-)actor
+    Pair            actors;     // list of actors created
+    Pair            events;     // list of messages sent
+    Behavior        behavior;   // replacement behavior
 };
 
+inline Effect
+effect_new(Actor a)
+{
+    Effect fx = NEW(EFFECT);
+    fx->self = a;
+    fx->actors = NIL;
+    fx->events = NIL;
+    fx->behavior = a->behavior;
+    return fx;
+}
+
 void
-act_begin(struct event * e)
+act_begin(Event e)
 {
     TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", e->actor, e->message));
-    struct actor * cust = (struct actor *)e->actor->data;  // cust
+    Actor cust = e->actor->behavior->context;
     // initialize effects
-    struct actor * self = e->actor;
-    struct effect * fx = NEW(struct effect);
-    fx->self = self;
-    fx->actors = EMPTY_LIST;
-    fx->events = EMPTY_LIST;
-    fx->behavior = self->action;
-    fx->data = self->data;
+    Effect fx = effect_new(e->actor);
     // trigger continuation
-    struct event * cont = NEW(struct event);
-    cont->sponsor = e->sponsor;
-    cont->actor = cust;
-    cont->message = fx;
-    queue_give(&(e->sponsor->event_q), cont);
+    Event cont = event_new(e->sponsor, cust, fx);
+    queue_give(e->sponsor->event_q, cont);
 }
 
 void
-act_send(struct event * e)
+act_send(Event e)
 {
     TRACE(fprintf(stderr, "act_send{self=%p, msg=%p}\n", e->actor, e->message));
-    struct list * list = (struct list *)e->actor->data;  // [cust, target, message]
-    struct actor * cust = (struct actor *)list->item;
-    list = (struct list *)list->link.next;
-    struct actor * target = (struct actor *)list->item;
-    list = (struct list *)list->link.next;
-    void * message = list->item;
+    Pair p = e->actor->behavior->context;  // (cust, target, message)
+    Actor cust = p->h;
+    p = p->t;
+    Actor target = p->h;
+    Any message = p->t;
     // store new event in effects
-    struct effect * fx = (struct effect *)e->message;
-    struct event * event = NEW(struct event);
-    event->sponsor = e->sponsor;
-    event->actor = target;
-    event->message = message;
-    fx->events = list_push(fx->events, event);
+    Effect fx = e->message;
+    Event evt = event_new(e->sponsor, target, message);
+    fx->events = list_push(fx->events, evt);
     // trigger continuation
-    struct event * cont = NEW(struct event);
-    cont->sponsor = e->sponsor;
-    cont->actor = cust;
-    cont->message = e->message;
-    queue_give(&(e->sponsor->event_q), cont);
+    Event cont = event_new(e->sponsor, cust, e->message);
+    queue_give(e->sponsor->event_q, cont);
 }
 
 void
-act_create(struct event * e)
+act_create(Event e)
 {
     TRACE(fprintf(stderr, "act_create{self=%p, msg=%p}\n", e->actor, e->message));
-    struct list * list = (struct list *)e->actor->data;  // [cust, action, data]
-    struct actor * cust = (struct actor *)list->item;
-    list = (struct list *)list->link.next;
-    ACTION beh = (ACTION)list->item;
-    list = (struct list *)list->link.next;
-    void * data = list->item;
+    Pair p = e->actor->behavior->context;  // (cust, behavior)
+    Actor cust = p->h;
+    Behavior beh = p->t;
     // store new actor in effects
-    struct effect * fx = (struct effect *)e->message;
-    struct actor * actor = NEW(struct actor);
-    actor->action = beh;
-    actor->data = data;
-    fx->actors = list_push(fx->actors, actor);
+    Effect fx = e->message;
+    Actor a = actor_new(beh);
+    fx->actors = list_push(fx->actors, a);
     // trigger continuation
-    struct event * cont = NEW(struct event);
-    cont->sponsor = e->sponsor;
-    cont->actor = cust;
-    cont->message = e->message;
-    queue_give(&(e->sponsor->event_q), cont);
+    Event cont = event_new(e->sponsor, cust, e->message);
+    queue_give(e->sponsor->event_q, cont);
 }
 
 void
-act_become(struct event * e)
+act_become(Event e)
 {
     TRACE(fprintf(stderr, "act_become{self=%p, msg=%p}\n", e->actor, e->message));
-    struct list * list = (struct list *)e->actor->data;  // [cust, action, data]
-    struct actor * cust = (struct actor *)list->item;
-    list = (struct list *)list->link.next;
-    ACTION beh = (ACTION)list->item;
-    list = (struct list *)list->link.next;
-    void * data = list->item;
-    // store new behavior/state in effects
-    struct effect * fx = (struct effect *)e->message;
+    Pair p = e->actor->behavior->context;  // (cust, behavior)
+    Actor cust = p->h;
+    Behavior beh = p->t;
+    // store new behavior in effects
+    Effect fx = e->message;
     fx->behavior = beh;
-    fx->data = data;
     // trigger continuation
-    struct event * cont = NEW(struct event);
-    cont->sponsor = e->sponsor;
-    cont->actor = cust;
-    cont->message = e->message;
-    queue_give(&(e->sponsor->event_q), cont);
+    Event cont = event_new(e->sponsor, cust, e->message);
+    queue_give(e->sponsor->event_q, cont);
 }
 
 void
-act_commit(struct event * e)
+act_commit(Event e)
 {
-    struct list * list;
-    struct list * entry;
+    Pair p;
 
     TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", e->actor, e->message));
-    struct effect * fx = (struct effect *)e->message;
+    Effect fx = e->message;
     // update actor behavior
-    fx->self->action = fx->behavior;
-    fx->self->data = fx->data;
+    fx->self->behavior = fx->behavior;
     // add new actors to configuration
-    for (list = fx->actors; !list_empty_p(list); list = (struct list *)entry->link.next) {
-        entry = list_pop(list);
-        e->sponsor->actors = list_push(e->sponsor->actors, entry->item);
+    for (p = fx->actors; !list_empty_p(p); p = p->t) {
+        e->sponsor->actors = list_push(e->sponsor->actors, p->h);
     }
     // add new events to dispatch queue
-    for (list = fx->events; !list_empty_p(list); list = (struct list *)entry->link.next) {
-        entry = list_pop(list);
-        queue_give(&(e->sponsor->event_q), entry->item);
+    for (p = fx->events; !list_empty_p(p); p = p->t) {
+        queue_give(e->sponsor->event_q, p->h);
     }
 }
 
 int
-config_dispatch(struct config * cfg)
+config_dispatch(Config cfg)
 {
-    if (queue_empty_p(&(cfg->event_q))) {
+    if (queue_empty_p(cfg->event_q)) {
         TRACE(fprintf(stderr, "config_dispatch: --EMPTY--\n"));
         return 0;
     }
-    struct event * e = (struct event *)queue_take(&(cfg->event_q));
+    Event e = queue_take(cfg->event_q);
     TRACE(fprintf(stderr, "config_dispatch: actor=%p, event=%p\n", e->actor, e));
-    (e->actor->action)(e);
+    (e->actor->behavior->action)(e);  // INVOKE ACTOR BEHAVIOR
     return 1;
 }
 
@@ -287,10 +298,6 @@ config_dispatch(struct config * cfg)
 void
 run_tests()
 {
-    struct actor * actor;
-    struct list * list;
-    struct link * next;
-
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
 
 /*
@@ -302,45 +309,22 @@ oneshot_beh(target) = \msg.[
     BECOME sink_beh
 ]
 */
-    struct actor * a_commit = NEW(struct actor);
-    a_commit->action = act_commit;
-    a_commit->data = NIL;
+    Actor a_commit = actor_new(behavior_new(act_commit, NIL));
     TRACE(fprintf(stderr, "a_commit = %p\n", a_commit));
-    struct actor * a_sink = NEW(struct actor);
-    a_sink->action = act_begin;
-    a_sink->data = a_commit;
+    Actor a_sink = actor_new(behavior_new(act_begin, a_commit));
     TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
 
-    // [cust, target, message]
-    next = NIL;
-    list = NEW(struct list);
-    list->link.next = next;
-    list->item = NIL;
-    next = (struct link *)list;
-    list = NEW(struct list);
-    list->link.next = next;
-    list->item = a_sink;
-    next = (struct link *)list;
-    list = NEW(struct list);
-    list->link.next = next;
-    list->item = a_commit;
-    next = (struct link *)list;
-    actor = NEW(struct actor);
-    actor->action = act_send;
-    actor->data = list;
+    // (cust, target, message)
+    Pair msg = pair_new(a_commit, pair_new(a_sink, NIL));
+    Actor a = actor_new(behavior_new(act_send, msg));
 
-    struct actor * a_doit = NEW(struct actor);
-    a_doit->action = act_begin;
-    a_doit->data = actor;
+    Actor a_doit = actor_new(behavior_new(act_begin, a));
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     
-    struct config * config = config_new();
-    struct event * e = NEW(struct event);
-    e->sponsor = config;
-    e->actor = a_doit;
-    e->message = NIL;
-    queue_give(&(config->event_q), e);
-    while (config_dispatch(config))
+    Config cfg = config_new();
+    Event e = event_new(cfg, a_doit, NIL);
+    queue_give(cfg->event_q, e);
+    while (config_dispatch(cfg))
         ;
 }
 
