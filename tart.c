@@ -42,10 +42,6 @@ THE SOFTWARE.
 #define NEW(T)      ((T *)calloc(sizeof(T), 1))
 #define FREE(p)     ((p) = (free(p), NULL))
 
-/*
- * RE-ENVISION CORE MECHANISM AS SIMPLE EVENT QUEUING AND EXECUTION
- */
-
 struct actor;
 struct message;
 struct event;
@@ -128,39 +124,68 @@ struct config {
     struct list *   actors;     // actors created
 };
 
-struct actor {
+inline struct config *
+config_new()
+{
+    struct config * cfg = NEW(struct config);
+    cfg->event_q.head = NIL;
+    cfg->event_q.tail = NIL;
+    cfg->actors = EMPTY_LIST;
+    return cfg;
+}
+
+struct actor {  // FIXME: refactor to extract "struct behavior" so "struct actor" becomes a single pointer
     ACTION          action;     // behavior
     void *          data;       // state
-};
-
-struct message {  // DEPRECATED -- MESSAGES NEED NOT BE LISTS, AND IF THEY WERE WE SHOULD USE LIST TYPE
-    struct link     link;
-    void *          data;       // data payload component
 };
 
 struct event {
     struct config * sponsor;    // sponsor configuration
     struct actor *  actor;      // target actor
-    struct message *message;    // message to deliver
+    void *          message;    // message to deliver
 };
 
 struct effect {
+    struct actor *  self;       // currently active actor
     struct list *   actors;     // actors created
     struct list *   events;     // messages sent
     ACTION          behavior;   // replacement behavior
+    void *          data;       // replacement state
 };
+
+void
+act_begin(struct event * e)
+{
+    TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", e->actor, e->message));
+    struct actor * cust = (struct actor *)e->actor->data;  // cust
+    // initialize effects
+    struct actor * self = e->actor;
+    struct effect * fx = NEW(struct effect);
+    fx->self = self;
+    fx->actors = EMPTY_LIST;
+    fx->events = EMPTY_LIST;
+    fx->behavior = self->action;
+    fx->data = self->data;
+    // trigger continuation
+    struct event * cont = NEW(struct event);
+    cont->sponsor = e->sponsor;
+    cont->actor = cust;
+    cont->message = fx;
+    queue_give(&(e->sponsor->event_q), cont);
+}
 
 void
 act_send(struct event * e)
 {
-    struct list * list = (struct list *)e->actor->data;
+    TRACE(fprintf(stderr, "act_send{self=%p, msg=%p}\n", e->actor, e->message));
+    struct list * list = (struct list *)e->actor->data;  // [cust, target, message]
     struct actor * cust = (struct actor *)list->item;
     list = (struct list *)list->link.next;
     struct actor * target = (struct actor *)list->item;
     list = (struct list *)list->link.next;
-    struct message * message = (struct message *)list->item;
-    // store the pending send in the event effects
-    struct effect * fx = (struct effect *)e->message->data;
+    void * message = list->item;
+    // store new event in effects
+    struct effect * fx = (struct effect *)e->message;
     struct event * event = NEW(struct event);
     event->sponsor = e->sponsor;
     event->actor = target;
@@ -175,13 +200,62 @@ act_send(struct event * e)
 }
 
 void
+act_create(struct event * e)
+{
+    TRACE(fprintf(stderr, "act_create{self=%p, msg=%p}\n", e->actor, e->message));
+    struct list * list = (struct list *)e->actor->data;  // [cust, action, data]
+    struct actor * cust = (struct actor *)list->item;
+    list = (struct list *)list->link.next;
+    ACTION beh = (ACTION)list->item;
+    list = (struct list *)list->link.next;
+    void * data = list->item;
+    // store new actor in effects
+    struct effect * fx = (struct effect *)e->message;
+    struct actor * actor = NEW(struct actor);
+    actor->action = beh;
+    actor->data = data;
+    fx->actors = list_push(fx->actors, actor);
+    // trigger continuation
+    struct event * cont = NEW(struct event);
+    cont->sponsor = e->sponsor;
+    cont->actor = cust;
+    cont->message = e->message;
+    queue_give(&(e->sponsor->event_q), cont);
+}
+
+void
+act_become(struct event * e)
+{
+    TRACE(fprintf(stderr, "act_become{self=%p, msg=%p}\n", e->actor, e->message));
+    struct list * list = (struct list *)e->actor->data;  // [cust, action, data]
+    struct actor * cust = (struct actor *)list->item;
+    list = (struct list *)list->link.next;
+    ACTION beh = (ACTION)list->item;
+    list = (struct list *)list->link.next;
+    void * data = list->item;
+    // store new behavior/state in effects
+    struct effect * fx = (struct effect *)e->message;
+    fx->behavior = beh;
+    fx->data = data;
+    // trigger continuation
+    struct event * cont = NEW(struct event);
+    cont->sponsor = e->sponsor;
+    cont->actor = cust;
+    cont->message = e->message;
+    queue_give(&(e->sponsor->event_q), cont);
+}
+
+void
 act_commit(struct event * e)
 {
     struct list * list;
     struct list * entry;
-    struct effect * fx = (struct effect *)e->message->data;
+
+    TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", e->actor, e->message));
+    struct effect * fx = (struct effect *)e->message;
     // update actor behavior
-    e->actor->action = fx->behavior;
+    fx->self->action = fx->behavior;
+    fx->self->data = fx->data;
     // add new actors to configuration
     for (list = fx->actors; !list_empty_p(list); list = (struct list *)entry->link.next) {
         entry = list_pop(list);
@@ -194,84 +268,80 @@ act_commit(struct event * e)
     }
 }
 
+int
+config_dispatch(struct config * cfg)
+{
+    if (queue_empty_p(&(cfg->event_q))) {
+        TRACE(fprintf(stderr, "config_dispatch: --EMPTY--\n"));
+        return 0;
+    }
+    struct event * e = (struct event *)queue_take(&(cfg->event_q));
+    TRACE(fprintf(stderr, "config_dispatch: actor=%p, event=%p\n", e->actor, e));
+    (e->actor->action)(e);
+    return 1;
+}
+
 /*
  *  Unit tests
  */
 void
 run_tests()
 {
+    struct actor * actor;
+    struct list * list;
+    struct link * next;
+
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
+
 /*
-    TRACE(fprintf(stderr, "o_undef = %p\n", o_undef));
-    TRACE(fprintf(stderr, "o_fail = %p\n", o_fail));
-    TRACE(fprintf(stderr, "o_nil = %p\n", o_nil));
-
-    TRACE(fprintf(stderr, "o_true = %p\n", o_true));
-    TRACE(fprintf(stderr, "o_false = %p\n", o_false));
-    TRACE(fprintf(stderr, "s_eq_p = %p\n", s_eq_p));
-    TRACE(fprintf(stderr, "&eq_p_symbol = %p\n", &eq_p_symbol));
-    TRACE(fprintf(stderr, "symbol_kind = %p\n", (void*)symbol_kind));
-    TRACE(fprintf(stderr, "eq_p_symbol.o.kind = %p\n", (void*)eq_p_symbol.o.kind));
-    TRACE(fprintf(stderr, "eq_p_symbol.s = \"%s\"\n", eq_p_symbol.s));
-
-    TRACE(fprintf(stderr, "dict_kind = %p\n", (void*)dict_kind));
-    TRACE(fprintf(stderr, "s_lookup = %p\n", s_lookup));
-    TRACE(fprintf(stderr, "s_bind = %p\n", s_bind));
-
-    OOP s_x = symbol_new("x");
-    TRACE(fprintf(stderr, "s_x = %p\n", s_x));
-    TRACE(fprintf(stderr, "as_symbol(s_x)->s = \"%s\"\n", as_symbol(s_x)->s));
-    OOP result = object_call(o_empty_dict, s_lookup, s_x);
-    TRACE(fprintf(stderr, "result = %p\n", result));
-    assert(o_fail == result);
-    
-    OOP n_42 = integer_new(42);
-    TRACE(fprintf(stderr, "n_42 = %p\n", n_42));
-    TRACE(fprintf(stderr, "as_integer(n_42)->n = %d\n", as_integer(n_42)->n));
-    OOP d_env = object_call(o_empty_dict, s_bind, s_x, n_42);
-    TRACE(fprintf(stderr, "d_env = %p\n", d_env));
-    result = object_call(d_env, s_lookup, s_x);
-    TRACE(fprintf(stderr, "result = %p\n", result));
-    assert(n_42 == result);
-
-    OOP s_y = symbol_new("y");
-    TRACE(fprintf(stderr, "s_y = %p\n", s_y));
-    TRACE(fprintf(stderr, "as_symbol(s_y)->s = \"%s\"\n", as_symbol(s_y)->s));
-    d_env = object_call(d_env, s_bind, s_y, n_minus_1);
-    TRACE(fprintf(stderr, "d_env = %p\n", d_env));
-
-    OOP s_z = symbol_new("z");
-    TRACE(fprintf(stderr, "s_z = %p\n", s_z));
-    TRACE(fprintf(stderr, "as_symbol(s_z)->s = \"%s\"\n", as_symbol(s_z)->s));
-    result = object_call(d_env, s_lookup, s_z);
-    TRACE(fprintf(stderr, "result = %p\n", result));
-    assert(o_fail == result);
-
-    OOP ch_A = integer_new('A');
-    OOP ch_Z = integer_new('Z');
-    OOP q_oop = queue_new();
-    TRACE(fprintf(stderr, "q_oop = %p\n", q_oop));
-    result = object_call(q_oop, s_empty_p);
-    assert(o_true == result);
-    OOP n_ch = ch_A;
-    while (object_call(n_ch, s_eq_p, ch_Z) != o_true) {
-        q_oop = object_call(q_oop, s_give_x, n_ch);
-        TRACE(fprintf(stderr, "q_oop = %p ^ [%c]\n", q_oop, as_integer(n_ch)->n));
-        n_ch = object_call(n_ch, s_add, n_1);
-    }
-    result = object_call(q_oop, s_empty_p);
-    assert(o_false == result);
-    n_ch = ch_A;
-    while (object_call(n_ch, s_eq_p, ch_Z) != o_true) {
-        OOP n_i = object_call(q_oop, s_take_x);
-        TRACE(fprintf(stderr, "q_oop = [%c] ^ %p\n", as_integer(n_i)->n, q_oop));
-        result = object_call(n_i, s_eq_p, n_ch);
-        assert(o_true == result);
-        n_ch = object_call(n_ch, s_add, n_1);
-    }
-    result = object_call(q_oop, s_empty_p);
-    assert(o_true == result);
+CREATE sink WITH \_.[]
+CREATE doit WITH \_.[ SEND [] TO sink ]
+fwd_beh(target) = \msg.[ SEND msg TO target ]
+oneshot_beh(target) = \msg.[
+    SEND msg TO target
+    BECOME sink_beh
+]
 */
+    struct actor * a_commit = NEW(struct actor);
+    a_commit->action = act_commit;
+    a_commit->data = NIL;
+    TRACE(fprintf(stderr, "a_commit = %p\n", a_commit));
+    struct actor * a_sink = NEW(struct actor);
+    a_sink->action = act_begin;
+    a_sink->data = a_commit;
+    TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
+
+    // [cust, target, message]
+    next = NIL;
+    list = NEW(struct list);
+    list->link.next = next;
+    list->item = NIL;
+    next = (struct link *)list;
+    list = NEW(struct list);
+    list->link.next = next;
+    list->item = a_sink;
+    next = (struct link *)list;
+    list = NEW(struct list);
+    list->link.next = next;
+    list->item = a_commit;
+    next = (struct link *)list;
+    actor = NEW(struct actor);
+    actor->action = act_send;
+    actor->data = list;
+
+    struct actor * a_doit = NEW(struct actor);
+    a_doit->action = act_begin;
+    a_doit->data = actor;
+    TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
+    
+    struct config * config = config_new();
+    struct event * e = NEW(struct event);
+    e->sponsor = config;
+    e->actor = a_doit;
+    e->message = NIL;
+    queue_give(&(config->event_q), e);
+    while (config_dispatch(config))
+        ;
 }
 
 /*
