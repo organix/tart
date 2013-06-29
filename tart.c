@@ -36,7 +36,7 @@ THE SOFTWARE.
 #include <assert.h>
 
 #undef inline /*inline*/
-#undef ALWAYS_USE_EFFECTS /**/
+#define ALWAYS_USE_EFFECTS /**/
 
 #define TRACE(x)    x   /* enable/disable trace statements */
 #define DEBUG(x)        /* enable/disable debug statements */
@@ -57,6 +57,7 @@ typedef struct effect EFFECT, *Effect;
 typedef void (*Action)(Event e);
 
 #define NIL ((Pair)0)
+#define PR(h,t) pair_new((h),(t))
 
 struct pair {
     Any             h;
@@ -87,13 +88,13 @@ list_pop(Pair list)
 inline Pair
 list_push(Pair list, Any item)
 {
-    return pair_new(item, list);
+    return PR(item, list);
 }
 
 inline Pair
 queue_new()
 {
-    return pair_new(NIL, NIL);
+    return PR(NIL, NIL);
 }
 
 inline int
@@ -105,7 +106,7 @@ queue_empty_p(Pair q)
 inline void
 queue_give(Pair q, Any item)
 {
-    Pair p = pair_new(item, NIL);
+    Pair p = PR(item, NIL);
     if (queue_empty_p(q)) {
         q->h = p;
     } else {
@@ -265,7 +266,7 @@ effect_commit(Effect fx)
     Pair p;
 
     // update actor behavior
-    fx->self->behavior = fx->behavior;
+    actor_become(fx->self, fx->behavior);
     // add new actors to configuration
     for (p = fx->actors; !list_empty_p(p); p = p->t) {
         config_enlist(fx->sponsor, p->h);
@@ -277,8 +278,24 @@ effect_commit(Effect fx)
 }
 
 /**
+busy_beh = \m.[
+    SEND m TO SELF
+]
+**/
+void
+act_busy(Event e)
+{
+    TRACE(fprintf(stderr, "act_busy{self=%p, msg=%p}\n", e->actor, e->message));
+    // re-queue event
+    config_enqueue(e->sponsor, e);
+}
+
+BEHAVIOR busy_behavior = { act_busy, NIL };
+
+/**
 begin_beh(cust) = \_.[
     SEND Effect.new() TO cust
+    BECOME busy_beh
 ]
 **/
 void
@@ -290,6 +307,8 @@ act_begin(Event e)
     Effect fx = effect_new(e->sponsor, e->actor);
     // trigger continuation
     config_send(e->sponsor, cust, fx);
+    // become busy
+    actor_become(e->actor, &busy_behavior);
 }
 
 /**
@@ -380,7 +399,7 @@ act_forward(Event e)
     Actor a = e->actor->behavior->context;  // target
     Any m = e->message;  // message
 #ifdef ALWAYS_USE_EFFECTS
-    Pair args = pair_new(&commit_actor, pair_new(a, m));  // (cust, target, message)
+    Pair args = PR(&commit_actor, PR(a, m));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "act_forward: delegate=%p\n", a_begin));
@@ -404,12 +423,12 @@ act_oneshot(Event e)
     Actor a = e->actor->behavior->context;  // target
     Any m = e->message;  // message
 #ifdef ALWAYS_USE_EFFECTS
-    Pair args = pair_new(&commit_actor, pair_new(a, m));  // (cust, target, message)
+    Pair args = PR(&commit_actor, PR(a, m));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "act_oneshot: delegate=%p\n", a_begin));
     // become sink
-    e->actor->behavior = &sink_behavior;
+    actor_become(e->actor, &sink_behavior);
     // invoke delegate
     config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
 #else /*ALWAYS_USE_EFFECTS*/
@@ -434,28 +453,29 @@ config_dispatch(Config cfg)
 /*
  *  Unit tests
  */
+
+/**
+CREATE sink WITH \_.[]
+CREATE doit WITH \_.[ SEND [] TO sink ]
+**/
 void
 run_tests()
 {
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
 
-/**
-CREATE sink WITH \_.[]
-**/
     Actor a_commit = &commit_actor;  // WAS: actor_new(behavior_new(act_commit, NIL));
     TRACE(fprintf(stderr, "a_commit = %p\n", a_commit));
     Actor a_sink = &sink_actor;  // WAS: actor_new(behavior_new(act_begin, a_commit));
     TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
-/**
-CREATE doit WITH \_.[ SEND [] TO sink ]
-**/
-/*
-    Pair args = pair_new(a_commit, pair_new(a_sink, NIL));  // (cust, target, message)
+
+    Pair args = PR(a_commit, PR(a_sink, NIL));  // (cust, target, message)
     Actor a = actor_new(behavior_new(act_send, args));
     Actor a_doit = actor_new(behavior_new(act_begin, a));
-*/
-//    Actor a_doit = actor_new(behavior_new(act_forward, a_sink));
+/*
+    Actor a_doit = actor_new(behavior_new(act_forward, a_sink));
+
     Actor a_doit = actor_new(behavior_new(act_oneshot, a_sink));
+*/
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     
     Config cfg = config_new();
@@ -468,6 +488,7 @@ CREATE doit WITH \_.[ SEND [] TO sink ]
 /*
  *  Main entry-point
  */
+
 int
 main()
 {
