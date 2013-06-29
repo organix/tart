@@ -181,6 +181,15 @@ event_new(Config cfg, Actor a, Any msg)
     return e;
 }
 
+void
+act_sink(Event e)
+{
+    TRACE(fprintf(stderr, "act_sink{self=%p, msg=%p}\n", e->actor, e->message));
+}
+
+BEHAVIOR sink_behavior = { act_sink, NIL };
+ACTOR sink_actor = { &sink_behavior };
+
 struct effect {
     Actor           self;       // currently active (meta-)actor
     Pair            actors;     // list of actors created
@@ -203,7 +212,7 @@ void
 act_begin(Event e)
 {
     TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor cust = e->actor->behavior->context;
+    Actor cust = e->actor->behavior->context;  // cust
     // initialize effects
     Effect fx = effect_new(e->actor);
     // trigger continuation
@@ -220,6 +229,7 @@ act_send(Event e)
     p = p->t;
     Actor target = p->h;
     Any message = p->t;
+    TRACE(fprintf(stderr, "act_send: to=%p, msg=%p\n", target, message));
     // store new event in effects
     Effect fx = e->message;
     Event evt = event_new(e->sponsor, target, message);
@@ -279,6 +289,51 @@ act_commit(Event e)
     }
 }
 
+BEHAVIOR commit_behavior = { act_commit, NIL };
+ACTOR commit_actor = { &commit_behavior };
+
+/**
+forward_beh(a) = \m.[ SEND m TO a ]
+forward_beh(a) = \m.SEND () TO \_.[ SEND m TO a ]
+**/
+void
+act_forward(Event e)
+{
+    TRACE(fprintf(stderr, "act_forward{self=%p, msg=%p}\n", e->actor, e->message));
+    Actor a = e->actor->behavior->context;  // target
+    Any m = e->message;  // message
+    Pair args = pair_new(&commit_actor, pair_new(a, m));  // (cust, target, message)
+    Actor a_send = actor_new(behavior_new(act_send, args));
+    Actor a_begin = actor_new(behavior_new(act_begin, a_send));
+    TRACE(fprintf(stderr, "act_forward: delegate=%p\n", a_begin));
+    // invoke delegate
+    Event d = event_new(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+    queue_give(e->sponsor->event_q, d);
+}
+
+/**
+oneshot_beh(a) = \m.[
+    SEND m TO a
+    BECOME \_.[]
+]
+**/
+void
+act_oneshot(Event e)
+{
+    TRACE(fprintf(stderr, "act_oneshot{self=%p, msg=%p}\n", e->actor, e->message));
+    Actor a = e->actor->behavior->context;  // target
+    Any m = e->message;  // message
+    Pair args = pair_new(&commit_actor, pair_new(a, m));  // (cust, target, message)
+    Actor a_send = actor_new(behavior_new(act_send, args));
+    Actor a_begin = actor_new(behavior_new(act_begin, a_send));
+    TRACE(fprintf(stderr, "act_oneshot: delegate=%p\n", a_begin));
+    // become sink
+    e->actor->behavior = &sink_behavior;
+    // invoke delegate
+    Event d = event_new(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+    queue_give(e->sponsor->event_q, d);
+}
+
 int
 config_dispatch(Config cfg)
 {
@@ -298,31 +353,34 @@ config_dispatch(Config cfg)
 void
 run_tests()
 {
+    Config cfg;
+    Event e;
+
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
 
-/*
+/**
 CREATE sink WITH \_.[]
-CREATE doit WITH \_.[ SEND [] TO sink ]
-fwd_beh(target) = \msg.[ SEND msg TO target ]
-oneshot_beh(target) = \msg.[
-    SEND msg TO target
-    BECOME sink_beh
-]
-*/
-    Actor a_commit = actor_new(behavior_new(act_commit, NIL));
+**/
+    Actor a_commit = &commit_actor;  // WAS: actor_new(behavior_new(act_commit, NIL));
     TRACE(fprintf(stderr, "a_commit = %p\n", a_commit));
-    Actor a_sink = actor_new(behavior_new(act_begin, a_commit));
+    Actor a_sink = &sink_actor;  // WAS: actor_new(behavior_new(act_begin, a_commit));
     TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
-
-    // (cust, target, message)
-    Pair msg = pair_new(a_commit, pair_new(a_sink, NIL));
-    Actor a = actor_new(behavior_new(act_send, msg));
-
+/**
+CREATE doit WITH \_.[ SEND [] TO sink ]
+**/
+/*
+    Pair args = pair_new(a_commit, pair_new(a_sink, NIL));  // (cust, target, message)
+    Actor a = actor_new(behavior_new(act_send, args));
     Actor a_doit = actor_new(behavior_new(act_begin, a));
+*/
+//    Actor a_doit = actor_new(behavior_new(act_forward, a_sink));
+    Actor a_doit = actor_new(behavior_new(act_oneshot, a_sink));
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     
-    Config cfg = config_new();
-    Event e = event_new(cfg, a_doit, NIL);
+    cfg = config_new();
+    e = event_new(cfg, a_doit, NIL);
+    queue_give(cfg->event_q, e);
+    e = event_new(cfg, a_doit, a_doit);
     queue_give(cfg->event_q, e);
     while (config_dispatch(cfg))
         ;
