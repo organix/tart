@@ -36,7 +36,7 @@ THE SOFTWARE.
 #include <assert.h>
 
 #undef inline /*inline*/
-#define ALWAYS_USE_EFFECTS /**/
+#undef ALWAYS_USE_EFFECTS /**/
 
 #define TRACE(x)    x   /* enable/disable trace statements */
 #define DEBUG(x)        /* enable/disable debug statements */
@@ -278,7 +278,7 @@ effect_commit(Effect fx)
 }
 
 /**
-busy_beh = \m.[
+LET busy_beh = \m.[
     SEND m TO SELF
 ]
 **/
@@ -293,7 +293,7 @@ act_busy(Event e)
 BEHAVIOR busy_behavior = { act_busy, NIL };
 
 /**
-begin_beh(cust) = \_.[
+LET begin_beh(cust) = \_.[
     SEND Effect.new() TO cust
     BECOME busy_beh
 ]
@@ -312,7 +312,7 @@ act_begin(Event e)
 }
 
 /**
-send_beh(cust, target, message) = \fx.[
+LET send_beh(cust, target, message) = \fx.[
     fx.send(target, message)
     SEND fx TO cust
 ]
@@ -334,7 +334,7 @@ act_send(Event e)
 }
 
 /**
-create_beh(cust, beh) = \fx.[
+LET create_beh(cust, beh) = \fx.[
     fx.create(beh)
     SEND fx TO cust
 ]
@@ -353,7 +353,7 @@ act_create(Event e)
 }
 
 /**
-become_beh(cust, beh) = \fx.[
+LET become_beh(cust, beh) = \fx.[
     fx.become(beh)
     SEND fx TO cust
 ]
@@ -372,7 +372,7 @@ act_become(Event e)
 }
 
 /**
-commit_beh(cust, beh) = \fx.[
+LET commit_beh(cust, beh) = \fx.[
     fx.commit()
 ]
 **/
@@ -389,8 +389,8 @@ BEHAVIOR commit_behavior = { act_commit, NIL };
 ACTOR commit_actor = { &commit_behavior };
 
 /**
-forward_beh(a) = \m.[ SEND m TO a ]
-forward_beh(a) = \m.SEND () TO \_.[ SEND m TO a ]
+LET forward_beh(a) = \m.[ SEND m TO a ]
+LET forward_beh(a) = \m.SEND () TO \_.[ SEND m TO a ]
 **/
 void
 act_forward(Event e)
@@ -411,7 +411,7 @@ act_forward(Event e)
 }
 
 /**
-oneshot_beh(a) = \m.[
+LET oneshot_beh(a) = \m.[
     SEND m TO a
     BECOME \_.[]
 ]
@@ -437,6 +437,189 @@ act_oneshot(Event e)
 #endif /*ALWAYS_USE_EFFECTS*/
 }
 
+/**
+LET prefix_beh(prefix) = \(cust, req).[ SEND (prefix, req) TO cust ]
+**/
+void
+act_prefix(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_prefix{self=%p, msg=%p}\n", e->actor, e->message));
+    Any prefix = e->actor->behavior->context;  // prefix
+    p = e->message;  // (cust, req)
+    Actor cust = p->h;
+    Any req = p->t;
+#ifdef ALWAYS_USE_EFFECTS
+    #error NOT IMPLEMENTED
+#else /*ALWAYS_USE_EFFECTS*/
+    config_send(e->sponsor, cust, PR(prefix, req));
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+
+/**
+LET label_beh(cust, label) = \msg.[ SEND (label, msg) TO cust ]
+**/
+void
+act_label(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_label{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (cust, label)
+    Actor cust = p->h;
+    Any label = p->t;
+#ifdef ALWAYS_USE_EFFECTS
+    #error NOT IMPLEMENTED
+#else /*ALWAYS_USE_EFFECTS*/
+    config_send(e->sponsor, cust, PR(label, e->message));
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+
+/**
+LET tag_beh(cust) = \msg.[ SEND (SELF, msg) TO cust ]
+**/
+void
+act_tag(Event e)
+{
+    TRACE(fprintf(stderr, "act_tag{self=%p, msg=%p}\n", e->actor, e->message));
+    Actor cust = e->actor->behavior->context;  // cust
+    Any msg = e->message;  // msg
+#ifdef ALWAYS_USE_EFFECTS
+    Pair args = PR(&commit_actor, PR(cust, PR(e->actor, msg)));  // (cust, target, message)
+    Actor a_send = actor_new(behavior_new(act_send, args));
+    Actor a_begin = actor_new(behavior_new(act_begin, a_send));
+    TRACE(fprintf(stderr, "act_tag: delegate=%p\n", a_begin));
+    // invoke delegate
+    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+#else /*ALWAYS_USE_EFFECTS*/
+    config_send(e->sponsor, cust, PR(e->actor, msg));
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+/**
+LET join_0_beh(cust, first, k_rest) = \($k_rest, rest).[ SEND (first, rest) TO cust ]
+**/
+void
+act_join_0(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_join_0{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (cust, first, k_rest)
+    Actor cust = p->h;
+    p = p->t;
+    Any first = p->h;
+    Actor k_rest = p->t;
+    p = e->message;  // ($k_rest, rest)
+#ifdef ALWAYS_USE_EFFECTS
+    #error NOT IMPLEMENTED
+#else /*ALWAYS_USE_EFFECTS*/
+    if (p->h == k_rest) {
+        Any rest = p->t;
+        config_send(e->sponsor, cust, PR(first, rest));
+        return;
+    }
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+/**
+LET join_1_beh(cust, k_first, rest) = \($k_first, first).[ SEND (first, rest) TO cust ]
+**/
+void
+act_join_1(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_join_1{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (cust, k_first, rest)
+    Actor cust = p->h;
+    p = p->t;
+    Actor k_first = p->h;
+    Any rest = p->t;
+    p = e->message;  // ($k_first, first)
+#ifdef ALWAYS_USE_EFFECTS
+    #error NOT IMPLEMENTED
+#else /*ALWAYS_USE_EFFECTS*/
+    if (p->h == k_first) {
+        Any first = p->t;
+        config_send(e->sponsor, cust, PR(first, rest));
+        return;
+    }
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+/**
+LET join_beh(cust, k_first, k_rest) = \msg.[
+    CASE msg OF
+    ($k_first, first) : [
+        BECOME join_0_beh(cust, first, k_rest)
+    ]
+    ($k_rest, rest) : [
+        BECOME join_1_beh(cust, k_first, rest)
+    ]
+    END
+]
+**/
+void
+act_join(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_join{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (cust, k_first, k_rest)
+    Actor cust = p->h;
+    p = p->t;
+    Actor k_first = p->h;
+    Actor k_rest = p->t;
+    p = e->message;  // ($k_first, first) | ($k_rest, rest)
+#ifdef ALWAYS_USE_EFFECTS
+    #error NOT IMPLEMENTED
+#else /*ALWAYS_USE_EFFECTS*/
+    if (p->h == k_first) {
+        Any first = p->t;
+        actor_become(e->actor, behavior_new(act_join_0, PR(cust, PR(first, k_rest))));
+        return;
+    }
+    if (p->h == k_rest) {
+        Any rest = p->t;
+        actor_become(e->actor, behavior_new(act_join_1, PR(cust, PR(k_first, rest))));
+        return;
+    }
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+/**
+LET fork_beh(cust, head, tail) = \(h_req, t_req).[
+    CREATE k_head WITH tag_beh(SELF)
+    CREATE k_tail WITH tag_beh(SELF)
+    SEND (k_head, h_req) TO head
+    SEND (k_tail, t_req) TO tail
+    BECOME join_beh(cust, k_head, k_tail)
+]
+**/
+void
+act_fork(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_fork{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (cust, head, tail)
+    Actor cust = p->h;
+    p = p->t;
+    Actor head = p->h;
+    Actor tail = p->t;
+    p = e->message;  // (h_req, t_req)
+    Any h_req = p->h;
+    Any t_req = p->t;
+#ifdef ALWAYS_USE_EFFECTS
+    #error NOT IMPLEMENTED
+#else /*ALWAYS_USE_EFFECTS*/
+    Actor k_head = actor_new(behavior_new(act_tag, e->actor));
+    Actor k_tail = actor_new(behavior_new(act_tag, e->actor));
+    config_send(e->sponsor, head, PR(k_head, h_req));
+    config_send(e->sponsor, tail, PR(k_tail, t_req));
+    Pair args = PR(cust, PR(k_head, k_tail));  // (cust, k_head, k_tail)
+    actor_become(e->actor, behavior_new(act_join, args));
+#endif /*ALWAYS_USE_EFFECTS*/
+}
+
 int
 config_dispatch(Config cfg)
 {
@@ -455,6 +638,24 @@ config_dispatch(Config cfg)
  */
 
 /**
+LET dump_pair_of_pairs_beh(label) = \((a, b), (c, d)).[ Console.println("%s: ((%s, %s), (%s, %s))", label, a, b, c, d) ]
+**/
+void
+act_dump_pair_of_pairs(Event e)
+{
+    TRACE(fprintf(stderr, "act_dump_pair_of_pairs{self=%p, msg=%p}\n", e->actor, e->message));
+    char * label = e->actor->behavior->context;  // (cust, head, tail)
+    if (label) {
+        TRACE(fprintf(stderr, "%s: ", label));
+    }
+    Pair p = e->message;
+    Pair ab = p->h;
+    Pair cd = p->t;
+    TRACE(fprintf(stderr, "(%p, %p) = ", ab, cd));
+    TRACE(fprintf(stderr, "((%s, %s), (%s, %s))\n", ab->h, ab->t, cd->h, cd->t));
+}
+
+/**
 CREATE sink WITH \_.[]
 CREATE doit WITH \_.[ SEND [] TO sink ]
 **/
@@ -467,20 +668,38 @@ run_tests()
     TRACE(fprintf(stderr, "a_commit = %p\n", a_commit));
     Actor a_sink = &sink_actor;  // WAS: actor_new(behavior_new(act_begin, a_commit));
     TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
-
+/*
     Pair args = PR(a_commit, PR(a_sink, NIL));  // (cust, target, message)
     Actor a = actor_new(behavior_new(act_send, args));
     Actor a_doit = actor_new(behavior_new(act_begin, a));
-/*
-    Actor a_doit = actor_new(behavior_new(act_forward, a_sink));
 
-    Actor a_doit = actor_new(behavior_new(act_oneshot, a_sink));
+    Actor a_doit = actor_new(behavior_new(act_forward, a_sink));
 */
+    Actor a_doit = actor_new(behavior_new(act_oneshot, a_sink));
+
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     
     Config cfg = config_new();
     config_send(cfg, a_doit, NIL);
     config_send(cfg, a_doit, a_doit);
+    while (config_dispatch(cfg))
+        ;
+
+    // fork-join example
+    char * s_zero = "zero";
+    TRACE(fprintf(stderr, "s_zero = %p \"%s\"\n", s_zero, s_zero));
+    Actor a_zero = actor_new(behavior_new(act_prefix, s_zero));
+    char * s_one = "one";
+    TRACE(fprintf(stderr, "s_one = %p \"%s\"\n", s_one, s_one));
+    Actor a_one = actor_new(behavior_new(act_prefix, s_one));
+    char * s_123 = "123";
+    TRACE(fprintf(stderr, "s_123 = %p \"%s\"\n", s_123, s_123));
+    char * s_456 = "456";
+    TRACE(fprintf(stderr, "s_one = %p \"%s\"\n", s_456, s_456));
+    Actor a_dump = actor_new(behavior_new(act_dump_pair_of_pairs, "fork-join"));
+    Behavior beh = behavior_new(act_fork, PR(a_dump, PR(a_zero, a_one)));
+    config_send(cfg, actor_new(beh), PR(s_123, s_456));
+    config_send(cfg, actor_new(beh), PR(s_456, s_123));
     while (config_dispatch(cfg))
         ;
 }
