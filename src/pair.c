@@ -31,10 +31,10 @@ THE SOFTWARE.
 inline Pair
 pair_new(Any h, Any t)
 {
-    Pair q = NEW(PAIR);
-    q->h = h;
-    q->t = t;
-    return q;
+    Pair p = NEW(PAIR);
+    p->h = h;
+    p->t = t;
+    return p;
 }
 
 inline Pair

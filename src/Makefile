@@ -10,11 +10,13 @@ INCS=	$(INC)/tart.h \
 		$(INC)/effect.h \
 		$(INC)/action.h \
 		$(INC)/actor.h \
-		$(INC)/pair.h
+		$(INC)/pair.h \
+		$(INC)/object.h
 OBJS=	effect.o \
 		action.o \
 		actor.o \
-		pair.o
+		pair.o \
+		object.o
 PROGS=	tart tart_fx
 
 CFLAGS=	-I$(INC)
