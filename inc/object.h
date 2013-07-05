@@ -78,6 +78,7 @@ extern Object o_two;
 
 typedef struct string_kind STRING_KIND, *StringKind;
 extern Object   string_new(char * s);
+extern Object   string_intern(char * s);
 struct string_kind {
     KIND        k;
     Object      (*length)(Object this);
@@ -89,5 +90,7 @@ extern Object   call_concat(Object this, Object that);
 extern Object   call_lookup(Object this, Object offset);
 extern Kind k_string;
 extern Object o_empty_string;
+
+extern void test_object();  // unit-test method
 
 #endif /* _OBJECT_H_ */

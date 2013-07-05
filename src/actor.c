@@ -98,7 +98,7 @@ int
 config_dispatch(Config cfg)
 {
     if (queue_empty_p(cfg->event_q)) {
-        TRACE(fprintf(stderr, "config_dispatch: --EMPTY--\n"));
+        TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
         return 0;
     }
     Event e = queue_take(cfg->event_q);

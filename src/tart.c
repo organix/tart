@@ -27,6 +27,7 @@ THE SOFTWARE.
 */
 
 #include "tart.h"
+#include "object.h"
 #include "pair.h"
 #include "actor.h"
 #include "action.h"
@@ -36,7 +37,9 @@ THE SOFTWARE.
  */
 
 /**
-LET dump_pair_of_pairs_beh(label) = \((a, b), (c, d)).[ Console.println("%s: ((%s, %s), (%s, %s))", label, a, b, c, d) ]
+LET dump_pair_of_pairs_beh(label) = \((a, b), (c, d)).[
+    Console.println("%s: ((%s, %s), (%s, %s))", label, a, b, c, d)
+]
 **/
 void
 act_dump_pair_of_pairs(Event e)
@@ -60,8 +63,9 @@ SEND () TO fwd
 SEND once TO fwd
 **/
 void
-run_tests()
+test_action()
 {
+    TRACE(fprintf(stderr, "---- test_action ----\n"));
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
     TRACE(fprintf(stderr, "&sink_actor = %p\n", &sink_actor));
     Config cfg = config_new();
@@ -94,6 +98,13 @@ run_tests()
     config_send(cfg, actor_new(beh), PR(s_456, s_123));
     while (config_dispatch(cfg))
         ;
+}
+    
+void
+run_tests()
+{
+    test_action();
+    test_object();
 }
 
 /*

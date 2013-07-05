@@ -40,8 +40,9 @@ THE SOFTWARE.
 
 #define ALLOC(S)    (calloc((S), 1))
 #define NEW(T)      ((T *)calloc(sizeof(T), 1))
+#define NEWxN(T,N)  ((T *)calloc(sizeof(T), (N)))
 #define FREE(p)     ((p) = (free(p), NULL))
 
-typedef void *Any;
+typedef void * Any;
 
 #endif /* _TART_H_ */

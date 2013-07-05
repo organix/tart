@@ -28,6 +28,69 @@ THE SOFTWARE.
 
 #include "object.h"
 
+struct cache {
+    int         n;  // number of entries in use
+    int         m;  // number of entries allocated
+    int         (*cmp)(Object entry, Any value);  // comparison function
+    Object      (*new)(Any value);  // constructor function
+    Object *    base;  // pointer to continguous block of Object memory
+};
+static Object
+cache_intern(struct cache * cache, Any value)
+{
+    register int a, b, c, d;
+    Object p;
+    
+    int n = cache->n;
+    a = 0;
+    b = n - 1;
+    while (a <= b) {
+        c = (a + b) >> 1;  // == ((a + b) / 2)
+        p = cache->base[c];
+        d = (cache->cmp)(p, value);
+        if (d > 0) {
+            b = c - 1;
+        } else if (d < 0) {
+            a = c + 1;
+        } else {
+            return p;  // FOUND!
+        }
+    }
+    // NOT FOUND (a == insertion point)
+    p = (cache->new)(value);
+    int m = cache->m;
+    if (n < m) {  // space available for entry
+        TRACE(fprintf(stderr, "cache_intern: space available, n=%d, m=%d\n", n, m));
+        for (b = n; a < b; --b) {
+            cache->base[b] = cache->base[b - 1];
+        }
+        cache->base[a] = p;
+        cache->n = n + 1;
+    } else if (cache->base) {  // need to allocate more space
+        Object * bp = cache->base;
+        m = m << 1;  // == (m * 2)
+        TRACE(fprintf(stderr, "cache_intern: expanded allocation, n=%d, m=%d\n", n, m));
+        cache->m = m;
+        cache->base = NEWxN(Object, m);
+        for (b = n; a < b; --b) {
+            cache->base[b] = bp[b - 1];
+        }
+        cache->base[a] = p;
+        for (b = 0; b < a; ++b) {
+            cache->base[b] = bp[b];
+        }
+        cache->n = n + 1;
+    } else {  // initial space allocation
+        m = 2;
+        TRACE(fprintf(stderr, "cache_intern: initial allocation, m=%d\n", m));
+        cache->m = m;
+        cache->base = NEWxN(Object, m);
+        cache->base[0] = p;
+        cache->n = 1;
+    }
+    return p;
+}
+
 static Object
 base_kind_of_method(Object this, Kind kind)
 {
@@ -203,21 +266,6 @@ static NUMBER the_two_object = {
 };
 Object o_two = (Object)&the_two_object;
 
-/*
-typedef struct string_kind STRING_KIND, *StringKind;
-extern Object   string_new(char * s);
-struct string_kind {
-    KIND        k;
-    Object      (*length)(Object this);
-    Object      (*concat)(Object this, Object that);
-    Object      (*lookup)(Object this, Object offset);
-};
-extern Object   call_length(Object this);
-extern Object   call_concat(Object this, Object that);
-extern Object   call_lookup(Object this, Object offset);
-extern Kind k_string;
-extern Object o_empty_string;
-*/
 typedef struct string STRING, *String;
 struct string {
     OBJECT      o;
@@ -238,23 +286,41 @@ string_new(char * s)
     return (Object)p;
 }
 static Object
+string_new_value(Any value)
+{
+    return string_new((char *)value);
+}
+static int
+string_compare_value(Object this, Any value)  // (this < that) -> <0, (this == that) -> 0, (this > that) -> >0.
+{
+    char * s = ((String)this)->s;
+    char * t = (char *)value;
+    while (*s == *t) {
+        if (*s == '\0') {
+            return 0;  // matched string terminator
+        }
+        ++s;
+        ++t;
+    }
+    return (*s - *t);
+}
+static struct cache string_cache = { 0, 0, string_compare_value, string_new_value, NULL };
+inline Object
+string_intern(char * s)  // return the canonical String instance with this value
+{
+    cache_intern(&string_cache, s);
+}
+static Object
 string_equal_to_method(Object this, Object that)
 {
     if (this == that) {
         return o_true;
     }
-    if (k_string == that->kind) {
-        char * s = ((String)this)->s;
-        char * t = ((String)that)->s;
-        while (*s == *t) {
-            if (*s == '\0') {
-                return o_true;  // matched string terminator
-            }
-            ++s;
-            ++t;
-        }
+    if (k_string != that->kind) {
+        return o_false;
     }
-    return o_false;
+    Any value = ((String)that)->s;
+    return (string_compare_value(this, value) == 0) ? o_true : o_false;
 }
 static Object
 string_length_method(Object this)
@@ -324,3 +390,64 @@ static STRING the_empty_string_object = {
     ""
 };
 Object o_empty_string = (Object)&the_empty_string_object;
+
+static void
+trace_string_cache()
+{
+    int i;
+    char c = '[';
+
+    TRACE(fprintf(stderr, "string_cache = "));
+    for (i = 0; i < string_cache.n; ++i) {
+        String s = (String)string_cache.base[i];
+        TRACE(fprintf(stderr, "%c \"%s\"", c, s->s));
+        c = ',';
+    }
+    TRACE(fprintf(stderr, " ]\n"));
+}
+void
+test_object()
+{
+    Object x, y;
+
+    TRACE(fprintf(stderr, "---- test_object ----\n"));
+/*
+    string_intern("0");
+    trace_string_cache();
+    string_intern("1");
+    trace_string_cache();
+    string_intern("2");
+    trace_string_cache();
+    string_intern("3");
+    trace_string_cache();
+    string_intern("4");
+    trace_string_cache();
+*/
+/*
+    string_intern("4");
+    trace_string_cache();
+    string_intern("3");
+    trace_string_cache();
+    string_intern("2");
+    trace_string_cache();
+    string_intern("1");
+    trace_string_cache();
+    string_intern("0");
+    trace_string_cache();
+*/
+    x = string_intern("foo");
+    trace_string_cache();
+    string_intern("bar");
+    trace_string_cache();
+    string_intern("baz");
+    trace_string_cache();
+    string_intern("quux");
+    trace_string_cache();
+    string_intern("-");
+    trace_string_cache();
+    y = string_intern("foo");
+    trace_string_cache();
+    assert(x == y);
+    x = string_new("foo");
+    assert(x != y);
+}
