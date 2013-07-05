@@ -52,4 +52,9 @@ extern int      queue_empty_p(Pair q);
 extern void     queue_give(Pair q, Any item);
 extern Any      queue_take(Pair q);
 
+extern Pair     dict_new();
+extern int      dict_empty_p(Pair dict);
+extern Any      dict_lookup(Pair dict, Any key);
+extern Pair     dict_bind(Pair dict, Any key, Any value);
+
 #endif /* _PAIR_H_ */

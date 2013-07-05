@@ -97,3 +97,33 @@ queue_take(Pair q)
     return item;
 }
 
+inline Pair
+dict_new()
+{
+    return NIL;
+}
+
+inline int
+dict_empty_p(Pair dict)
+{
+    return (dict == NIL);
+}
+
+inline Any
+dict_lookup(Pair dict, Any key)
+{
+    while (!dict_empty_p(dict)) {
+        Pair p = dict->h;
+        if (p->h == key) {
+            return p->t;
+        }
+        dict = dict->t;
+    }
+    return NULL;  // NOT FOUND!
+}
+
+inline Pair
+dict_bind(Pair dict, Any key, Any value)
+{
+    return PR(PR(key, value), dict);
+}
