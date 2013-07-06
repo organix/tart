@@ -378,7 +378,7 @@ string_lookup_method(Object this, Object offset)
     }
     int n = ((String)this)->n;
     int i = ((Number)offset)->i;
-    if ((i < 0) || (i > n)) {  // allow lookup of terminator at offset 'n'
+    if ((i < 0) || (i >= n)) {
         return NULL;  // offset out of bounds
     }
     return number_new(((String)this)->s[i]);
@@ -487,6 +487,74 @@ static SCOPE the_empty_scope_object = {
     (Object)&the_empty_scope_object
 };
 Object o_empty_scope = (Object)&the_empty_scope_object;
+
+typedef struct array ARRAY, *Array;
+struct array {
+    OBJECT      o;
+    Pair        q;  // deque of array items
+    int         n;  // number of items
+};
+inline Object
+array_new()
+{
+    Array p = NEW(ARRAY);
+    p->o.kind = k_array;
+    p->q = queue_new();
+    p->n = 0;
+    return (Object)p;
+}
+static Object
+array_kind_of_method(Object this, Kind kind)
+{
+    return ((this->kind == kind) || (k_func == kind) || (k_scope == kind)) ? o_true : o_false;
+}
+static Object
+array_length_method(Object this)
+{
+	return number_new(((Array)this)->n);
+}
+static Object s_length;  // cached symbol
+static Object
+array_lookup_method(Object this, Object key)
+{
+    if (!s_length) { s_length = string_intern("length"); }  // lazy-init symbol
+    if (s_length == key) {
+        return array_length_method(this);
+    } else if (k_number != key->kind) {
+        return NULL;  // invalid offset
+    }
+    int n = ((Array)this)->n;
+    int i = ((Number)key)->i;
+    Pair q = ((Array)this)->q;
+    return queue_lookup(q, i);
+}
+static Object
+array_bind_method(Object this, Object key, Object value)
+{
+    if (k_number != key->kind) {
+        return NULL;  // invalid offset
+    }
+    int n = ((Array)this)->n;
+    int i = ((Number)key)->i;
+    Pair q = ((Array)this)->q;
+    if ((i < 0) || (i > n)) {
+        return NULL;  // offset out of bounds
+    }
+    if (i == n) {
+        queue_give(q, value);
+        ((Array)this)->n = (n + 1);
+    } else {
+        queue_bind(q, i, value);
+    }
+    return this;
+}
+static SCOPE_KIND the_array_kind = {
+    { { array_kind_of_method,
+        base_equal_to_method },
+      array_lookup_method },
+    array_bind_method
+};
+Kind k_array = (Kind)&the_array_kind;
 
 static void
 trace_string_cache()

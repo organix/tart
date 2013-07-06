@@ -47,19 +47,16 @@ list_new()
 {
     return NIL;
 }
-
 inline int
 list_empty_p(Pair list)
 {
     return (list == NIL);
 }
-
 inline Pair
 list_pop(Pair list)
 {
     return list;
 }
-
 inline Pair
 list_push(Pair list, Any item)
 {
@@ -71,13 +68,11 @@ queue_new()
 {
     return PR(NIL, NIL);
 }
-
 inline int
 queue_empty_p(Pair q)
 {
     return (q->h == NIL);
 }
-
 inline void
 queue_give(Pair q, Any item)
 {
@@ -90,7 +85,6 @@ queue_give(Pair q, Any item)
     }
     q->t = p;
 }
-
 inline Any
 queue_take(Pair q)
 {
@@ -103,19 +97,52 @@ queue_take(Pair q)
     p = FREE(p);
     return item;
 }
+inline void
+queue_return(Pair q, Any item)
+{
+    Pair p = PR(item, q->h);
+    if (queue_empty_p(q)) {
+        q->t = p;
+    }
+    q->h = p;
+}
+inline Any
+queue_lookup(Pair q, int i)
+{
+    Pair p = q->h;
+    while (p != NIL) {
+        if (i <= 0) {
+            return p->h;
+        }
+        --i;
+        p = p->t;
+    }
+    return NULL;  // not found
+}
+inline void
+queue_bind(Pair q, int i, Any item)
+{
+    Pair p = q->h;
+    while (p != NIL) {
+        if (i <= 0) {
+            p->h = item;
+        }
+        --i;
+        p = p->t;
+    }
+    // not found
+}
 
 inline Pair
 dict_new()
 {
     return NIL;
 }
-
 inline int
 dict_empty_p(Pair dict)
 {
     return (dict == NIL);
 }
-
 inline Any
 dict_lookup(Pair dict, Any key)
 {
@@ -128,7 +155,6 @@ dict_lookup(Pair dict, Any key)
     }
     return NULL;  // NOT FOUND
 }
-
 inline Pair
 dict_bind(Pair dict, Any key, Any value)
 {

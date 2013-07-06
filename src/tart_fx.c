@@ -109,8 +109,9 @@ SEND once TO doit
 SEND tag TO doit
 **/
 void
-run_tests()
+test_effect()
 {
+    TRACE(fprintf(stderr, "---- test_effect ----\n"));
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
     TRACE(fprintf(stderr, "&sink_actor = %p\n", &sink_actor));
     TRACE(fprintf(stderr, "&commit_actor = %p\n", &commit_actor));
@@ -132,6 +133,12 @@ run_tests()
     config_send(cfg, a_doit, a_tag);
     while (config_dispatch(cfg))
         ;
+}
+
+void
+run_tests()
+{
+    test_effect();
 }
 
 /*

@@ -78,7 +78,7 @@ extern Object o_zero;
 extern Object o_one;
 extern Object o_two;
 
-typedef struct func_kind FUNC_KIND, *FuncKind;
+typedef struct func_kind FUNC_KIND, *FuncKind;  // extensionally-defined function
 struct func_kind {
     KIND        k;
     Object      (*lookup)(Object this, Object input);
@@ -109,6 +109,9 @@ struct scope_kind {
 extern Object   call_bind(Object this, Object key, Object value);
 extern Kind k_scope;
 extern Object o_empty_scope;
+
+extern Object   array_new();  // a specialized kind of Scope
+extern Kind k_array;
 
 extern void test_object();  // unit-test method
 
