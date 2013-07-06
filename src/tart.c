@@ -91,7 +91,7 @@ test_action()
     char * s_123 = "123";
     TRACE(fprintf(stderr, "s_123 = %p \"%s\"\n", s_123, s_123));
     char * s_456 = "456";
-    TRACE(fprintf(stderr, "s_one = %p \"%s\"\n", s_456, s_456));
+    TRACE(fprintf(stderr, "s_456 = %p \"%s\"\n", s_456, s_456));
     Actor a_dump = actor_new(behavior_new(act_dump_pair_of_pairs, "fork-join"));
     Behavior beh = behavior_new(act_fork, PR(a_dump, PR(a_zero, a_one)));
     config_send(cfg, actor_new(beh), PR(s_123, s_456));

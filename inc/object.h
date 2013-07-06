@@ -63,10 +63,12 @@ typedef struct number_kind NUMBER_KIND, *NumberKind;
 extern Object   number_new(int i);
 struct number_kind {
     KIND        k;
+    Object      (*diff)(Object this, Object that);
     Object      (*plus)(Object this, Object that);
     Object      (*times)(Object this, Object that);
     int         (*as_int)(Object this);
 };
+extern Object   call_diff(Object this, Object that);
 extern Object   call_plus(Object this, Object that);
 extern Object   call_times(Object this, Object that);
 extern int      call_as_int(Object this);

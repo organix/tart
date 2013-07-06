@@ -184,6 +184,12 @@ struct number {
 inline Object
 number_new(int i)
 {
+    switch (i) {  // check for cached objects
+        case -1 : return o_minus_one;
+        case 0 : return o_zero;
+        case 1 : return o_one;
+        case 2 : return o_two;
+    }
     Number p = NEW(NUMBER);
     p->o.kind = k_number;
     p->i = i;
@@ -201,6 +207,14 @@ number_equal_to_method(Object this, Object that)
         }
     }
     return o_false;
+}
+static Object
+number_diff_method(Object this, Object that)
+{
+    if (k_number != that->kind) {
+        return this;
+    }
+    return number_new(((Number)this)->i - ((Number)that)->i);
 }
 static Object
 number_plus_method(Object this, Object that)
@@ -224,6 +238,11 @@ number_as_int_method(Object this)
     return ((Number)this)->i;
 }
 inline Object
+call_diff(Object this, Object that)
+{
+    return (((NumberKind)this->kind)->diff)(this, that);
+}
+inline Object
 call_plus(Object this, Object that)
 {
     return (((NumberKind)this->kind)->plus)(this, that);
@@ -241,6 +260,7 @@ call_as_int(Object this)
 static NUMBER_KIND the_number_kind = {
     { base_kind_of_method,
       number_equal_to_method },
+    number_diff_method,
     number_plus_method,
     number_times_method,
     number_as_int_method
