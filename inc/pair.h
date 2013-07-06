@@ -49,13 +49,13 @@ extern int      list_empty_p(Pair list);
 extern Pair     list_pop(Pair list);
 extern Pair     list_push(Pair list, Any item);
 
-extern Pair     queue_new();
-extern int      queue_empty_p(Pair q);
-extern void     queue_give(Pair q, Any item);
-extern Any      queue_take(Pair q);
-extern void     queue_return(Pair q, Any item);
-extern Any      queue_lookup(Pair q, int i);
-extern void     queue_bind(Pair q, int i, Any item);
+extern Pair     deque_new();
+extern int      deque_empty_p(Pair q);
+extern void     deque_give(Pair q, Any item);
+extern Any      deque_take(Pair q);
+extern void     deque_return(Pair q, Any item);
+extern Any      deque_lookup(Pair q, int i);
+extern void     deque_bind(Pair q, int i, Any item);
 
 extern Pair     dict_new();
 extern int      dict_empty_p(Pair dict);

@@ -64,20 +64,20 @@ list_push(Pair list, Any item)
 }
 
 inline Pair
-queue_new()
+deque_new()
 {
     return PR(NIL, NIL);
 }
 inline int
-queue_empty_p(Pair q)
+deque_empty_p(Pair q)
 {
     return (q->h == NIL);
 }
 inline void
-queue_give(Pair q, Any item)
+deque_give(Pair q, Any item)
 {
     Pair p = PR(item, NIL);
-    if (queue_empty_p(q)) {
+    if (deque_empty_p(q)) {
         q->h = p;
     } else {
         Pair t = q->t;
@@ -86,10 +86,10 @@ queue_give(Pair q, Any item)
     q->t = p;
 }
 inline Any
-queue_take(Pair q)
+deque_take(Pair q)
 {
-    if (queue_empty_p(q)) {
-        halt("queue_take from empty queue");
+    if (deque_empty_p(q)) {
+        halt("deque_take from empty!");
     }
     Pair p = q->h;
     Any item = p->h;
@@ -98,16 +98,16 @@ queue_take(Pair q)
     return item;
 }
 inline void
-queue_return(Pair q, Any item)
+deque_return(Pair q, Any item)
 {
     Pair p = PR(item, q->h);
-    if (queue_empty_p(q)) {
+    if (deque_empty_p(q)) {
         q->t = p;
     }
     q->h = p;
 }
 inline Any
-queue_lookup(Pair q, int i)
+deque_lookup(Pair q, int i)
 {
     Pair p = q->h;
     while (p != NIL) {
@@ -120,7 +120,7 @@ queue_lookup(Pair q, int i)
     return NULL;  // not found
 }
 inline void
-queue_bind(Pair q, int i, Any item)
+deque_bind(Pair q, int i, Any item)
 {
     Pair p = q->h;
     while (p != NIL) {

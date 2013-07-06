@@ -65,7 +65,7 @@ inline Config
 config_new()
 {
     Config cfg = NEW(CONFIG);
-    cfg->event_q = queue_new();
+    cfg->event_q = deque_new();
     cfg->actors = NIL;
     return cfg;
 }
@@ -73,7 +73,7 @@ config_new()
 inline void
 config_enqueue(Config cfg, Event e)
 {
-    queue_give(cfg->event_q, e);
+    deque_give(cfg->event_q, e);
 }
 
 inline void
@@ -97,11 +97,11 @@ config_create(Config cfg, Behavior beh)
 int
 config_dispatch(Config cfg)
 {
-    if (queue_empty_p(cfg->event_q)) {
+    if (deque_empty_p(cfg->event_q)) {
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
         return 0;
     }
-    Event e = queue_take(cfg->event_q);
+    Event e = deque_take(cfg->event_q);
     TRACE(fprintf(stderr, "config_dispatch: actor=%p, event=%p\n", e->actor, e));
     (e->actor->behavior->action)(e);  // INVOKE ACTOR BEHAVIOR
     return 1;

@@ -27,7 +27,7 @@ THE SOFTWARE.
 */
 
 #include "object.h"
-#include "pair.h"  // Scope is implemented with dictionary
+#include "pair.h"  // Scope is implemented with dictionary, and Array uses deque
 
 struct cache {
     int         n;  // number of entries in use
@@ -499,7 +499,7 @@ array_new()
 {
     Array p = NEW(ARRAY);
     p->o.kind = k_array;
-    p->q = queue_new();
+    p->q = deque_new();
     p->n = 0;
     return (Object)p;
 }
@@ -526,7 +526,7 @@ array_lookup_method(Object this, Object key)
     int n = ((Array)this)->n;
     int i = ((Number)key)->i;
     Pair q = ((Array)this)->q;
-    return queue_lookup(q, i);
+    return deque_lookup(q, i);
 }
 static Object
 array_bind_method(Object this, Object key, Object value)
@@ -541,10 +541,10 @@ array_bind_method(Object this, Object key, Object value)
         return NULL;  // offset out of bounds
     }
     if (i == n) {
-        queue_give(q, value);
+        deque_give(q, value);
         ((Array)this)->n = (n + 1);
     } else {
-        queue_bind(q, i, value);
+        deque_bind(q, i, value);
     }
     return this;
 }
