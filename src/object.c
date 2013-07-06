@@ -132,6 +132,7 @@ boolean_kind_of_method(Object this, Kind kind)
 static Object
 boolean_not_method(Object this)
 {
+    halt("boolean_not_method called");
     return (this == o_true) ? o_false : o_true;  // NOTE: this should never be called
 }
 inline Object
@@ -507,6 +508,15 @@ test_object()
     Object x, y;
 
     TRACE(fprintf(stderr, "---- test_object ----\n"));
+/*
+    static OBJECT the_bool_object = {
+        (Kind)&the_boolean_kind
+    };
+    Object o_bool = &the_bool_object;
+    x = call_not(o_bool);
+    assert(x == o_true);
+    assert(x == o_false);
+*/
 /*
     string_intern("0");
     trace_string_cache();

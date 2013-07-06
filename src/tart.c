@@ -32,6 +32,15 @@ THE SOFTWARE.
 #include "actor.h"
 #include "action.h"
 
+void
+halt(char * msg)
+{
+    TRACE(fprintf(stderr, "%s **** HALTED ****\n", msg));
+    assert(0);
+    for (;;)    // loop forever
+        ;
+}
+
 /*
  *  Unit tests
  */

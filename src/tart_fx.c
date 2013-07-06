@@ -31,6 +31,15 @@ THE SOFTWARE.
 #include "actor.h"
 #include "effect.h"
 
+void
+halt(char * msg)
+{
+    TRACE(fprintf(stderr, "%s **** HALTED ****\n", msg));
+    assert(0);
+    for (;;)    // loop forever
+        ;
+}
+
 /**
 LET forward_beh(a) = \m.SEND () TO \_.[ SEND m TO a ]
 **/

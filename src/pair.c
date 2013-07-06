@@ -94,7 +94,9 @@ queue_give(Pair q, Any item)
 inline Any
 queue_take(Pair q)
 {
-    // if (queue_empty_p(q)) ERROR("can't take from empty queue");
+    if (queue_empty_p(q)) {
+        halt("queue_take from empty queue");
+    }
     Pair p = q->h;
     Any item = p->h;
     q->h = p->t;
@@ -124,7 +126,7 @@ dict_lookup(Pair dict, Any key)
         }
         dict = dict->t;
     }
-    return NULL;  // NOT FOUND!
+    return NULL;  // NOT FOUND
 }
 
 inline Pair

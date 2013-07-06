@@ -45,4 +45,6 @@ THE SOFTWARE.
 
 typedef void * Any;
 
+extern void     halt(char * msg);
+
 #endif /* _TART_H_ */
