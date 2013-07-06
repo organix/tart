@@ -72,6 +72,7 @@ int             config_dispatch(Config cfg) {
     }
     Event e = queue_take(cfg->event_q);
     (e->actor->behavior->action)(e);  // INVOKE ACTOR BEHAVIOR
+    e = FREE(e); // FIXME: KEEP HISTORY HERE?
     return 1;
 }
 
