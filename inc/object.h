@@ -76,20 +76,37 @@ extern Object o_zero;
 extern Object o_one;
 extern Object o_two;
 
+typedef struct func_kind FUNC_KIND, *FuncKind;
+struct func_kind {
+    KIND        k;
+    Object      (*lookup)(Object this, Object input);
+};
+extern Object   call_lookup(Object this, Object input);
+extern Kind k_func;
+extern Object o_undef_func;
+
 typedef struct string_kind STRING_KIND, *StringKind;
 extern Object   string_new(char * s);
 extern Object   string_intern(char * s);
 struct string_kind {
-    KIND        k;
+    FUNC_KIND   f;
     Object      (*length)(Object this);
     Object      (*concat)(Object this, Object that);
-    Object      (*lookup)(Object this, Object offset);
 };
 extern Object   call_length(Object this);
 extern Object   call_concat(Object this, Object that);
-extern Object   call_lookup(Object this, Object offset);
 extern Kind k_string;
 extern Object o_empty_string;
+
+typedef struct scope_kind SCOPE_KIND, *ScopeKind;
+extern Object   scope_new(Object parent);
+struct scope_kind {
+    FUNC_KIND   f;
+    Object      (*bind)(Object this, Object key, Object value);
+};
+extern Object   call_bind(Object this, Object key, Object value);
+extern Kind k_scope;
+extern Object o_empty_scope;
 
 extern void test_object();  // unit-test method
 

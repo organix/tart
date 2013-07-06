@@ -28,6 +28,11 @@ THE SOFTWARE.
 
 #include "pair.h"
 
+PAIR the_nil_pair = {
+    &the_nil_pair,
+    &the_nil_pair
+};
+
 inline Pair
 pair_new(Any h, Any t)
 {

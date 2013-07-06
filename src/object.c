@@ -27,6 +27,7 @@ THE SOFTWARE.
 */
 
 #include "object.h"
+#include "pair.h"  // Scope is implemented with dictionary
 
 struct cache {
     int         n;  // number of entries in use
@@ -60,7 +61,7 @@ cache_intern(struct cache * cache, Any value)
     p = (cache->new)(value);
     int m = cache->m;
     if (n < m) {  // space available for entry
-        TRACE(fprintf(stderr, "cache_intern: space available, n=%d, m=%d\n", n, m));
+        DEBUG(fprintf(stderr, "cache_intern: space available, n=%d, m=%d\n", n, m));
         for (b = n; a < b; --b) {
             cache->base[b] = cache->base[b - 1];
         }
@@ -69,7 +70,7 @@ cache_intern(struct cache * cache, Any value)
     } else if (cache->base) {  // need to allocate more space
         Object * bp = cache->base;
         m = m << 1;  // == (m * 2)
-        TRACE(fprintf(stderr, "cache_intern: expanded allocation, n=%d, m=%d\n", n, m));
+        DEBUG(fprintf(stderr, "cache_intern: expanded allocation, n=%d, m=%d\n", n, m));
         cache->m = m;
         cache->base = NEWxN(Object, m);
         for (b = n; a < b; --b) {
@@ -81,8 +82,8 @@ cache_intern(struct cache * cache, Any value)
         }
         cache->n = n + 1;
     } else {  // initial space allocation
-        m = 2;
-        TRACE(fprintf(stderr, "cache_intern: initial allocation, m=%d\n", m));
+        m = 21;
+        DEBUG(fprintf(stderr, "cache_intern: initial allocation, m=%d\n", m));
         cache->m = m;
         cache->base = NEWxN(Object, m);
         cache->base[0] = p;
@@ -266,6 +267,32 @@ static NUMBER the_two_object = {
 };
 Object o_two = (Object)&the_two_object;
 
+static Object
+func_kind_of_method(Object this, Kind kind)
+{
+    return ((this->kind == kind) || (k_func == kind)) ? o_true : o_false;
+}
+static Object
+func_lookup_method(Object this, Object input)
+{
+    return NULL;  // undefined
+}
+inline Object
+call_lookup(Object this, Object input)
+{
+    return (((FuncKind)this->kind)->lookup)(this, input);
+}
+static FUNC_KIND the_func_kind = {
+    { func_kind_of_method,
+      base_equal_to_method },
+    func_lookup_method
+};
+Kind k_func = (Kind)&the_func_kind;
+static OBJECT the_undef_func_object = {
+    (Kind)&the_func_kind
+};
+Object o_undef_func = &the_undef_func_object;
+
 typedef struct string STRING, *String;
 struct string {
     OBJECT      o;
@@ -323,6 +350,19 @@ string_equal_to_method(Object this, Object that)
     return (string_compare_value(this, value) == 0) ? o_true : o_false;
 }
 static Object
+string_lookup_method(Object this, Object offset)
+{
+    if (k_number != offset->kind) {
+        return NULL;  // invalid offset
+    }
+    int n = ((String)this)->n;
+    int i = ((Number)offset)->i;
+    if ((i < 0) || (i > n)) {  // allow lookup of terminator at offset 'n'
+        return NULL;  // offset out of bounds
+    }
+    return number_new(((String)this)->s[i]);
+}
+static Object
 string_length_method(Object this)
 {
 	return number_new(((String)this)->n);
@@ -348,19 +388,6 @@ string_concat_method(Object this, Object that)
         ;
     return (Object)p;
 }
-static Object
-string_lookup_method(Object this, Object offset)
-{
-    if (k_number != offset->kind) {
-        return NULL;  // invalid offset
-    }
-    int n = ((String)this)->n;
-    int i = ((Number)offset)->i;
-    if ((i < 0) || (i > n)) {  // allow lookup of terminator at offset 'n'
-        return NULL;  // offset out of bounds
-    }
-    return number_new(((String)this)->s[i]);
-}
 inline Object
 call_length(Object this)
 {
@@ -371,17 +398,12 @@ call_concat(Object this, Object that)
 {
     return (((StringKind)this->kind)->concat)(this, that);
 }
-inline Object
-call_lookup(Object this, Object offset)
-{
-    return (((StringKind)this->kind)->lookup)(this, offset);
-}
 static STRING_KIND the_string_kind = {
-    { base_kind_of_method,
-      string_equal_to_method },
+    { { func_kind_of_method,
+        string_equal_to_method },
+      string_lookup_method },
     string_length_method,
-    string_concat_method,
-    string_lookup_method
+    string_concat_method
 };
 Kind k_string = (Kind)&the_string_kind;
 static STRING the_empty_string_object = {
@@ -390,6 +412,60 @@ static STRING the_empty_string_object = {
     ""
 };
 Object o_empty_string = (Object)&the_empty_string_object;
+
+typedef struct scope SCOPE, *Scope;
+struct scope {
+    OBJECT      o;
+    Pair        dict;  // dictionary of local bindings
+    Object      parent;  // enclosing scope (read-only)
+};
+inline Object
+scope_new(Object parent)
+{
+    Scope p = NEW(SCOPE);
+    p->o.kind = k_scope;
+    p->dict = dict_new();
+    p->parent = parent;
+    return (Object)p;
+}
+static Object
+scope_lookup_method(Object this, Object key)
+{
+    while (this != o_empty_scope) {
+        Pair dict = ((Scope)this)->dict;
+        Any value = dict_lookup(dict, key);
+        if (value != NULL) {  // found in local scope
+            return (Object)value;
+        }
+        this = ((Scope)this)->parent;  // simulate tail-recursion
+    }
+    return NULL;
+}
+static Object
+scope_bind_method(Object this, Object key, Object value)
+{
+    Pair dict = ((Scope)this)->dict;
+    ((Scope)this)->dict = dict_bind(dict, key, value);  // bind in local scope
+    return this;
+}
+inline Object
+call_bind(Object this, Object key, Object value)
+{
+    return (((ScopeKind)this->kind)->bind)(this, key, value);
+}
+static SCOPE_KIND the_scope_kind = {
+    { { func_kind_of_method,
+        base_equal_to_method },
+      scope_lookup_method },
+    scope_bind_method
+};
+Kind k_scope = (Kind)&the_scope_kind;
+static SCOPE the_empty_scope_object = {
+    { (Kind)&the_scope_kind },
+    NIL,
+    (Object)&the_empty_scope_object
+};
+Object o_empty_scope = (Object)&the_empty_scope_object;
 
 static void
 trace_string_cache()
@@ -450,4 +526,6 @@ test_object()
     assert(x == y);
     x = string_new("foo");
     assert(x != y);
+/*
+*/
 }

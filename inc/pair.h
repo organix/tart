@@ -37,7 +37,9 @@ struct pair {
     Any         t;
 };
 
-#define NIL ((Pair)0)
+extern PAIR the_nil_pair;
+
+#define NIL (&the_nil_pair)
 #define PR(h,t) pair_new((h),(t))
 
 extern Pair     pair_new(Any h, Any t);
