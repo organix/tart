@@ -102,7 +102,8 @@ inline Object call_concat(Object this, Object that) { return (this->kind->concat
 inline Object call_diff(Object this, Object that) { return (this->kind->diff)(this, that); }
 inline Object call_plus(Object this, Object that) { return (this->kind->plus)(this, that); }
 inline Object call_times(Object this, Object that) { return (this->kind->times)(this, that); }
-inline Object call_call(Object this, Object args) { return (this->kind->call)(this, args); }
+inline Object call_call(Object this, Object key, Object args) { return (this->kind->call)(this, key, args); }
+inline Object call_apply(Object this, Object that, Object args) { return (this->kind->apply)(this, that, args); }
 
 static Object no_kind_of_method(Object this, Kind kind) { return halt("no kind_of method"), NULL; }
 static Object no_equal_to_method(Object this, Object that) { return halt("no equal_to method"), NULL; }
@@ -114,7 +115,8 @@ static Object no_concat_method(Object this, Object that) { return halt("no conca
 static Object no_diff_method(Object this, Object that) { return halt("no diff method"), NULL; }
 static Object no_plus_method(Object this, Object that) { return halt("no plus method"), NULL; }
 static Object no_times_method(Object this, Object that) { return halt("no times method"), NULL; }
-static Object no_call_method(Object this, Object args) { return halt("no call method"), NULL; }
+static Object no_call_method(Object this, Object key, Object args) { return halt("no call method"), NULL; }
+static Object no_apply_method(Object this, Object that, Object args) { return halt("no apply method"), NULL; }
 
 static Object
 base_kind_of_method(Object this, Kind kind)
@@ -138,7 +140,8 @@ static KIND the_null_kind = {
     no_diff_method,
     no_plus_method,
     no_times_method,
-    no_call_method
+    no_call_method,
+    no_apply_method
 };
 Kind k_null = &the_null_kind;
 
@@ -163,7 +166,8 @@ static KIND the_boolean_kind = {
     no_diff_method,
     no_plus_method,
     no_times_method,
-    no_call_method
+    no_call_method,
+    no_apply_method
 };
 Kind k_boolean = &the_boolean_kind;
 
@@ -249,7 +253,8 @@ static KIND the_number_kind = {
     number_diff_method,
     number_plus_method,
     number_times_method,
-    no_call_method
+    no_call_method,
+    no_apply_method
 };
 Kind k_number = &the_number_kind;
 static NUMBER the_minus_one_object = {
@@ -391,7 +396,8 @@ static KIND the_string_kind = {
     string_diff_method,
     no_plus_method,
     no_times_method,
-    no_call_method
+    no_call_method,
+    no_apply_method
 };
 Kind k_string = (Kind)&the_string_kind;
 static STRING the_empty_string_object = {
@@ -439,6 +445,18 @@ scope_bind_method(Object this, Object key, Object value)
     ((Scope)this)->dict = dict_bind(dict, key, value);  // bind in local scope
     return this;
 }
+static Object
+scope_call_method(Object this, Object key, Object args)
+{
+    Object method = call_lookup(this, key);
+    if (!method) {
+        return NULL;  // method not found
+    }
+    if (call_kind_of(method, k_function) != o_true) {
+        return NULL;  // function required
+    }
+    return call_apply(method, this, args);
+}
 static KIND the_scope_kind = {
     base_kind_of_method,
     base_equal_to_method,
@@ -450,7 +468,8 @@ static KIND the_scope_kind = {
     no_diff_method,
     no_plus_method,
     no_times_method,
-    no_call_method
+    scope_call_method,
+    no_apply_method
 };
 Kind k_scope = &the_scope_kind;
 static SCOPE the_empty_scope_object = {
@@ -531,9 +550,36 @@ static KIND the_array_kind = {
     no_diff_method,
     no_plus_method,
     no_times_method,
-    no_call_method
+    no_call_method,
+    no_apply_method
 };
 Kind k_array = &the_array_kind;
+
+static Object
+function_kind_of_method(Object this, Kind kind)
+{
+    return ((this->kind == kind) || (k_scope == kind)) ? o_true : o_false;
+}
+static Object
+function_apply_method(Object this, Object that, Object args)
+{
+    return NULL;  // FIXME: figure out how to implement 'apply'!
+}
+static KIND the_function_kind = {
+    function_kind_of_method,
+    base_equal_to_method,
+    no_length_method,
+    no_lookup_method,
+    no_bind_method,
+    no_insert_method,
+    no_concat_method,
+    no_diff_method,
+    no_plus_method,
+    no_times_method,
+    no_call_method,
+    function_apply_method
+};
+Kind k_function = &the_function_kind;
 
 static void
 trace_string_cache()

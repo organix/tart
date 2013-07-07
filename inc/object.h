@@ -46,7 +46,8 @@ struct kind {
     Object      (*diff)(Object this, Object that);
     Object      (*plus)(Object this, Object that);
     Object      (*times)(Object this, Object that);
-    Object      (*call)(Object this, Object args);
+    Object      (*call)(Object this, Object key, Object args);
+    Object      (*apply)(Object this, Object that, Object args);
 };
 extern Object   call_kind_of(Object this, Kind kind);
 extern Object   call_equal_to(Object this, Object that);
@@ -58,7 +59,8 @@ extern Object   call_concat(Object this, Object that);
 extern Object   call_diff(Object this, Object that);
 extern Object   call_plus(Object this, Object that);
 extern Object   call_times(Object this, Object that);
-extern Object   call_call(Object this, Object args);
+extern Object   call_call(Object this, Object key, Object args);
+extern Object   call_apply(Object this, Object that, Object args);
 
 extern Kind k_null;
 extern Object o_null;
@@ -85,6 +87,9 @@ extern Object o_empty_scope;
 
 extern Object   array_new();  // a specialized kind of Scope
 extern Kind k_array;
+
+//extern Object function_new(Object env, Object expr);  <-- FIXME: how do we describe expressions?
+extern Kind k_function;
 
 extern void test_object();  // unit-test method
 
