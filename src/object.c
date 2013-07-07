@@ -92,6 +92,30 @@ cache_intern(struct cache * cache, Any value)
     return p;
 }
 
+inline Object call_kind_of(Object this, Kind kind) { return (this->kind->kind_of)(this, kind); }
+inline Object call_equal_to(Object this, Object that) { return (this->kind->equal_to)(this, that); }
+inline Object call_length(Object this) { return (this->kind->length)(this); }
+inline Object call_lookup(Object this, Object key) { return (this->kind->lookup)(this, key); }
+inline Object call_bind(Object this, Object key, Object value) { return (this->kind->bind)(this, key, value); }
+inline Object call_insert(Object this, Object key, Object value) { return (this->kind->insert)(this, key, value); }
+inline Object call_concat(Object this, Object that) { return (this->kind->concat)(this, that); }
+inline Object call_diff(Object this, Object that) { return (this->kind->diff)(this, that); }
+inline Object call_plus(Object this, Object that) { return (this->kind->plus)(this, that); }
+inline Object call_times(Object this, Object that) { return (this->kind->times)(this, that); }
+inline Object call_call(Object this, Object args) { return (this->kind->call)(this, args); }
+
+static Object no_kind_of_method(Object this, Kind kind) { return halt("no kind_of method"), NULL; }
+static Object no_equal_to_method(Object this, Object that) { return halt("no equal_to method"), NULL; }
+static Object no_length_method(Object this) { return halt("no length method"), NULL; }
+static Object no_lookup_method(Object this, Object key) { return halt("no lookup method"), NULL; }
+static Object no_bind_method(Object this, Object key, Object value) { return halt("no bind method"), NULL; }
+static Object no_insert_method(Object this, Object key, Object value) { return halt("no insert method"), NULL; }
+static Object no_concat_method(Object this, Object that) { return halt("no concat method"), NULL; }
+static Object no_diff_method(Object this, Object that) { return halt("no diff method"), NULL; }
+static Object no_plus_method(Object this, Object that) { return halt("no plus method"), NULL; }
+static Object no_times_method(Object this, Object that) { return halt("no times method"), NULL; }
+static Object no_call_method(Object this, Object args) { return halt("no call method"), NULL; }
+
 static Object
 base_kind_of_method(Object this, Kind kind)
 {
@@ -102,25 +126,24 @@ base_equal_to_method(Object this, Object that)
 {
     return (this == that) ? o_true : o_false;
 }
-inline Object
-call_kind_of(Object this, Kind kind)
-{
-    return (((Kind)this->kind)->kind_of)(this, kind);
-}
-inline Object
-call_equal_to(Object this, Object that)
-{
-    return (((Kind)this->kind)->equal_to)(this, that);
-}
 
-static NULL_KIND the_null_kind = {
-    { base_kind_of_method,
-      base_equal_to_method }
+static KIND the_null_kind = {
+    base_kind_of_method,
+    base_equal_to_method,
+    no_length_method,
+    no_lookup_method,
+    no_bind_method,
+    no_insert_method,
+    no_concat_method,
+    no_diff_method,
+    no_plus_method,
+    no_times_method,
+    no_call_method
 };
-Kind k_null = (Kind)&the_null_kind;
+Kind k_null = &the_null_kind;
 
 static OBJECT the_null_object = {
-    (Kind)&the_null_kind
+    &the_null_kind
 };
 Object o_null = &the_null_object;
 
@@ -129,51 +152,28 @@ boolean_kind_of_method(Object this, Kind kind)
 {
     return ((this->kind == kind) || (k_boolean == kind)) ? o_true : o_false;
 }
-static Object
-boolean_not_method(Object this)
-{
-    halt("boolean_not_method called");
-    return (this == o_true) ? o_false : o_true;  // NOTE: this should never be called
-}
-inline Object
-call_not(Object this)
-{
-    return (((BooleanKind)this->kind)->not)(this);
-}
-static BOOLEAN_KIND the_boolean_kind = {
-    { boolean_kind_of_method,
-      base_equal_to_method },
-    boolean_not_method
+static KIND the_boolean_kind = {
+    boolean_kind_of_method,
+    base_equal_to_method,
+    no_length_method,
+    no_lookup_method,
+    no_bind_method,
+    no_insert_method,
+    no_concat_method,
+    no_diff_method,
+    no_plus_method,
+    no_times_method,
+    no_call_method
 };
-Kind k_boolean = (Kind)&the_boolean_kind;
+Kind k_boolean = &the_boolean_kind;
 
-static Object
-true_not_method(Object this)
-{
-    return o_false;
-}
-static BOOLEAN_KIND the_true_kind = {
-    { boolean_kind_of_method,
-      base_equal_to_method },
-    true_not_method
-};
 static OBJECT the_true_object = {
-    (Kind)&the_true_kind
+    &the_boolean_kind
 };
 Object o_true = &the_true_object;
 
-static Object
-false_not_method(Object this)
-{
-    return o_true;
-}
-static BOOLEAN_KIND the_false_kind = {
-    { boolean_kind_of_method,
-      base_equal_to_method },
-    false_not_method
-};
 static OBJECT the_false_object = {
-    (Kind)&the_false_kind
+    &the_boolean_kind
 };
 Object o_false = &the_false_object;
 
@@ -233,86 +233,45 @@ number_times_method(Object this, Object that)
     }
     return number_new(((Number)this)->i * ((Number)that)->i);
 }
-static int
-number_as_int_method(Object this)
+static Any
+number_get_rep_method(Object this)
 {
-    return ((Number)this)->i;
+    return (Any)(((Number)this)->i);
 }
-inline Object
-call_diff(Object this, Object that)
-{
-    return (((NumberKind)this->kind)->diff)(this, that);
-}
-inline Object
-call_plus(Object this, Object that)
-{
-    return (((NumberKind)this->kind)->plus)(this, that);
-}
-inline Object
-call_times(Object this, Object that)
-{
-    return (((NumberKind)this->kind)->times)(this, that);
-}
-inline int
-call_as_int(Object this)
-{
-    return (((NumberKind)this->kind)->as_int)(this);
-}
-static NUMBER_KIND the_number_kind = {
-    { base_kind_of_method,
-      number_equal_to_method },
+static KIND the_number_kind = {
+    base_kind_of_method,
+    number_equal_to_method,
+    no_length_method,
+    no_lookup_method,
+    no_bind_method,
+    no_insert_method,
+    no_concat_method,
     number_diff_method,
     number_plus_method,
     number_times_method,
-    number_as_int_method
+    no_call_method
 };
-Kind k_number = (Kind)&the_number_kind;
+Kind k_number = &the_number_kind;
 static NUMBER the_minus_one_object = {
-    { (Kind)&the_number_kind },
+    { &the_number_kind },
     -1
 };
 Object o_minus_one = (Object)&the_minus_one_object;
 static NUMBER the_zero_object = {
-    { (Kind)&the_number_kind },
+    { &the_number_kind },
     0
 };
 Object o_zero = (Object)&the_zero_object;
 static NUMBER the_one_object = {
-    { (Kind)&the_number_kind },
+    { &the_number_kind },
     1
 };
 Object o_one = (Object)&the_one_object;
 static NUMBER the_two_object = {
-    { (Kind)&the_number_kind },
+    { &the_number_kind },
     2
 };
 Object o_two = (Object)&the_two_object;
-
-static Object
-func_kind_of_method(Object this, Kind kind)
-{
-    return ((this->kind == kind) || (k_func == kind)) ? o_true : o_false;
-}
-static Object
-func_lookup_method(Object this, Object input)
-{
-    return NULL;  // undefined
-}
-inline Object
-call_lookup(Object this, Object input)
-{
-    return (((FuncKind)this->kind)->lookup)(this, input);
-}
-static FUNC_KIND the_func_kind = {
-    { func_kind_of_method,
-      base_equal_to_method },
-    func_lookup_method
-};
-Kind k_func = (Kind)&the_func_kind;
-static OBJECT the_undef_func_object = {
-    (Kind)&the_func_kind
-};
-Object o_undef_func = &the_undef_func_object;
 
 typedef struct string STRING, *String;
 struct string {
@@ -371,6 +330,18 @@ string_equal_to_method(Object this, Object that)
     return (string_compare_value(this, value) == 0) ? o_true : o_false;
 }
 static Object
+string_diff_method(Object this, Object that)
+{
+    if (this == that) {
+        return o_zero;  // equal (in fact, identical)
+    }
+    if (k_string != that->kind) {
+        return NULL;  // incomparable
+    }
+    Any value = ((String)that)->s;
+    return number_new(string_compare_value(this, value));
+}
+static Object
 string_lookup_method(Object this, Object offset)
 {
     if (k_number != offset->kind) {
@@ -409,26 +380,22 @@ string_concat_method(Object this, Object that)
         ;
     return (Object)p;
 }
-inline Object
-call_length(Object this)
-{
-    return (((StringKind)this->kind)->length)(this);
-}
-inline Object
-call_concat(Object this, Object that)
-{
-    return (((StringKind)this->kind)->concat)(this, that);
-}
-static STRING_KIND the_string_kind = {
-    { { func_kind_of_method,
-        string_equal_to_method },
-      string_lookup_method },
+static KIND the_string_kind = {
+    base_kind_of_method,
+    string_equal_to_method,
     string_length_method,
-    string_concat_method
+    string_lookup_method,
+    no_bind_method,
+    no_insert_method,
+    string_concat_method,
+    string_diff_method,
+    no_plus_method,
+    no_times_method,
+    no_call_method
 };
 Kind k_string = (Kind)&the_string_kind;
 static STRING the_empty_string_object = {
-    { (Kind)&the_string_kind },
+    { &the_string_kind },
     0,
     ""
 };
@@ -465,24 +432,29 @@ scope_lookup_method(Object this, Object key)
 static Object
 scope_bind_method(Object this, Object key, Object value)
 {
+    if (this == o_empty_scope) {
+        return NULL;  // empty scope is immutable
+    }
     Pair dict = ((Scope)this)->dict;
     ((Scope)this)->dict = dict_bind(dict, key, value);  // bind in local scope
     return this;
 }
-inline Object
-call_bind(Object this, Object key, Object value)
-{
-    return (((ScopeKind)this->kind)->bind)(this, key, value);
-}
-static SCOPE_KIND the_scope_kind = {
-    { { func_kind_of_method,
-        base_equal_to_method },
-      scope_lookup_method },
-    scope_bind_method
+static KIND the_scope_kind = {
+    base_kind_of_method,
+    base_equal_to_method,
+    no_length_method,
+    scope_lookup_method,
+    scope_bind_method,
+    no_insert_method,
+    no_concat_method,
+    no_diff_method,
+    no_plus_method,
+    no_times_method,
+    no_call_method
 };
-Kind k_scope = (Kind)&the_scope_kind;
+Kind k_scope = &the_scope_kind;
 static SCOPE the_empty_scope_object = {
-    { (Kind)&the_scope_kind },
+    { &the_scope_kind },
     NIL,
     (Object)&the_empty_scope_object
 };
@@ -506,7 +478,7 @@ array_new()
 static Object
 array_kind_of_method(Object this, Kind kind)
 {
-    return ((this->kind == kind) || (k_func == kind) || (k_scope == kind)) ? o_true : o_false;
+    return ((this->kind == kind) || (k_scope == kind)) ? o_true : o_false;
 }
 static Object
 array_length_method(Object this)
@@ -548,13 +520,20 @@ array_bind_method(Object this, Object key, Object value)
     }
     return this;
 }
-static SCOPE_KIND the_array_kind = {
-    { { array_kind_of_method,
-        base_equal_to_method },
-      array_lookup_method },
-    array_bind_method
+static KIND the_array_kind = {
+    array_kind_of_method,
+    base_equal_to_method,
+    no_length_method,
+    array_lookup_method,
+    array_bind_method,
+    no_insert_method,
+    no_concat_method,
+    no_diff_method,
+    no_plus_method,
+    no_times_method,
+    no_call_method
 };
-Kind k_array = (Kind)&the_array_kind;
+Kind k_array = &the_array_kind;
 
 static void
 trace_string_cache()
@@ -576,15 +555,6 @@ test_object()
     Object x, y;
 
     TRACE(fprintf(stderr, "---- test_object ----\n"));
-/*
-    static OBJECT the_bool_object = {
-        (Kind)&the_boolean_kind
-    };
-    Object o_bool = &the_bool_object;
-    x = call_not(o_bool);
-    assert(x == o_true);
-    assert(x == o_false);
-*/
 /*
     string_intern("0");
     trace_string_cache();

@@ -30,83 +30,56 @@ THE SOFTWARE.
 
 #include "tart.h"
 
-typedef struct kind KIND, *Kind;
 typedef struct object OBJECT, *Object;
+typedef struct kind KIND, *Kind;
 struct object {
     Kind        kind;
 };
 struct kind {
     Object      (*kind_of)(Object this, Kind kind);
     Object      (*equal_to)(Object this, Object that);
+    Object      (*length)(Object this);
+    Object      (*lookup)(Object this, Object key);
+    Object      (*bind)(Object this, Object key, Object value);
+    Object      (*insert)(Object this, Object key, Object value);
+    Object      (*concat)(Object this, Object that);
+    Object      (*diff)(Object this, Object that);
+    Object      (*plus)(Object this, Object that);
+    Object      (*times)(Object this, Object that);
+    Object      (*call)(Object this, Object args);
 };
 extern Object   call_kind_of(Object this, Kind kind);
 extern Object   call_equal_to(Object this, Object that);
+extern Object   call_length(Object this);
+extern Object   call_lookup(Object this, Object key);
+extern Object   call_bind(Object this, Object key, Object value);
+extern Object   call_insert(Object this, Object key, Object value);
+extern Object   call_concat(Object this, Object that);
+extern Object   call_diff(Object this, Object that);
+extern Object   call_plus(Object this, Object that);
+extern Object   call_times(Object this, Object that);
+extern Object   call_call(Object this, Object args);
 
-typedef struct null_kind NULL_KIND, *NullKind;
-struct null_kind {
-    KIND        k;
-};
 extern Kind k_null;
 extern Object o_null;
 
-typedef struct boolean_kind BOOLEAN_KIND, *BooleanKind;
-struct boolean_kind {
-    KIND        k;
-    Object      (*not)(Object this);
-};
-extern Object   call_not(Object this);
 extern Kind k_boolean;
 extern Object o_true;
 extern Object o_false;
 
-typedef struct number_kind NUMBER_KIND, *NumberKind;
 extern Object   number_new(int i);
-struct number_kind {
-    KIND        k;
-    Object      (*diff)(Object this, Object that);
-    Object      (*plus)(Object this, Object that);
-    Object      (*times)(Object this, Object that);
-    int         (*as_int)(Object this);
-};
-extern Object   call_diff(Object this, Object that);
-extern Object   call_plus(Object this, Object that);
-extern Object   call_times(Object this, Object that);
-extern int      call_as_int(Object this);
 extern Kind k_number;
 extern Object o_minus_one;
 extern Object o_zero;
 extern Object o_one;
 extern Object o_two;
 
-typedef struct func_kind FUNC_KIND, *FuncKind;  // extensionally-defined function
-struct func_kind {
-    KIND        k;
-    Object      (*lookup)(Object this, Object input);
-};
-extern Object   call_lookup(Object this, Object input);
-extern Kind k_func;
-extern Object o_undef_func;
-
-typedef struct string_kind STRING_KIND, *StringKind;
 extern Object   string_new(char * s);
 extern Object   string_intern(char * s);
-struct string_kind {
-    FUNC_KIND   f;
-    Object      (*length)(Object this);
-    Object      (*concat)(Object this, Object that);
-};
-extern Object   call_length(Object this);
-extern Object   call_concat(Object this, Object that);
 extern Kind k_string;
 extern Object o_empty_string;
 
-typedef struct scope_kind SCOPE_KIND, *ScopeKind;
 extern Object   scope_new(Object parent);
-struct scope_kind {
-    FUNC_KIND   f;
-    Object      (*bind)(Object this, Object key, Object value);
-};
-extern Object   call_bind(Object this, Object key, Object value);
 extern Kind k_scope;
 extern Object o_empty_scope;
 
