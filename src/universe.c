@@ -382,7 +382,10 @@ act_lambda(Event e)
 
 /**
 LET oper_0_beh(cust, evar, env_d) = \env_p.[
-    SEND (cust, #match, env_d, env_p) TO evar
+    CASE env_p OF
+    ? : [ SEND ? TO cust ]
+    _ : [ SEND (cust, #match, env_d, env_p) TO evar ]
+    END
 ]
 **/
 static void
@@ -397,11 +400,18 @@ act_oper_0(Event e)
     Actor evar = p->t;
     Actor env_d = p->t;
     Actor env_p = e->message;  // (env_p)
-    config_send(e->sponsor, evar, PR(cust, PR(s_match, PR(env_d, env_p))));
+    if (a_undef == env_p) {
+        config_send(e->sponsor, cust, a_undef);
+    } else {
+        config_send(e->sponsor, evar, PR(cust, PR(s_match, PR(env_d, env_p))));
+    }
 }
 /**
 LET oper_1_beh(cust, body) = \env_e.[  # NOTE: same as thunk_0_beh
-    SEND (cust, #eval, env_e) TO body
+    CASE env_e OF
+    ? : [ SEND ? TO cust ]
+    _ : [ SEND (cust, #eval, env_e) TO body ]
+    END
 ]
 **/
 static void
@@ -414,7 +424,11 @@ act_oper_1(Event e)
     Actor cust = p->h;
     Actor body = p->t;
     Actor env_e = e->message;  // (env_e)
-    config_send(e->sponsor, body, PR(cust, PR(s_eval, env_e)));
+    if (a_undef == env_e) {
+        config_send(e->sponsor, cust, a_undef);
+    } else {
+        config_send(e->sponsor, body, PR(cust, PR(s_eval, env_e)));
+    }
 }
 /**
 LET oper_beh(env_s, form, evar, body) = \(cust, req).[
@@ -423,9 +437,15 @@ LET oper_beh(env_s, form, evar, body) = \(cust, req).[
         CREATE scope WITH scope_beh(dict_new(), env_s)
         SEND (oper_0, #match, opnd, scope) TO form
         CREATE oper_0 WITH \env_p.[  # (oper_1, evar, env_d)
-            SEND (oper_1, #match, env_d, env_p) TO evar
+            CASE env_p OF
+            ? : [ SEND ? TO oper_1 ]  # could send directly to 'cust'
+            _ : [ SEND (oper_1, #match, env_d, env_p) TO evar ]
+            END
             CREATE oper_1 WITH \env_e.[  # (cust, body)
-                SEND (cust, #eval, env_e) TO body
+                CASE env_e OF
+                ? : [ SEND ? TO cust ]
+                _ : [ SEND (cust, #eval, env_e) TO body ]
+                END
             ]
         ]
     ]
