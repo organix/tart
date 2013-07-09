@@ -38,6 +38,8 @@ typedef struct event EVENT, *Event;
 
 typedef void (*Action)(Event e);
 
+#define a_sink (&sink_actor)
+
 struct actor {
     Behavior    behavior;   // current behavior
 };

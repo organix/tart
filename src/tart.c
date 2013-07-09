@@ -77,11 +77,12 @@ test_action()
     TRACE(fprintf(stderr, "---- test_action ----\n"));
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
     TRACE(fprintf(stderr, "&sink_actor = %p\n", &sink_actor));
+    TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
     Config cfg = config_new();
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
 
     // forwarding example
-    Actor a_once = actor_new(behavior_new(act_oneshot, &sink_actor));
+    Actor a_once = actor_new(behavior_new(act_oneshot, a_sink));
     TRACE(fprintf(stderr, "a_once = %p\n", a_once));    
     Actor a_fwd = actor_new(behavior_new(act_forward, a_once));
     TRACE(fprintf(stderr, "a_fwd = %p\n", a_fwd));

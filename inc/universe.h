@@ -1,6 +1,6 @@
 /*
 
-pair.h -- Tiny Actor Run-Time
+universe.h -- Tiny Actor Run-Time
 
 "MIT License"
 
@@ -25,41 +25,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 */
-#ifndef _PAIR_H_
-#define _PAIR_H_
+#ifndef _UNIVERSE_H_
+#define _UNIVERSE_H_
 
 #include "tart.h"
+#include "pair.h"
+#include "actor.h"
 
-typedef struct pair PAIR, *Pair;
+#define a_undef (&undef_actor)
+#define a_empty_env (&empty_env_actor)
 
-struct pair {
-    Any         h;
-    Any         t;
-};
+extern ACTOR undef_actor;
+extern ACTOR empty_env_actor;
 
-#define NIL (&the_nil_pair)
-#define PR(h,t) pair_new((h),(t))
+extern Actor b_true;
+extern Actor b_false;
 
-extern PAIR the_nil_pair;
+extern Actor s_eval;
+extern Actor s_match;
+extern Actor s_lookup;
+extern Actor s_bind;
+extern Actor s_comb;
 
-extern Pair     pair_new(Any h, Any t);
-
-extern Pair     list_new();
-extern int      list_empty_p(Pair list);
-extern Pair     list_pop(Pair list);
-extern Pair     list_push(Pair list, Any item);
-
-extern Pair     deque_new();
-extern int      deque_empty_p(Pair q);
-extern void     deque_give(Pair q, Any item);
-extern Any      deque_take(Pair q);
-extern void     deque_return(Pair q, Any item);
-extern Any      deque_lookup(Pair q, int i);
-extern void     deque_bind(Pair q, int i, Any item);
-
-extern Pair     dict_new();
-extern int      dict_empty_p(Pair dict);
-extern Any      dict_lookup(Pair dict, Any key);
-extern Pair     dict_bind(Pair dict, Any key, Any value);
+extern void     act_value(Event e);
+extern void     act_scope(Event e);
+extern void     act_name(Event e);
+extern void     act_comb(Event e);
+extern void     act_appl(Event e);
+extern void     act_thunk(Event e);
+extern void     act_lambda(Event e);
+extern void     act_oper(Event e);
 
 #endif /* _PAIR_H_ */

@@ -8,15 +8,17 @@ LIB=	../lib
 LIBTART=$(LIB)/libtart.a
 INCS=	$(INC)/tart.h \
 		$(INC)/effect.h \
+		$(INC)/universe.h \
 		$(INC)/action.h \
 		$(INC)/actor.h \
-		$(INC)/pair.h \
-		$(INC)/object.h
+		$(INC)/object.h \
+		$(INC)/pair.h
 OBJS=	effect.o \
+		universe.o \
 		action.o \
 		actor.o \
-		pair.o \
-		object.o
+		object.o \
+		pair.o
 PROGS=	tart tart_fx
 
 CFLAGS=	-I$(INC)
