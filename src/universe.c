@@ -39,13 +39,17 @@ act_fail(Event e)
     TRACE(fprintf(stderr, "act_fail{self=%p, msg=%p}\n", e->actor, e->message));
     halt("FAIL!");
 }
-static BEHAVIOR undef_behavior = { act_fail, NIL };
-ACTOR undef_actor = { &undef_behavior };
+static BEHAVIOR fail_behavior = { act_fail, NIL };
+ACTOR fail_actor = { &fail_behavior };
 
 /**
 CREATE empty_env WITH \(cust, req).[
     CASE req OF
-    (#lookup, _) : [ SEND ? TO cust ]
+    (#lookup, _) : [
+        LET (ok, fail) = $cust IN [
+            SEND (cust, req) TO fail
+        ]
+    ]
     _ : value_beh(cust, req)  # delegate
     END
 ]
@@ -61,7 +65,9 @@ act_empty_env(Event e)
     Any req = p->t;
     p = req;
     if (s_lookup == p->h) {  // (#lookup, _)
-        config_send(e->sponsor, cust, a_undef);
+        p = (Pair)cust;
+        Actor fail = p->t;
+        config_send(e->sponsor, fail, e->message);
     } else {
         act_value(e);
     }
@@ -98,11 +104,13 @@ act_value(Event e)
 LET scope_beh(dict, parent) = \(cust, req).[
     CASE req OF
     (#lookup, name) : [
-        LET value = $(dict_lookup(dict, name))
-        CASE value OF
-        ? : [ SEND (cust, req) TO parent ]
-        _ : [ SEND value TO cust ]
-        END
+        LET (ok, fail) = $cust IN [
+            LET value = $(dict_lookup(dict, name))
+            CASE value OF
+            ? : [ SEND (cust, req) TO parent ]
+            _ : [ SEND value TO ok ]
+            END
+        ]
     ]
     (#bind, name, value) : [
         LET dict' = $(dict_bind(dict, name, value))
@@ -128,11 +136,14 @@ act_scope(Event e)
     p = req;
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
+        p = (Pair)cust;
+        Actor ok = p->h;
+        Actor fail = p->t;
         Any value = dict_lookup(dict, name);
         if (value == NULL) {
             config_send(e->sponsor, parent, e->message);
         } else {
-            config_send(e->sponsor, cust, value);
+            config_send(e->sponsor, ok, value);
         }
     } else if (s_bind == p->h) {  // (#bind, name, value)
         p = p->t;
@@ -149,13 +160,46 @@ act_scope(Event e)
 }
 
 /**
-LET name_beh(name) = \(cust, req).\(cust, req).[
+LET bind_ptrn_beh(name) = \(cust, req).[
+    CASE req OF
+    (#match, value, env) : [
+        LET (ok, fail) = $cust IN [
+            SEND (ok, #bind, name, value) TO env
+        ]
+    ]
+    _ : value_beh(cust, req)  # delegate
+    END
+]
+**/
+void
+act_bind_ptrn(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_bind_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
+    Actor name = e->actor->behavior->context;  // (name)
+    p = e->message;  // (cust, req)
+    Actor cust = p->h;
+    Any req = p->t;
+    p = req;
+    if (s_match == p->h) {  // (#match, value, env)
+        p = p->t;
+        Any value = p->h;
+        Actor env = p->t;
+        p = (Pair)cust;
+        Actor ok = p->h;
+        Actor fail = p->t;
+        config_send(e->sponsor, env, PR(ok, PR(s_bind, PR(name, value))));
+    } else {
+        act_value(e);  // delegate
+    }
+}
+
+/**
+LET name_beh(name) = \(cust, req).[
     CASE req OF
     (#eval, env) : [
-        SEND (cust, #lookup, SELF) TO env
-    ]
-    (#match, value, env) : [
-        SEND (cust, #bind, SELF, value) TO env
+        SEND ((cust, fail), #lookup, SELF) TO env
     ]
     _ : fail_beh(cust, req)  # default
     END
@@ -173,12 +217,7 @@ act_name(Event e)
     p = req;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
-        config_send(e->sponsor, env, PR(cust, PR(s_lookup, e->actor)));
-    } else if (s_match == p->h) {  // (#match, value, scope)
-        p = p->t;
-        Any value = p->h;
-        Actor env = p->t;
-        config_send(e->sponsor, env, PR(cust, PR(s_bind, PR(e->actor, value))));
+        config_send(e->sponsor, env, PR(PR(cust, a_fail), PR(s_lookup, e->actor)));
     } else {
         act_fail(e);  // default
     }
@@ -311,7 +350,7 @@ LET thunk_beh(env_s, form, body) = \(cust, req).[
     (#comb, opnd, env_d) : [
         CREATE scope WITH scope_beh(dict_new(), env_s)
         CREATE thunk_0 WITH thunk_0_beh(cust, body)
-        SEND (thunk_0, #match, opnd, scope) TO form
+        SEND ((thunk_0, fail), #match, opnd, scope) TO form
     ]
     _ : value_beh(cust, req)  # delegate
     END
@@ -338,7 +377,7 @@ act_thunk(Event e)
 //        Actor env_d = p->t;  -- the dynamic environment is ignored
         Actor scope = actor_new(behavior_new(act_scope, PR(dict_new(), env_s)));
         Actor thunk_0 = actor_new(behavior_new(act_thunk_0, PR(cust, body)));
-        config_send(e->sponsor, form, PR(thunk_0, PR(s_match, PR(opnd, scope))));
+        config_send(e->sponsor, form, PR(PR(thunk_0, a_fail), PR(s_match, PR(opnd, scope))));
     } else {
         act_value(e);  // delegate
     }
@@ -382,10 +421,7 @@ act_lambda(Event e)
 
 /**
 LET oper_0_beh(cust, evar, env_d) = \env_p.[
-    CASE env_p OF
-    ? : [ SEND ? TO cust ]
-    _ : [ SEND (cust, #match, env_d, env_p) TO evar ]
-    END
+    SEND ((cust, fail), #match, env_d, env_p) TO evar
 ]
 **/
 static void
@@ -400,18 +436,11 @@ act_oper_0(Event e)
     Actor evar = p->t;
     Actor env_d = p->t;
     Actor env_p = e->message;  // (env_p)
-    if (a_undef == env_p) {
-        config_send(e->sponsor, cust, a_undef);
-    } else {
-        config_send(e->sponsor, evar, PR(cust, PR(s_match, PR(env_d, env_p))));
-    }
+    config_send(e->sponsor, evar, PR(PR(cust, a_fail), PR(s_match, PR(env_d, env_p))));
 }
 /**
 LET oper_1_beh(cust, body) = \env_e.[  # NOTE: same as thunk_0_beh
-    CASE env_e OF
-    ? : [ SEND ? TO cust ]
-    _ : [ SEND (cust, #eval, env_e) TO body ]
-    END
+    SEND (cust, #eval, env_e) TO body
 ]
 **/
 static void
@@ -424,28 +453,18 @@ act_oper_1(Event e)
     Actor cust = p->h;
     Actor body = p->t;
     Actor env_e = e->message;  // (env_e)
-    if (a_undef == env_e) {
-        config_send(e->sponsor, cust, a_undef);
-    } else {
-        config_send(e->sponsor, body, PR(cust, PR(s_eval, env_e)));
-    }
+    config_send(e->sponsor, body, PR(cust, PR(s_eval, env_e)));
 }
 /**
 LET oper_beh(env_s, form, evar, body) = \(cust, req).[
 	CASE req OF
 	(#comb, opnd, env_d) : [
         CREATE scope WITH scope_beh(dict_new(), env_s)
-        SEND (oper_0, #match, opnd, scope) TO form
+        SEND ((oper_0, fail), #match, opnd, scope) TO form
         CREATE oper_0 WITH \env_p.[  # (oper_1, evar, env_d)
-            CASE env_p OF
-            ? : [ SEND ? TO oper_1 ]  # could send directly to 'cust'
-            _ : [ SEND (oper_1, #match, env_d, env_p) TO evar ]
-            END
+            SEND ((oper_1, fail), #match, env_d, env_p) TO evar
             CREATE oper_1 WITH \env_e.[  # (cust, body)
-                CASE env_e OF
-                ? : [ SEND ? TO cust ]
-                _ : [ SEND (cust, #eval, env_e) TO body ]
-                END
+                SEND (cust, #eval, env_e) TO body
             ]
         ]
     ]
@@ -477,7 +496,7 @@ act_oper(Event e)
         Actor scope = actor_new(behavior_new(act_scope, PR(dict_new(), env_s)));
         Actor oper_1 = actor_new(behavior_new(act_oper_1, PR(cust, body)));
         Actor oper_0 = actor_new(behavior_new(act_oper_0, PR(oper_1, PR(evar, env_d))));
-        config_send(e->sponsor, form, PR(oper_0, PR(s_match, PR(opnd, scope))));
+        config_send(e->sponsor, form, PR(PR(oper_0, a_fail), PR(s_match, PR(opnd, scope))));
     } else {
         act_value(e);  // delegate
     }

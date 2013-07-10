@@ -32,10 +32,10 @@ THE SOFTWARE.
 #include "pair.h"
 #include "actor.h"
 
-#define a_undef (&undef_actor)
+#define a_fail (&fail_actor)
 #define a_empty_env (&empty_env_actor)
 
-extern ACTOR undef_actor;
+extern ACTOR fail_actor;
 extern ACTOR empty_env_actor;
 
 extern Actor b_true;
@@ -49,6 +49,7 @@ extern Actor s_comb;
 
 extern void     act_value(Event e);
 extern void     act_scope(Event e);
+extern void     act_bind_ptrn(Event e);
 extern void     act_name(Event e);
 extern void     act_comb(Event e);
 extern void     act_appl(Event e);
