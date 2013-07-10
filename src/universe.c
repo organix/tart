@@ -401,9 +401,6 @@ act_lambda(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_lambda{self=%p, msg=%p}\n", e->actor, e->message));
-    p =  e->actor->behavior->context;  // (form, body)
-    Actor form = p->h;
-    Actor body = p->t;
     p = e->message;  // (cust, req)
     Actor cust = p->h;
     Any req = p->t;
@@ -499,6 +496,37 @@ act_oper(Event e)
         config_send(e->sponsor, form, PR(PR(oper_0, a_fail), PR(s_match, PR(opnd, scope))));
     } else {
         act_value(e);  // delegate
+    }
+}
+
+/**
+LET vau_beh(form, evar, body) = \(cust, req).[
+    CASE req OF
+    (#eval, env) : [
+        CREATE oper WITH oper_beh(env, form, evar, body)
+        SEND oper TO cust
+    ]
+    _ : fail_beh(cust, req)  # default
+    END
+]
+**/
+void
+act_vau(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_vau{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->message;  // (cust, req)
+    Actor cust = p->h;
+    Any req = p->t;
+    p = req;
+    if (s_eval == p->h) {  // (#eval, env)
+        Actor env = p->t;
+        p =  e->actor->behavior->context;  // (form, evar, body)
+        Actor oper = actor_new(behavior_new(act_oper, PR(env, p)));
+        config_send(e->sponsor, cust, oper);
+    } else {
+        act_fail(e);  // default
     }
 }
 
