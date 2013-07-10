@@ -34,9 +34,11 @@ THE SOFTWARE.
 
 #define a_fail (&fail_actor)
 #define a_empty_env (&empty_env_actor)
+#define a_skip_ptrn (&skip_ptrn_actor)
 
 extern ACTOR fail_actor;
 extern ACTOR empty_env_actor;
+extern ACTOR skip_ptrn_actor;
 
 extern Actor b_true;
 extern Actor b_false;
@@ -53,8 +55,8 @@ extern void     act_bind_ptrn(Event e);
 extern void     act_name(Event e);
 extern void     act_comb(Event e);
 extern void     act_appl(Event e);
-extern void     act_thunk(Event e);
-extern void     act_lambda(Event e);
 extern void     act_oper(Event e);
+extern void     act_vau(Event e);
+extern void     act_lambda(Event e);
 
 #endif /* _PAIR_H_ */
