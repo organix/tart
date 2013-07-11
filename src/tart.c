@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "pair.h"
 #include "actor.h"
 #include "action.h"
+#include "universe.h"
 
 void
 halt(char * msg)
@@ -115,6 +116,7 @@ run_tests()
 {
     test_action();
     test_object();
+    test_universe();
 }
 
 /*

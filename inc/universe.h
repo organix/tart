@@ -49,14 +49,16 @@ extern Actor s_lookup;
 extern Actor s_bind;
 extern Actor s_comb;
 
-extern void     act_value(Event e);
-extern void     act_scope(Event e);
-extern void     act_bind_ptrn(Event e);
-extern void     act_name(Event e);
-extern void     act_comb(Event e);
-extern void     act_appl(Event e);
-extern void     act_oper(Event e);
-extern void     act_vau(Event e);
-extern void     act_lambda(Event e);
+extern void     act_value(Event e);  // ()
+extern void     act_scope(Event e);  // (dict, parent)
+extern void     act_bind_ptrn(Event e);  // (name)
+extern void     act_name(Event e);  // (value)
+extern void     act_comb(Event e);  // (oper, opnd)
+extern void     act_appl(Event e);  // (comb)
+extern void     act_oper(Event e);  // (env_s, form, evar, body)
+extern void     act_vau(Event e);  // (form, evar, body)
+extern void     act_lambda(Event e);  // (form, body)
+
+extern void     test_universe();  // unit-test method
 
 #endif /* _PAIR_H_ */

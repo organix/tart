@@ -234,7 +234,7 @@ act_bind_ptrn(Event e)
 }
 
 /**
-LET name_beh(name) = \(cust, req).[
+LET name_beh(value) = \(cust, req).[
     CASE req OF
     (#eval, env) : [
         SEND ((cust, fail), #lookup, SELF) TO env
@@ -571,4 +571,46 @@ universe_init(Config cfg)
     s_lookup = symbol_intern("lookup");
     s_match = symbol_intern("match");
     s_eval = symbol_intern("eval");
+}
+
+static inline void
+act_expect(Event e)
+{
+    TRACE(fprintf(stderr, "act_expect{self=%p, msg=%p}\n", e->actor, e->message));
+    Any expect = e->actor->behavior->context;
+    Any actual = e->message;
+    if (expect != actual) {
+        TRACE(fprintf(stderr, "act_expect: %p != %p\n", expect, actual));
+        halt("unexpected");
+    }
+}
+void
+test_universe()
+{
+    Actor s_x;
+    Actor I;
+    Actor form;
+    Actor body;
+    Actor expr;
+    Actor test;
+
+    TRACE(fprintf(stderr, "---- test_universe ----\n"));
+    Config cfg = config_new();
+    TRACE(fprintf(stderr, "cfg = %p\n", cfg));
+    universe_init(cfg);
+
+    // (\x.x)(#t) -> #t
+    s_x = symbol_intern("x");
+    TRACE(fprintf(stderr, "s_x = %p\n", s_x));
+    form = actor_new(behavior_new(act_bind_ptrn, s_x));
+    body = s_x;
+    I = actor_new(behavior_new(act_lambda, PR(form, body)));
+    TRACE(fprintf(stderr, "I = %p\n", I));
+    expr = actor_new(behavior_new(act_comb, PR(I, b_true)));
+    TRACE(fprintf(stderr, "expr = %p\n", expr));
+    test = actor_new(behavior_new(act_expect, b_true));
+    TRACE(fprintf(stderr, "test = %p\n", test));
+    config_send(cfg, expr, PR(test, PR(s_eval, a_empty_env)));
+    while (config_dispatch(cfg))
+        ;
 }

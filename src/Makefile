@@ -48,4 +48,4 @@ clean :
 	rm -rf $(LIB)
 	mkdir $(LIB)
 	rm -f $(PROGS)
-	rm -f *.o *~
+	rm -f *.o *~ *.stackdump

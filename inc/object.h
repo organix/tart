@@ -91,6 +91,6 @@ extern Kind k_array;
 //extern Object function_new(Object env, Object expr);  <-- FIXME: how do we describe expressions?
 extern Kind k_function;
 
-extern void test_object();  // unit-test method
+extern void     test_object();  // unit-test method
 
 #endif /* _OBJECT_H_ */
