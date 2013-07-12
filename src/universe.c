@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "universe.h"
 
 /**
-LET fail_beh = \msg.[
+LET fail_beh() = \msg.[
     THROW (#FAIL!, msg)
 ]
 **/
@@ -43,14 +43,11 @@ static BEHAVIOR fail_behavior = { act_fail, NIL };
 ACTOR fail_actor = { &fail_behavior };
 
 /**
-CREATE empty_env WITH \(cust, req).[
+CREATE empty_env() WITH \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
-    (#lookup, _) : [
-        LET (ok, fail) = $cust IN [
-            SEND (cust, req) TO fail
-        ]
-    ]
-    _ : value_beh(cust, req)  # delegate
+    (#lookup, _) : [ SEND msg TO fail ]
+    _ : value_beh(msg)  # delegate
     END
 ]
 **/
@@ -60,13 +57,13 @@ act_empty_env(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_empty_env{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    TRACE(fprintf(stderr, "act_empty_env: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
     if (s_lookup == p->h) {  // (#lookup, _)
-        p = (Pair)cust;
-        Actor fail = p->t;
+        TRACE(fprintf(stderr, "act_empty_env: (#lookup, _) -> FAIL!\n"));
         config_send(e->sponsor, fail, e->message);
     } else {
         act_value(e);
@@ -76,10 +73,11 @@ static BEHAVIOR empty_env_behavior = { act_empty_env, NIL };
 ACTOR empty_env_actor = { &empty_env_behavior };
 
 /**
-LET value_beh = \(cust, req).[
+LET value_beh() = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
-    (#eval, _) : [ SEND SELF TO cust ]
-    _ : fail_beh(cust, req)  # default
+    (#eval, _) : [ SEND SELF TO ok ]
+    _ : [ SEND msg TO fail ]
     END
 ]
 **/
@@ -89,35 +87,37 @@ act_value(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_value{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    TRACE(fprintf(stderr, "act_value: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
     if (s_eval == p->h) {  // (#eval, _)
-        config_send(e->sponsor, cust, e->actor);
+        TRACE(fprintf(stderr, "act_value: (#eval, _)\n"));
+        config_send(e->sponsor, ok, e->actor);
     } else {
-        act_fail(e);  // default
+        TRACE(fprintf(stderr, "act_value: FAIL!\n"));
+        config_send(e->sponsor, fail, e->message);
     }
 }
 
 /**
-LET scope_beh(dict, parent) = \(cust, req).[
+LET scope_beh(dict, parent) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#lookup, name) : [
-        LET (ok, fail) = $cust IN [
-            LET value = $(dict_lookup(dict, name))
-            CASE value OF
-            ? : [ SEND (cust, req) TO parent ]
-            _ : [ SEND value TO ok ]
-            END
-        ]
+        LET value = $(dict_lookup(dict, name))
+        CASE value OF
+        ? : [ SEND msg TO parent ]
+        _ : [ SEND value TO ok ]
+        END
     ]
     (#bind, name, value) : [
         LET dict' = $(dict_bind(dict, name, value))
         BECOME scope_beh(dict', parent)
-        SEND SELF TO cust
+        SEND SELF TO ok
     ]
-    _ : value_beh(cust, req)  # delegate
+    _ : value_beh(msg)  # delegate
     END
 ]
 **/
@@ -130,16 +130,15 @@ act_scope(Event e)
     p = e->actor->behavior->context;  // (dict, parent)
     Pair dict = p->h;
     Actor parent = p->t;
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    TRACE(fprintf(stderr, "act_scope: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
-        p = (Pair)cust;
-        Actor ok = p->h;
-        Actor fail = p->t;
         Any value = dict_lookup(dict, name);
+        TRACE(fprintf(stderr, "act_scope: (#lookup, %p) -> %p\n", name, value));
         if (value == NULL) {
             config_send(e->sponsor, parent, e->message);
         } else {
@@ -149,25 +148,23 @@ act_scope(Event e)
         p = p->t;
         Actor name = p->h;
         Any value = p->t;
+        TRACE(fprintf(stderr, "act_scope: (#bind, %p, %p)\n", name, value));
         dict = dict_bind(dict, name, value);
 //        actor_become(e->actor, behavior_new(act_scope, PR(dict, parent)));  -- see next two lines for equivalent
         p = e->actor->behavior->context;  // (dict, parent)
         p->h = dict;  // WARNING! this directly manipulates the data in this behavior
-        config_send(e->sponsor, cust, e->actor);
+        config_send(e->sponsor, ok, e->actor);
     } else {
         act_value(e);  // delegate
     }
 }
 
 /**
-LET skip_ptrn_beh = \(cust, req).[
+LET skip_ptrn_beh = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
-    (#match, _, env) : [
-        LET (ok, _) = $cust IN [
-            SEND env TO ok
-        ]
-    ]
-    _ : value_beh(cust, req)  # delegate
+    (#match, _, env) : [ SEND env TO ok ]
+    _ : value_beh(msg)  # delegate
     END
 ]
 **/
@@ -178,17 +175,15 @@ act_skip_ptrn(Event e)
 
     TRACE(fprintf(stderr, "act_skip_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
     Actor name = e->actor->behavior->context;  // (name)
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
-    if (s_match == p->h) {  // (#match, value, env)
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    TRACE(fprintf(stderr, "act_skip_ptrn: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
+    if (s_match == p->h) {  // (#match, _, env)
         p = p->t;
-        Any value = p->h;
         Actor env = p->t;
-        p = (Pair)cust;
-        Actor ok = p->h;
-        Actor fail = p->t;
+        TRACE(fprintf(stderr, "act_skip_ptrn: (#match, _, %p)\n", env));
         config_send(e->sponsor, ok, env);
     } else {
         act_value(e);  // delegate
@@ -198,14 +193,11 @@ static BEHAVIOR skip_ptrn_behavior = { act_skip_ptrn, NIL };
 ACTOR skip_ptrn_actor = { &skip_ptrn_behavior };
 
 /**
-LET bind_ptrn_beh(name) = \(cust, req).[
+LET bind_ptrn_beh(name) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
-    (#match, value, env) : [
-        LET (ok, fail) = $cust IN [
-            SEND (ok, #bind, name, value) TO env
-        ]
-    ]
-    _ : value_beh(cust, req)  # delegate
+    (#match, value, env) : [ SEND ((ok, fail), #bind, name, value) TO env ]
+    _ : value_beh(msg)  # delegate
     END
 ]
 **/
@@ -216,30 +208,28 @@ act_bind_ptrn(Event e)
 
     TRACE(fprintf(stderr, "act_bind_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
     Actor name = e->actor->behavior->context;  // (name)
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    TRACE(fprintf(stderr, "act_bind_ptrn: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
     if (s_match == p->h) {  // (#match, value, env)
         p = p->t;
         Any value = p->h;
         Actor env = p->t;
-        p = (Pair)cust;
-        Actor ok = p->h;
-        Actor fail = p->t;
-        config_send(e->sponsor, env, PR(ok, PR(s_bind, PR(name, value))));
+        TRACE(fprintf(stderr, "act_bind_ptrn: (#match, %p, %p)\n", value, env));
+        config_send(e->sponsor, env, PR(PR(ok, fail), PR(s_bind, PR(name, value))));
     } else {
         act_value(e);  // delegate
     }
 }
 
 /**
-LET name_beh(value) = \(cust, req).[
+LET name_beh(value) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
-    (#eval, env) : [
-        SEND ((cust, fail), #lookup, SELF) TO env
-    ]
-    _ : fail_beh(cust, req)  # default
+    (#eval, env) : [ SEND ((ok, fail), #lookup, SELF) TO env ]
+    _ : [ SEND msg TO fail ]
     END
 ]
 **/
@@ -249,21 +239,25 @@ act_name(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_name{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    TRACE(fprintf(stderr, "act_name: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
-        config_send(e->sponsor, env, PR(PR(cust, a_fail), PR(s_lookup, e->actor)));
+        TRACE(fprintf(stderr, "act_name: (#eval, %p)\n", env));
+        config_send(e->sponsor, env, PR(cust, PR(s_lookup, e->actor)));
     } else {
-        act_fail(e);  // default
+        TRACE(fprintf(stderr, "act_name: FAIL!\n"));
+        config_send(e->sponsor, fail, e->message);
     }
 }
 
 /**
-LET comb_0_beh(cust, opnd, env) = \comb.[
-    SEND (cust, #comb, opnd, env) TO comb
+LET comb_0_beh((ok, fail), opnd, env) = \comb.[
+    SEND ((ok, fail), #comb, opnd, env) TO comb
 ]
 **/
 static void
@@ -272,22 +266,24 @@ act_comb_0(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_comb_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (cust, opnd, env)
-    Actor cust = p->h;
+    p = e->actor->behavior->context;  // ((ok, fail), opnd, env)
+    Pair cust = p->h;
     p = p->t;
     Actor opnd = p->h;
     Actor env = p->t;
     Actor comb = e->message;  // (comb)
+    TRACE(fprintf(stderr, "act_comb_0: ok=%p, fail=%p, comb=%p, opnd=%p, env=%p\n", cust->h, cust->t, comb, opnd, env));
     config_send(e->sponsor, comb, PR(cust, PR(s_comb, PR(opnd, env))));
 }
 /**
-LET comb_beh(oper, opnd) = \(cust, req).[
+LET comb_beh(oper, opnd) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, env) : [
-        CREATE comb_0 WITH comb_0_beh(cust, opnd, env)
-        SEND (comb_0, #eval, env) TO oper
+        CREATE comb_0 WITH comb_0_beh((ok, fail), opnd, env)
+        SEND ((comb_0, fail), #eval, env) TO oper
     ]
-    _ : fail_beh(cust, req)  # default
+    _ : [ SEND msg TO fail ]
     END
 ]
 **/
@@ -300,22 +296,25 @@ act_comb(Event e)
     p = e->actor->behavior->context;  // (oper, opnd)
     Actor oper = p->h;
     Actor opnd = p->t;
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
+        TRACE(fprintf(stderr, "act_comb: (#eval, %p)\n", env));
         Actor comb_0 = actor_new(behavior_new(act_comb_0, PR(cust, PR(opnd, env))));
-        config_send(e->sponsor, oper, PR(comb_0, PR(s_eval, env)));
+        config_send(e->sponsor, oper, PR(PR(comb_0, fail), PR(s_eval, env)));
     } else {
-        act_fail(e);  // default
+        TRACE(fprintf(stderr, "act_comb: FAIL!\n"));
+        config_send(e->sponsor, fail, e->message);
     }
 }
 
 /**
-LET appl_0_beh(cust, comb, env) = \args.[
-    SEND (cust, #comb, args, env) TO comb
+LET appl_0_beh((ok, fail), comb, env) = \args.[
+    SEND ((ok, fail), #comb, args, env) TO comb
 ]
 **/
 static void
@@ -324,22 +323,24 @@ act_appl_0(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_appl_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (cust, comb, env)
-    Actor cust = p->h;
+    p = e->actor->behavior->context;  // ((ok, fail), comb, env)
+    Pair cust = p->h;
     p = p->t;
     Actor comb = p->h;
     Actor env = p->t;
     Actor args = e->message;  // (args)
+    TRACE(fprintf(stderr, "act_appl_0: ok=%p, fail=%p, comb=%p, args=%p, env=%p\n", cust->h, cust->t, comb, args, env));
     config_send(e->sponsor, comb, PR(cust, PR(s_comb, PR(args, env))));
 }
 /**
-LET appl_beh(comb) = \(cust, req).[
+LET appl_beh(comb) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#comb, opnd, env) : [
-        CREATE appl_0 WITH appl_0_beh(cust, comb, env)
-        SEND (appl_0, #eval, env) TO opnd
+        CREATE appl_0 WITH appl_0_beh((ok, fail), comb, env)
+        SEND ((appl_0, fail), #eval, env) TO opnd
     ]
-    _ : value_beh(cust, req)  # delegate
+    _ : value_beh(msg)  # delegate
     END
 ]
 **/
@@ -350,24 +351,26 @@ act_appl(Event e)
 
     TRACE(fprintf(stderr, "act_appl{self=%p, msg=%p}\n", e->actor, e->message));
     Actor comb =  e->actor->behavior->context;  // (comb)
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    p = p->t;
     if (s_comb == p->h) {  // (#comb, opnd, env)
         p = p->t;
         Actor opnd = p->h;
         Actor env = p->t;
         Actor appl_0 = actor_new(behavior_new(act_appl_0, PR(cust, PR(comb, env))));
-        config_send(e->sponsor, opnd, PR(appl_0, PR(s_eval, env)));
+        TRACE(fprintf(stderr, "act_appl: ok=%p, fail=%p, appl_0=%p, comb=%p, opnd=%p, env=%p\n", cust->h, cust->t, appl_0, comb, opnd, env));
+        config_send(e->sponsor, opnd, PR(PR(appl_0, fail), PR(s_eval, env)));
     } else {
         act_value(e);  // delegate
     }
 }
 
 /**
-LET oper_0_beh(cust, evar, env_d) = \env_p.[
-    SEND ((cust, fail), #match, env_d, env_p) TO evar
+LET oper_0_beh((ok, fail), evar, env_d) = \env_p.[
+    SEND ((ok, fail), #match, env_d, env_p) TO evar
 ]
 **/
 static void
@@ -376,17 +379,18 @@ act_oper_0(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_oper_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (cust, evar, env_d)
-    Actor cust = p->h;
+    p = e->actor->behavior->context;  // ((ok, fail), evar, env_d)
+    Pair cust = p->h;
     p = p->t;
-    Actor evar = p->t;
+    Actor evar = p->h;
     Actor env_d = p->t;
     Actor env_p = e->message;  // (env_p)
-    config_send(e->sponsor, evar, PR(PR(cust, a_fail), PR(s_match, PR(env_d, env_p))));
+    TRACE(fprintf(stderr, "act_oper_0: ok=%p, fail=%p, evar=%p, env_p=%p, env_d=%p\n", cust->h, cust->t, evar, env_p, env_d));
+    config_send(e->sponsor, evar, PR(cust, PR(s_match, PR(env_d, env_p))));
 }
 /**
-LET oper_1_beh(cust, body) = \env_e.[
-    SEND (cust, #eval, env_e) TO body
+LET oper_1_beh((ok, fail), body) = \env_e.[
+    SEND ((ok, fail), #eval, env_e) TO body
 ]
 **/
 static void
@@ -395,14 +399,16 @@ act_oper_1(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_oper_1{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (cust, body)
-    Actor cust = p->h;
+    p = e->actor->behavior->context;  // ((ok, fail), body)
+    Pair cust = p->h;
     Actor body = p->t;
     Actor env_e = e->message;  // (env_e)
+    TRACE(fprintf(stderr, "act_oper_1: ok=%p, fail=%p, body=%p, env_e=%p\n", cust->h, cust->t, body, env_e));
     config_send(e->sponsor, body, PR(cust, PR(s_eval, env_e)));
 }
 /**
-LET oper_beh(env_s, form, evar, body) = \(cust, req).[
+LET oper_beh(env_s, form, evar, body) = \msg.[
+    LET ((ok, fail), req) = $msg IN
 	CASE req OF
 	(#comb, opnd, env_d) : [
         CREATE scope WITH scope_beh(dict_new(), env_s)
@@ -410,17 +416,17 @@ LET oper_beh(env_s, form, evar, body) = \(cust, req).[
         CREATE oper_0 WITH \env_p.[  # (oper_1, evar, env_d)
             CASE evar OF
             $skip_ptrn : [  # optimize "lambda" case
-                SEND (cust, #eval, env_p) TO body
+                SEND ((ok, fail), #eval, env_p) TO body
             ]
             _ : [
                 SEND ((oper_1, fail), #match, env_d, env_p) TO evar
                 CREATE oper_1 WITH \env_e.[  # (cust, body)
-                    SEND (cust, #eval, env_e) TO body
+                    SEND ((ok, fail), #eval, env_e) TO body
                 ]
             ]
         ]
     ]
-	_ : value_beh(cust, req)  # delegate
+	_ : value_beh(msg)  # delegate
 	END
 ]
 **/
@@ -437,22 +443,26 @@ act_oper(Event e)
     p = p->t;
     Actor evar = p->h;
     Actor body = p->t;
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    p = p->t;
     if (s_comb == p->h) {  // (#comb, opnd, env_d)
         p = p->t;
         Actor opnd = p->h;
         Actor env_d = p->t;
         Actor scope = actor_new(behavior_new(act_scope, PR(dict_new(), env_s)));
+        TRACE(fprintf(stderr, "act_oper: opnd=%p, env_d=%p, scope=%p\n", opnd, env_d, scope));
         if (a_skip_ptrn == evar) {  // optimize "lambda" case
             Actor oper_1 = actor_new(behavior_new(act_oper_1, PR(cust, body)));
-            config_send(e->sponsor, form, PR(PR(oper_1, a_fail), PR(s_match, PR(opnd, scope))));
+            TRACE(fprintf(stderr, "act_oper: ok=%p, fail=%p, oper_1=%p\n", ok, fail, oper_1));
+            config_send(e->sponsor, form, PR(PR(oper_1, fail), PR(s_match, PR(opnd, scope))));
         } else {
             Actor oper_1 = actor_new(behavior_new(act_oper_1, PR(cust, body)));
-            Actor oper_0 = actor_new(behavior_new(act_oper_0, PR(oper_1, PR(evar, env_d))));
-            config_send(e->sponsor, form, PR(PR(oper_0, a_fail), PR(s_match, PR(opnd, scope))));
+            Actor oper_0 = actor_new(behavior_new(act_oper_0, PR(PR(oper_1, fail), PR(evar, env_d))));
+            TRACE(fprintf(stderr, "act_oper: ok=%p, fail=%p, oper_0=%p, oper_1=%p\n", ok, fail, oper_0, oper_1));
+            config_send(e->sponsor, form, PR(PR(oper_0, fail), PR(s_match, PR(opnd, scope))));
         }
     } else {
         act_value(e);  // delegate
@@ -460,13 +470,14 @@ act_oper(Event e)
 }
 
 /**
-LET vau_beh(form, evar, body) = \(cust, req).[
+LET vau_beh(form, evar, body) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, env) : [
         CREATE oper WITH oper_beh(env, form, evar, body)
-        SEND oper TO cust
+        SEND oper TO ok
     ]
-    _ : fail_beh(cust, req)  # default
+    _ : [ SEND msg TO fail ]
     END
 ]
 **/
@@ -476,29 +487,32 @@ act_vau(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_vau{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
+        TRACE(fprintf(stderr, "act_vau: (#eval, %p)\n", env));
         p =  e->actor->behavior->context;  // (form, evar, body)
         Actor oper = actor_new(behavior_new(act_oper, PR(env, p)));
-        config_send(e->sponsor, cust, oper);
+        config_send(e->sponsor, ok, oper);
     } else {
-        act_fail(e);  // default
+        TRACE(fprintf(stderr, "act_vau: FAIL!\n"));
+        config_send(e->sponsor, fail, e->message);
     }
 }
 
 /**
-LET lambda_beh(form, body) = \(cust, req).[
+LET lambda_beh(form, body) = \msg.[
+    LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, env) : [
         CREATE oper WITH oper_beh(env, form, _, body)
         CREATE appl WITH appl_beh(oper)
-        SEND appl TO cust
+        SEND appl TO ok
     ]
-    _ : fail_beh(cust, req)  # default
+    _ : [ SEND msg TO fail ]
     END
 ]
 **/
@@ -508,20 +522,22 @@ act_lambda(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_lambda{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // (cust, req)
-    Actor cust = p->h;
-    Any req = p->t;
-    p = req;
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
+        TRACE(fprintf(stderr, "act_lambda: (#eval, %p)\n", env));
         p =  e->actor->behavior->context;  // (form, body)
         Actor form = p->h;
         Actor body = p->t;
         Actor oper = actor_new(behavior_new(act_oper, PR(env, PR(form, PR(a_skip_ptrn, body)))));
         Actor appl = actor_new(behavior_new(act_appl, oper));
-        config_send(e->sponsor, cust, appl);
+        config_send(e->sponsor, ok, appl);
     } else {
-        act_fail(e);  // default
+        TRACE(fprintf(stderr, "act_lambda: FAIL!\n"));
+        config_send(e->sponsor, fail, e->message);
     }
 }
 
@@ -610,7 +626,7 @@ test_universe()
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     test = actor_new(behavior_new(act_expect, b_true));
     TRACE(fprintf(stderr, "test = %p\n", test));
-    config_send(cfg, expr, PR(test, PR(s_eval, a_empty_env)));
+    config_send(cfg, expr, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
     while (config_dispatch(cfg))
         ;
 }

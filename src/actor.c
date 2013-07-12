@@ -85,6 +85,7 @@ config_enlist(Config cfg, Actor a)
 inline void
 config_send(Config cfg, Actor target, Any msg)
 {
+    TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
 
