@@ -205,6 +205,62 @@ LET (pair_beh, pair_ptrn_beh) = $(
 	(factory, pattern)
 )
 
+LET seq_0_beh((ok, fail), tail_expr, env) = \_.[  # return tail value
+	SEND ((ok, fail), #eval, env) TO tail_expr
+]
+LET seq_expr_beh(head_expr, tail_expr) = \msg.[  # sequential evaluation
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [
+		CREATE seq_0 WITH seq_0_beh((ok, fail), tail_expr, env)
+		SEND ((seq_0, fail), #eval, env) TO head_expr
+	]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+LET both_0_beh((ok, fail), head, k_tail) = \msg.[
+	CASE msg OF
+	($k_tail, tail) : [ SEND NEW pair_beh(head, tail) TO ok ]
+	_ : [ SEND msg TO fail ]
+	END
+]
+LET both_1_beh((ok, fail), k_head, tail) = \msg.[
+	CASE msg OF
+	($k_head, head) : [ SEND NEW pair_beh(head, tail) TO ok ]
+	_ : [ SEND msg TO fail ]
+	END
+]
+LET both_beh((ok, fail), k_head, k_tail) = \msg.[
+	CASE msg OF
+	($k_head, head) : [
+		BECOME both_0_beh((ok, fail), head, k_tail)
+	]
+	($k_tail, tail) : [
+		BECOME both_1_beh((ok, fail), k_head, tail)
+	]
+	_ : [ SEND msg TO fail ]
+	END
+]
+LET par_0_beh((ok, fail), head_expr, tail_expr) = \req.[
+    CREATE k_head WITH tag_beh(SELF)
+    CREATE k_tail WITH tag_beh(SELF)
+    SEND ((k_head, fail), req) TO head_expr
+    SEND ((k_tail, fail), req) TO tail_expr
+    BECOME both_beh((ok, fail), k_head, k_tail)  # return pair of values
+]
+LET par_expr_beh(head_expr, tail_expr) = \msg.[  # parallel evaluation
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [
+        CREATE par_0 WITH par_0_beh((ok, fail), head_expr, tail_expr)
+        SEND req TO par_0
+	]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+
 #
 # test case: (\x.x)(#t) -> #t
 #

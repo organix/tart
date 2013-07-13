@@ -64,6 +64,8 @@ extern void     act_lambda(Event e);  // (form, body)
 extern void     act_eq_ptrn(Event e);  // (value)
 extern void     act_pair(Event e);  // (head, tail)
 extern void     act_pair_ptrn(Event e);  // (h_ptrn, t_ptrn)
+extern void     act_seq_expr(Event e);  // (head_expr, tail_expr)
+extern void     act_par_expr(Event e);  // (head_expr, tail_expr)
 
 extern void     test_universe();  // unit-test method
 
