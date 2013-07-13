@@ -1,0 +1,221 @@
+#
+# universe.hum -- Tiny Actor Run-Time
+#
+# "MIT License"
+#
+# Copyright (c) 2013 Dale Schumacher, Tristan Slominski
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+
+CREATE fail WITH \msg.[
+    THROW (#FAIL!, msg)
+]
+
+CREATE empty_env WITH \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#lookup, _) : [ SEND msg TO fail ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+
+LET value_beh() = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, _) : [ SEND SELF TO ok ]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+LET scope_beh(dict, parent) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#lookup, name) : [
+        LET value = $(dict_lookup(dict, name))
+        CASE value OF
+        ? : [ SEND msg TO parent ]
+        _ : [ SEND value TO ok ]
+        END
+    ]
+    (#bind, name, value) : [
+        LET dict' = $(dict_bind(dict, name, value))
+        BECOME scope_beh(dict', parent)
+        SEND SELF TO ok
+    ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+
+LET skip_ptrn_beh = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, _, env) : [ SEND env TO ok ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+CREATE skip_ptrn WITH skip_ptrn_beh
+
+LET bind_ptrn_beh(name) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, value, env) : [ SEND ((ok, fail), #bind, name, value) TO env ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+
+LET name_beh(value) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [ SEND ((ok, fail), #lookup, SELF) TO env ]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+LET comb_0_beh((ok, fail), opnd, env) = \comb.[
+    SEND ((ok, fail), #comb, opnd, env) TO comb
+]
+LET comb_beh(oper, opnd) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [
+        CREATE comb_0 WITH comb_0_beh((ok, fail), opnd, env)
+        SEND ((comb_0, fail), #eval, env) TO oper
+    ]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+LET appl_0_beh((ok, fail), comb, env) = \args.[
+    SEND ((ok, fail), #comb, args, env) TO comb
+]
+LET appl_beh(comb) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#comb, opnd, env) : [
+        CREATE appl_0 WITH appl_0_beh((ok, fail), comb, env)
+        SEND ((appl_0, fail), #eval, env) TO opnd
+    ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+
+LET oper_0_beh((ok, fail), evar, env_d) = \env_p.[
+    SEND ((ok, fail), #match, env_d, env_p) TO evar
+]
+LET oper_1_beh((ok, fail), body) = \env_e.[
+    SEND ((ok, fail), #eval, env_e) TO body
+]
+LET oper_beh(env_s, form, evar, body) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, opnd, env_d) : [
+        CREATE scope WITH scope_beh(dict_new(), env_s)
+        SEND ((oper_0, fail), #match, opnd, scope) TO form
+        CREATE oper_0 WITH \env_p.[  # (oper_1, evar, env_d)
+            CASE evar OF
+            $skip_ptrn : [  # optimize "lambda" case
+                SEND ((ok, fail), #eval, env_p) TO body
+            ]
+            _ : [
+                SEND ((oper_1, fail), #match, env_d, env_p) TO evar
+                CREATE oper_1 WITH \env_e.[  # (cust, body)
+                    SEND ((ok, fail), #eval, env_e) TO body
+                ]
+            ]
+        ]
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+
+LET vau_beh(form, evar, body) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [
+        CREATE oper WITH oper_beh(env, form, evar, body)
+        SEND oper TO ok
+    ]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+LET lambda_beh(form, body) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [
+        CREATE oper WITH oper_beh(env, form, _, body)
+        CREATE appl WITH appl_beh(oper)
+        SEND appl TO ok
+    ]
+    _ : [ SEND msg TO fail ]
+    END
+]
+
+CREATE empty WITH value_beh()
+LET eq_ptrn_beh(value) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, $value, env) : [ SEND env TO ok ]
+    (#match, _) : [ SEND msg TO fail ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+CREATE empty_ptrn WITH eq_ptrn_beh(empty)
+
+LET (pair_beh, pair_ptrn_beh) = $(
+	LET brand = NEW value_beh() IN
+	LET factory(head, tail) = \msg.[
+		LET ((ok, fail), req) = $msg IN
+		CASE req OF
+		($brand, h_ptrn, t_ptrn, env) : [
+			SEND ((ok', fail), #match, head, env) TO h_ptrn
+			CREATE ok' WITH \env'.[
+				SEND ((ok, fail), #match, tail, env') TO t_ptrn
+			]
+		]
+		_ : value_beh(msg)  # delegate
+		END
+	] IN
+	LET pattern(h_ptrn, t_ptrn) = \msg.[
+		LET ((ok, fail), req) = $msg IN
+		CASE req OF
+		(#match, value, env) : [
+			SEND ((ok, fail), $brand, h_ptrn, t_ptrn, env) TO value
+		]
+		_ : value_beh(msg)  # delegate
+		END
+	] IN
+	(factory, pattern)
+)
+
+#
+# test case: (\x.x)(#t) -> #t
+#
+CREATE s_x WITH name_beh(#x)
+CREATE I WITH lambda_beh(NEW bind_ptrn_beh(s_x), s_x)
+CREATE expr WITH comb_beh(I, #t)
+LET expect_beh(expect) = \actual.[
+	CASE actual OF
+	$expect : []
+	_ : [ THROW (#unexpected, expect, actual) ]
+	END
+]
+CREATE test WITH expect_beh(#t)
+SEND ((test, fail), #eval, empty_env) TO expr

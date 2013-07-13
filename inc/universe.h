@@ -35,10 +35,13 @@ THE SOFTWARE.
 #define a_fail (&fail_actor)
 #define a_empty_env (&empty_env_actor)
 #define a_skip_ptrn (&skip_ptrn_actor)
+#define a_empty (&empty_actor)
+#define a_empty_ptrn (&empty_ptrn_actor)
 
 extern ACTOR fail_actor;
 extern ACTOR empty_env_actor;
 extern ACTOR skip_ptrn_actor;
+extern ACTOR empty_ptrn_actor;
 
 extern Actor b_true;
 extern Actor b_false;
@@ -58,6 +61,9 @@ extern void     act_appl(Event e);  // (comb)
 extern void     act_oper(Event e);  // (env_s, form, evar, body)
 extern void     act_vau(Event e);  // (form, evar, body)
 extern void     act_lambda(Event e);  // (form, body)
+extern void     act_eq_ptrn(Event e);  // (value)
+extern void     act_pair(Event e);  // (head, tail)
+extern void     act_pair_ptrn(Event e);  // (h_ptrn, t_ptrn)
 
 extern void     test_universe();  // unit-test method
 

@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "universe.h"
 
 /**
-LET fail_beh() = \msg.[
+CREATE fail WITH \msg.[
     THROW (#FAIL!, msg)
 ]
 **/
@@ -43,7 +43,7 @@ static BEHAVIOR fail_behavior = { act_fail, NIL };
 ACTOR fail_actor = { &fail_behavior };
 
 /**
-CREATE empty_env() WITH \msg.[
+CREATE empty_env WITH \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#lookup, _) : [ SEND msg TO fail ]
@@ -189,6 +189,9 @@ act_skip_ptrn(Event e)
         act_value(e);  // delegate
     }
 }
+/**
+CREATE skip_ptrn WITH skip_ptrn_beh
+**/
 static BEHAVIOR skip_ptrn_behavior = { act_skip_ptrn, NIL };
 ACTOR skip_ptrn_actor = { &skip_ptrn_behavior };
 
@@ -538,6 +541,160 @@ act_lambda(Event e)
     } else {
         TRACE(fprintf(stderr, "act_lambda: FAIL!\n"));
         config_send(e->sponsor, fail, e->message);
+    }
+}
+
+/**
+CREATE empty WITH value_beh()
+**/
+static BEHAVIOR empty_behavior = { act_value, NIL };
+ACTOR empty_actor = { &empty_behavior };
+/**
+LET eq_ptrn_beh(value) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, $value, env) : [ SEND env TO ok ]
+    (#match, _) : [ SEND msg TO fail ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+**/
+void
+act_eq_ptrn(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_eq_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
+    Any value = e->actor->behavior->context;  // (value)
+    p = e->message;  // ((ok, fail), req)
+    Actor ok = ((Pair)p->h)->h;
+    Actor fail = ((Pair)p->h)->t;
+    TRACE(fprintf(stderr, "act_eq_ptrn: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
+    if (s_match == p->h) {  // (#match, ...)
+        p = p->t;
+        if (value == p->h) {  // (#match, $value, env)
+            Actor env = p->t;
+            TRACE(fprintf(stderr, "act_eq_ptrn: (#match, %p, %p)\n", value, env));
+            config_send(e->sponsor, ok, env);
+        } else {  // (#match, _)
+            TRACE(fprintf(stderr, "act_eq_ptrn: (#match, _) -> FAIL!\n"));
+            config_send(e->sponsor, fail, e->message);
+        }
+    } else {
+        act_value(e);  // delegate
+    }
+}
+/**
+CREATE empty_ptrn WITH eq_ptrn_beh(empty)
+**/
+static BEHAVIOR empty_ptrn_behavior = { act_eq_ptrn, a_empty };
+ACTOR empty_ptrn_actor = { &empty_ptrn_behavior };
+
+/**
+LET (pair_beh, pair_ptrn_beh) = $(
+	LET brand = NEW value_beh() IN
+**/
+static BEHAVIOR pair_brand_behavior = { act_value, NIL };
+static ACTOR pair_brand_actor = { &pair_brand_behavior };
+/**
+    LET pair_0_beh((ok, fail), t_ptrn, tail) = \env_0.[
+        SEND ((ok, fail), #match, tail, env_0) TO t_ptrn
+    ] IN
+**/
+static void
+act_pair_0(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_pair_0{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // ((ok, fail), t_ptrn, tail)
+    Pair cust = p->h;
+    p = p->t;
+    Actor t_ptrn = p->h;
+    Actor tail = p->t;
+    Actor env_0 = e->message;  // (env_0)
+    TRACE(fprintf(stderr, "act_pair_0: ok=%p, fail=%p, tail=%p, env_0=%p, tail_ptrn=%p\n", cust->h, cust->t, tail, env_0, t_ptrn));
+    config_send(e->sponsor, t_ptrn, PR(cust, PR(s_match, PR(tail, env_0))));
+}
+/**
+	LET factory(head, tail) = \msg.[
+		LET ((ok, fail), req) = $msg IN
+		CASE req OF
+		($brand, h_ptrn, t_ptrn, env) : [
+			CREATE pair_0 WITH \env_0.[
+				SEND ((ok, fail), #match, tail, env_0) TO t_ptrn
+			]
+			SEND ((pair_0, fail), #match, head, env) TO h_ptrn
+		]
+		_ : value_beh(msg)  # delegate
+		END
+	] IN
+**/
+void
+act_pair(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_pair{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (head, tail)
+    Actor head = p->h;
+    Actor tail = p->t;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    TRACE(fprintf(stderr, "act_pair: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
+    if (&pair_brand_actor == p->h) {  // ($brand, h_ptrn, t_ptrn, env)
+        p = p->t;
+        Actor h_ptrn = p->h;
+        p = p->t;
+        Actor t_ptrn = p->h;
+        Actor env = p->t;
+        TRACE(fprintf(stderr, "act_pair: ($brand, %p, %p, %p)\n", h_ptrn, t_ptrn, env));
+        Actor pair_0 = actor_new(behavior_new(act_pair_0, PR(cust, PR(t_ptrn, tail))));
+        config_send(e->sponsor, h_ptrn, PR(PR(pair_0, fail), PR(s_match, PR(head, env))));
+    } else {
+        act_value(e);  // delegate
+    }
+}
+/**
+	LET pattern(h_ptrn, t_ptrn) = \msg.[
+		LET ((ok, fail), req) = $msg IN
+		CASE req OF
+		(#match, value, env) : [
+			SEND ((ok, fail), $brand, h_ptrn, t_ptrn, env) TO value
+		]
+		_ : value_beh(msg)  # delegate
+		END
+	] IN
+	(factory, pattern)
+)
+**/
+void
+act_pair_ptrn(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_pair_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (h_ptrn, t_ptrn)
+    Actor h_ptrn = p->h;
+    Actor t_ptrn = p->t;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    TRACE(fprintf(stderr, "act_pair_ptrn: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
+    if (s_match == p->h) {  // (#match, value, env)
+        p = p->t;
+        Actor value = p->h;
+        Actor env = p->t;
+        TRACE(fprintf(stderr, "act_pair_ptrn: (#match, %p, %p)\n", value, env));
+        config_send(e->sponsor, value, PR(cust, PR(&pair_brand_actor, PR(h_ptrn, PR(t_ptrn, env)))));
+    } else {
+        act_value(e);  // delegate
     }
 }
 
