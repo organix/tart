@@ -28,7 +28,7 @@ all: $(LIBTART) $(PROGS)
 
 test: all
 	./tart
-	./tart_fx
+#	./tart_fx
 
 $(LIBTART): $(OBJS)
 	$(AR) rv $@ $(OBJS)

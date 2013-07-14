@@ -139,7 +139,7 @@ act_scope(Event e)
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
         Any value = dict_lookup(dict, name);
-        TRACE(fprintf(stderr, "act_scope: (#lookup, %p) -> %p\n", name, value));
+        TRACE(fprintf(stderr, "act_scope: (#lookup, %p \"%s\") -> %p\n", name, name->behavior->context, value));
         if (value == NULL) {
             config_send(e->sponsor, parent, e->message);
         } else {
@@ -1007,20 +1007,28 @@ test_universe()
     while (config_dispatch(cfg))
         ;
 
-    // (\(x,y).y)(#t,#f) -> #f
-    Actor s_y = symbol_intern("x");
+    // (\(x,y).seq(y,x))(#t,#f) -> #t
+    Actor s_y = symbol_intern("y");
     TRACE(fprintf(stderr, "s_y = %p\n", s_y));
     form = actor_new(behavior_new(act_pair_ptrn, PR(
-        actor_new(behavior_new(act_bind_ptrn, s_x)),  // alternatively -- a_skip_ptrn,
+        actor_new(behavior_new(act_bind_ptrn, s_x)), //a_skip_ptrn,
         actor_new(behavior_new(act_bind_ptrn, s_y)))));
-    body = s_y;
+//    body = s_y;
+//    body = s_x;
+//    body = b_true;
+//    body = b_false;
+//    body = actor_new(behavior_new(act_seq_expr, PR(s_x, s_y)));
+    body = actor_new(behavior_new(act_seq_expr, PR(s_y, s_x)));
+//    body = actor_new(behavior_new(act_seq_expr, PR(b_true, b_false)));
+//    body = actor_new(behavior_new(act_seq_expr, PR(b_false, b_true)));
     expr = actor_new(behavior_new(act_par_expr, PR(b_true, b_false)));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     comb = actor_new(behavior_new(act_comb, PR(
         actor_new(behavior_new(act_lambda, PR(form, body))), 
         expr)));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
-    test = actor_new(behavior_new(act_expect, b_false));
+//    test = actor_new(behavior_new(act_expect, b_false));
+    test = actor_new(behavior_new(act_expect, b_true));
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
     while (config_dispatch(cfg))
