@@ -983,6 +983,89 @@ act_par_expr(Event e)
     }
 }
 
+/**
+LET oper_true_beh() = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, opnd, env) : [
+        (expr, _) = $(opnd->behavior->context)
+        SEND ((ok, fail), #eval, env) TO cnsq
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+**/
+static void
+act_oper_true(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_oper_true{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    p = p->t;
+    if (s_comb == p->h) {  // (#comb, opnd, env)
+        p = p->t;
+        Actor opnd = p->h;
+        Actor env = p->t;
+        if (act_pair == opnd->behavior->action) {
+            // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
+            p = opnd->behavior->context;  // (expr, _)
+            Actor expr = p->h;
+            TRACE(fprintf(stderr, "act_oper_true: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
+            config_send(e->sponsor, expr, PR(cust, PR(s_eval, env)));
+        } else {
+            TRACE(fprintf(stderr, "act_oper_true: FAIL! (non-pair arg)\n"));
+            config_send(e->sponsor, fail, e->message);
+        }
+    } else {
+        act_value(e);  // delegate
+    }
+}
+/**
+LET oper_false_beh() = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, opnd, env) : [
+        (_, expr) = $(opnd->behavior->context)
+        SEND ((ok, fail), #eval, env) TO cnsq
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+**/
+static void
+act_oper_false(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_oper_false{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    p = p->t;
+    if (s_comb == p->h) {  // (#comb, opnd, env)
+        p = p->t;
+        Actor opnd = p->h;
+        Actor env = p->t;
+        if (act_pair == opnd->behavior->action) {
+            // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
+            p = opnd->behavior->context;  // (_, expr)
+            Actor expr = p->t;
+            TRACE(fprintf(stderr, "act_oper_false: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
+            config_send(e->sponsor, expr, PR(cust, PR(s_eval, env)));
+        } else {
+            TRACE(fprintf(stderr, "act_oper_false: FAIL! (non-pair arg)\n"));
+            config_send(e->sponsor, fail, e->message);
+        }
+    } else {
+        act_value(e);  // delegate
+    }
+}
+
 /*
  *  NOTE: These global references are initialized by universe_init().
  */
@@ -1042,9 +1125,9 @@ boolean_init()
 void
 universe_init(Config cfg)
 {
-//    b_true = actor_new(behavior_new(act_value, (Any)(0 == 0)));
-//    b_false = actor_new(behavior_new(act_value, (Any)(0 != 0)));
-    boolean_init();
+    b_true = actor_new(behavior_new(act_oper_true, (Any)(0 == 0)));
+    b_false = actor_new(behavior_new(act_oper_false, (Any)(0 != 0)));
+//    boolean_init();
     TRACE(fprintf(stderr, "b_true = %p\n", b_true));
     TRACE(fprintf(stderr, "b_false = %p\n", b_false));
     s_comb = symbol_intern("comb");
@@ -1125,6 +1208,8 @@ test_universe()
     expr = actor_new(behavior_new(act_pair, PR(b_false, b_true)));
 //    expr = actor_new(behavior_new(act_pair, PR(b_false, a_fail)));
 //    expr = actor_new(behavior_new(act_pair, PR(a_fail, b_true)));
+//    expr = actor_new(behavior_new(act_pair, PR(b_false, s_y)));
+//    expr = actor_new(behavior_new(act_pair, PR(s_x, b_true)));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     comb = actor_new(behavior_new(act_comb, PR(b_true, expr)));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
