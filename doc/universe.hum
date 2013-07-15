@@ -168,6 +168,31 @@ LET lambda_beh(form, body) = \msg.[
     END
 ]
 
+CREATE s_x WITH name_beh("x")
+CREATE s_e WITH name_beh("e")
+CREATE oper_eval_form WITH pair_ptrn_beh(
+	NEW bind_ptrn_beh(s_x), 
+	NEW bind_ptrn_beh(s_e))
+LET oper_eval_beh(form, s_x, s_e) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, opnd, env_d) : [
+        CREATE scope WITH scope_beh(dict_new(), env_d)  # NOTE: env_d not used
+        SEND ((oper_0, fail), #match, opnd, scope) TO form
+        CREATE oper_0 WITH \env_p.[
+			SEND ((oper_1, fail), #lookup, s_x) TO env_p;
+			CREATE oper_1 WITH \x.[
+				SEND ((oper_2, fail), #lookup, s_e) TO env_p;
+				CREATE oper_2 WITH \e.[
+                    SEND ((ok, fail), #eval, e) TO x
+				]
+			]
+        ]
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+
 CREATE empty WITH value_beh()
 LET eq_ptrn_beh(value) = \msg.[
     LET ((ok, fail), req) = $msg IN

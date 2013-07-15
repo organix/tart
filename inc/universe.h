@@ -37,6 +37,7 @@ THE SOFTWARE.
 #define a_skip_ptrn (&skip_ptrn_actor)
 #define a_empty (&empty_actor)
 #define a_empty_ptrn (&empty_ptrn_actor)
+#define a_appl_eval (&appl_eval_actor)
 
 extern ACTOR fail_actor;
 extern ACTOR empty_env_actor;

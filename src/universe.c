@@ -546,6 +546,70 @@ act_lambda(Event e)
 }
 
 /**
+CREATE s_x WITH name_beh("x")
+CREATE s_e WITH name_beh("e")
+CREATE oper_eval_form WITH pair_ptrn_beh(
+	NEW bind_ptrn_beh(s_x), 
+	NEW bind_ptrn_beh(s_e))
+LET oper_eval_beh(form, s_x, s_e) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, opnd, env_d) : [
+        CREATE scope WITH scope_beh(dict_new(), env_d)  # NOTE: env_d not used
+        SEND ((oper_0, fail), #match, opnd, scope) TO form
+        CREATE oper_0 WITH \env_p.[
+			SEND ((oper_1, fail), #lookup, s_x) TO env_p;
+			CREATE oper_1 WITH \x.[
+				SEND ((oper_2, fail), #lookup, s_e) TO env_p;
+				CREATE oper_2 WITH \e.[
+                    SEND ((ok, fail), #eval, e) TO x
+				]
+			]
+        ]
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+**/
+static void
+act_oper_eval(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_oper_eval{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    p = p->t;
+    if (s_comb == p->h) {  // (#comb, opnd, _)
+        p = p->t;
+        Actor opnd = p->h;
+        if (act_pair == opnd->behavior->action) {
+            // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
+            p = opnd->behavior->context;  // (head, tail)
+            Actor expr = p->h;
+            Actor env = p->t;
+            TRACE(fprintf(stderr, "act_oper_eval: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
+            config_send(e->sponsor, expr, PR(cust, PR(s_eval, env)));
+        } else {
+            TRACE(fprintf(stderr, "act_oper_eval: FAIL! (non-pair arg)\n"));
+            config_send(e->sponsor, fail, e->message);
+        }
+    } else {
+        act_value(e);  // delegate
+    }
+}
+/**
+CREATE oper_eval WITH oper_eval_beh(oper_eval_form, s_x, s_e)
+CREATE appl_eval WITH appl_beh(oper_eval);
+**/
+static BEHAVIOR oper_eval_behavior = { act_oper_eval, NIL };
+static ACTOR oper_eval_actor = { &oper_eval_behavior };
+static BEHAVIOR appl_eval_behavior = { act_appl, &oper_eval_actor };
+ACTOR appl_eval_actor = { &appl_eval_behavior };
+
+/**
 CREATE empty WITH value_beh()
 **/
 static BEHAVIOR empty_behavior = { act_value, NIL };
@@ -920,11 +984,6 @@ act_par_expr(Event e)
 }
 
 /*
-($define! #t ($vau (x) #ignore ($vau (y) e (eval x e))))  ; usage: ((#t cnsq) altn) ==> cnsq
-($define! #f ($vau (x) #ignore ($vau (y) e (eval y e))))  ; usage: ((#f cnsq) altn) ==> altn
-*/
-
-/*
  *  NOTE: These global references are initialized by universe_init().
  */
 Actor b_true;
@@ -952,13 +1011,41 @@ symbol_intern(char * name)
 1 = \(f, x).f(x)
 true = \(a, b).a
 false = \(a, b).b
+
+($define! #t ($vau (x) #ignore ($vau (y) e (eval x e))))  ; usage: ((#t cnsq) altn) ==> cnsq
+($define! #f ($vau (x) #ignore ($vau (y) e (eval y e))))  ; usage: ((#f cnsq) altn) ==> altn
+
+($define! #t ($vau (x . y) e (eval x e)))  ; usage: ((#t cnsq . altn) ==> cnsq
+($define! #f ($vau (x . y) e (eval y e)))  ; usage: ((#f cnsq . altn) ==> altn
 */
+static void
+boolean_init()
+{
+    Actor s_e = actor_new(behavior_new(act_name, "e")); //symbol_intern("e");
+    Actor s_x = actor_new(behavior_new(act_name, "x")); //symbol_intern("x");
+    Actor T_form = actor_new(behavior_new(act_pair_ptrn, PR(
+        actor_new(behavior_new(act_bind_ptrn, s_x)),
+        a_skip_ptrn)));
+    Actor evar = actor_new(behavior_new(act_bind_ptrn, s_e));
+    Actor body = actor_new(behavior_new(act_comb, PR(
+        a_appl_eval, 
+        actor_new(behavior_new(act_par_expr, PR(s_x, s_e))))));
+    b_true = actor_new(behavior_new(act_oper, 
+        PR(a_empty_env, PR(T_form, PR(evar, body)))));
+    Actor F_form = actor_new(behavior_new(act_pair_ptrn, PR(
+        a_skip_ptrn,
+        actor_new(behavior_new(act_bind_ptrn, s_x)))));
+    b_false = actor_new(behavior_new(act_oper, 
+        PR(a_empty_env, PR(F_form, PR(evar, body)))));
+}
+
 void
 universe_init(Config cfg)
 {
-    b_true = actor_new(behavior_new(act_value, (Any)(0 == 0)));
+//    b_true = actor_new(behavior_new(act_value, (Any)(0 == 0)));
+//    b_false = actor_new(behavior_new(act_value, (Any)(0 != 0)));
+    boolean_init();
     TRACE(fprintf(stderr, "b_true = %p\n", b_true));
-    b_false = actor_new(behavior_new(act_value, (Any)(0 != 0)));
     TRACE(fprintf(stderr, "b_false = %p\n", b_false));
     s_comb = symbol_intern("comb");
     s_bind = symbol_intern("bind");
@@ -1029,6 +1116,19 @@ test_universe()
     TRACE(fprintf(stderr, "comb = %p\n", comb));
 //    test = actor_new(behavior_new(act_expect, b_false));
     test = actor_new(behavior_new(act_expect, b_true));
+    TRACE(fprintf(stderr, "test = %p\n", test));
+    config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
+    while (config_dispatch(cfg))
+        ;
+
+    // (#t #f . #t) -> #f
+    expr = actor_new(behavior_new(act_pair, PR(b_false, b_true)));
+//    expr = actor_new(behavior_new(act_pair, PR(b_false, a_fail)));
+//    expr = actor_new(behavior_new(act_pair, PR(a_fail, b_true)));
+    TRACE(fprintf(stderr, "expr = %p\n", expr));
+    comb = actor_new(behavior_new(act_comb, PR(b_true, expr)));
+    TRACE(fprintf(stderr, "comb = %p\n", comb));
+    test = actor_new(behavior_new(act_expect, b_false));
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
     while (config_dispatch(cfg))
