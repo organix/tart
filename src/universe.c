@@ -657,6 +657,70 @@ static BEHAVIOR empty_ptrn_behavior = { act_eq_ptrn, a_empty };
 ACTOR empty_ptrn_actor = { &empty_ptrn_behavior };
 
 /**
+LET choice_ptrn_0_beh((ok, fail), value, env, ptrn) = \_.[
+	CREATE scope WITH scope_beh(dict_new(), env)
+	SEND ((ok, fail), #match, value, scope) TO ptrn
+]
+**/
+static void
+act_choice_ptrn_0(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_choice_ptrn_0{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // ((ok, fail), value, env, ptrn)
+    Pair cust = p->h;
+    p = p->t;
+    Actor value = p->h;
+    p = p->t;
+    Actor env = p->h;
+    Actor ptrn = p->t;
+    Actor scope = actor_new(behavior_new(act_scope, PR(dict_new(), env)));
+    TRACE(fprintf(stderr, "act_choice_ptrn_0: ok=%p, fail=%p, value=%p, scope=%p, ptrn=%p\n", cust->h, cust->t, value, scope, ptrn));
+    config_send(e->sponsor, ptrn, PR(cust, PR(s_match, PR(value, scope))));
+}
+/**
+LET choice_ptrn_beh(h_ptrn, t_ptrn) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, value, env) : [
+		CREATE t_choice WITH choice_ptrn_0_beh((ok, fail), value, env, t_ptrn)
+		CREATE h_choice WITH choice_ptrn_0_beh((ok, t_choice), value, env, h_ptrn)
+		SEND () TO h_choice
+	]
+    _ : value_beh(msg)  # delegate
+    END
+]
+**/
+void
+act_choice_ptrn(Event e)
+{
+    Pair p;
+
+    TRACE(fprintf(stderr, "act_choice_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
+    p = e->actor->behavior->context;  // (h_ptrn, t_ptrn)
+    Actor h_ptrn = p->h;
+    Actor t_ptrn = p->t;
+    p = e->message;  // ((ok, fail), req)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    TRACE(fprintf(stderr, "act_choice_ptrn: ok=%p, fail=%p\n", ok, fail));
+    p = p->t;
+    if (s_match == p->h) {  // (#match, value, env)
+        p = p->t;
+        Actor value = p->h;
+        Actor env = p->t;
+        TRACE(fprintf(stderr, "act_choice_ptrn: (#match, %p, %p)\n", value, env));
+        Actor t_choice = actor_new(behavior_new(act_choice_ptrn_0, PR(cust, PR(value, PR(env, t_ptrn)))));
+        Actor h_choice = actor_new(behavior_new(act_choice_ptrn_0, PR(PR(ok, t_choice), PR(value, PR(env, h_ptrn)))));
+        config_send(e->sponsor, h_choice, a_fail);
+    } else {
+        act_value(e);  // delegate
+    }
+}
+
+/**
 LET (pair_beh, pair_ptrn_beh) = $(
 	LET brand = NEW value_beh() IN
 **/

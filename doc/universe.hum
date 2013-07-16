@@ -204,6 +204,22 @@ LET eq_ptrn_beh(value) = \msg.[
 ]
 CREATE empty_ptrn WITH eq_ptrn_beh(empty)
 
+LET choice_ptrn_0_beh((ok, fail), value, env, ptrn) = \_.[
+	CREATE scope WITH scope_beh(dict_new(), env)
+	SEND ((ok, fail), #match, value, scope) TO ptrn
+]
+LET choice_ptrn_beh(h_ptrn, t_ptrn) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, value, env) : [
+		CREATE t_choice WITH choice_ptrn_0_beh((ok, fail), value, env, t_ptrn)
+		CREATE h_choice WITH choice_ptrn_0_beh((ok, t_choice), value, env, h_ptrn)
+		SEND () TO h_choice
+	]
+    _ : value_beh(msg)  # delegate
+    END
+]
+
 LET (pair_beh, pair_ptrn_beh) = $(
 	LET brand = NEW value_beh() IN
 	LET factory(head, tail) = \msg.[
