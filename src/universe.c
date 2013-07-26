@@ -40,8 +40,8 @@ act_fail(Event e)
     TRACE(fprintf(stderr, "act_fail{self=%p, msg=%p}\n", e->actor, e->message));
     halt("FAIL!");
 }
-static BEHAVIOR fail_behavior = { act_fail, NIL };
-ACTOR fail_actor = { &fail_behavior };
+static BEHAVIOR fail_behavior = { { act_fail }, NIL };
+ACTOR fail_actor = { { act_serial }, &fail_behavior };
 
 /**
 CREATE empty_env WITH \msg.[
@@ -70,8 +70,8 @@ act_empty_env(Event e)
         act_value(e);
     }
 }
-static BEHAVIOR empty_env_behavior = { act_empty_env, NIL };
-ACTOR empty_env_actor = { &empty_env_behavior };
+static BEHAVIOR empty_env_behavior = { { act_empty_env }, NIL };
+ACTOR empty_env_actor = { { act_serial }, &empty_env_behavior };
 
 /**
 LET value_beh() = \msg.[
@@ -193,8 +193,8 @@ act_skip_ptrn(Event e)
 /**
 CREATE skip_ptrn WITH skip_ptrn_beh
 **/
-static BEHAVIOR skip_ptrn_behavior = { act_skip_ptrn, NIL };
-ACTOR skip_ptrn_actor = { &skip_ptrn_behavior };
+static BEHAVIOR skip_ptrn_behavior = { { act_skip_ptrn }, NIL };
+ACTOR skip_ptrn_actor = { { act_serial }, &skip_ptrn_behavior };
 
 /**
 LET bind_ptrn_beh(name) = \msg.[
@@ -585,7 +585,8 @@ act_oper_eval(Event e)
     if (s_comb == p->h) {  // (#comb, opnd, _)
         p = p->t;
         Actor opnd = p->h;
-        if (act_pair == opnd->behavior->action) {
+//        if (act_pair == opnd->behavior->action) {
+        if (act_pair == opnd->behavior->_meth.code) {
             // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
             p = opnd->behavior->context;  // (head, tail)
             Actor expr = p->h;
@@ -604,16 +605,16 @@ act_oper_eval(Event e)
 CREATE oper_eval WITH oper_eval_beh(oper_eval_form, s_x, s_e)
 CREATE appl_eval WITH appl_beh(oper_eval);
 **/
-static BEHAVIOR oper_eval_behavior = { act_oper_eval, NIL };
-static ACTOR oper_eval_actor = { &oper_eval_behavior };
-static BEHAVIOR appl_eval_behavior = { act_appl, &oper_eval_actor };
-ACTOR appl_eval_actor = { &appl_eval_behavior };
+static BEHAVIOR oper_eval_behavior = { { act_oper_eval }, NIL };
+static ACTOR oper_eval_actor = { { act_serial }, &oper_eval_behavior };
+static BEHAVIOR appl_eval_behavior = { { act_appl }, &oper_eval_actor };
+ACTOR appl_eval_actor = { { act_serial }, &appl_eval_behavior };
 
 /**
 CREATE empty WITH value_beh()
 **/
-static BEHAVIOR empty_behavior = { act_value, NIL };
-ACTOR empty_actor = { &empty_behavior };
+static BEHAVIOR empty_behavior = { { act_value }, NIL };
+ACTOR empty_actor = { { act_serial }, &empty_behavior };
 /**
 LET eq_ptrn_beh(value) = \msg.[
     LET ((ok, fail), req) = $msg IN
@@ -653,8 +654,8 @@ act_eq_ptrn(Event e)
 /**
 CREATE empty_ptrn WITH eq_ptrn_beh(empty)
 **/
-static BEHAVIOR empty_ptrn_behavior = { act_eq_ptrn, a_empty };
-ACTOR empty_ptrn_actor = { &empty_ptrn_behavior };
+static BEHAVIOR empty_ptrn_behavior = { { act_eq_ptrn }, a_empty };
+ACTOR empty_ptrn_actor = { { act_serial }, &empty_ptrn_behavior };
 
 /**
 LET choice_ptrn_0_beh((ok, fail), value, env, ptrn) = \_.[
@@ -724,8 +725,8 @@ act_choice_ptrn(Event e)
 LET (pair_beh, pair_ptrn_beh) = $(
 	LET brand = NEW value_beh() IN
 **/
-static BEHAVIOR pair_brand_behavior = { act_value, NIL };
-static ACTOR pair_brand_actor = { &pair_brand_behavior };
+static BEHAVIOR pair_brand_behavior = { { act_value }, NIL };
+static ACTOR pair_brand_actor = { { act_serial }, &pair_brand_behavior };
 /**
     LET pair_0_beh((ok, fail), t_ptrn, tail) = \env_0.[
         SEND ((ok, fail), #match, tail, env_0) TO t_ptrn
@@ -1074,7 +1075,8 @@ act_oper_true(Event e)
         p = p->t;
         Actor opnd = p->h;
         Actor env = p->t;
-        if (act_pair == opnd->behavior->action) {
+//        if (act_pair == opnd->behavior->action) {
+        if (act_pair == opnd->behavior->_meth.code) {
             // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
             p = opnd->behavior->context;  // (expr, _)
             Actor expr = p->h;
@@ -1115,7 +1117,8 @@ act_oper_false(Event e)
         p = p->t;
         Actor opnd = p->h;
         Actor env = p->t;
-        if (act_pair == opnd->behavior->action) {
+//        if (act_pair == opnd->behavior->action) {
+        if (act_pair == opnd->behavior->_meth.code) {
             // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
             p = opnd->behavior->context;  // (_, expr)
             Actor expr = p->t;

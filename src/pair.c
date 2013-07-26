@@ -29,17 +29,17 @@ THE SOFTWARE.
 #include "pair.h"
 
 void
-meth_halt(Any arg)
+meth_halt(Event e)
 {
-    TRACE(fprintf(stderr, "meth_halt{arg=%p}\n", arg));
+    TRACE(fprintf(stderr, "meth_halt{event=%p}\n", e));
     halt("HALT!");
 }
 
 void
-meth_pair(Any arg)
+meth_pair(Event e)
 {
-    TRACE(fprintf(stderr, "meth_pair{arg=%p}\n", arg));
-    meth_halt(arg);
+    TRACE(fprintf(stderr, "meth_pair{event=%p}\n", e));
+    meth_halt(e);
 }
 
 PAIR the_nil_pair = {

@@ -38,8 +38,8 @@ struct pair {
     Any         t;
 };
 
-extern void     meth_halt(Any arg);
-extern void     meth_pair(Any arg);
+extern void     meth_halt(Event e);
+extern void     meth_pair(Event e);
 
 #define NIL (&the_nil_pair)
 #define PR(h,t) pair_new((h),(t))

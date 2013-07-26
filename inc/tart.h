@@ -45,9 +45,13 @@ THE SOFTWARE.
 
 typedef void * Any;
 typedef struct method METHOD, *Method;
+typedef struct event EVENT, *Event;
+
+typedef void (*Action)(Event e);
 
 struct method {
-    void        (*code)(Any arg);
+//    void        (*code)(Any arg);
+    Action      code;
 };
 
 extern void     halt(char * msg);

@@ -34,18 +34,20 @@ THE SOFTWARE.
 typedef struct config CONFIG, *Config;
 typedef struct behavior BEHAVIOR, *Behavior;
 typedef struct actor ACTOR, *Actor;
-typedef struct event EVENT, *Event;
+//typedef struct event EVENT, *Event;  <-- MOVED TO "tart.h"
 
-typedef void (*Action)(Event e);
+//typedef void (*Action)(Event e);  <-- MOVED TO "tart.h"
 
 #define a_sink (&sink_actor)
 
 struct actor {
+    METHOD      _meth;      // code
     Behavior    behavior;   // current behavior
 };
 
 struct behavior {
-    Action      action;     // code
+//    Action      action;     // code
+    METHOD      _meth;      // code
     Any         context;    // data
 };
 
@@ -73,6 +75,8 @@ extern void     config_enlist(Config cfg, Actor a);
 extern void     config_send(Config cfg, Actor target, Any msg);
 extern void     config_create(Config cfg, Behavior beh);
 extern int      config_dispatch(Config cfg);
+
+extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern BEHAVIOR sink_behavior;
 extern ACTOR sink_actor;

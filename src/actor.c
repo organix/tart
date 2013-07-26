@@ -32,6 +32,7 @@ inline Actor
 actor_new(Behavior beh)
 {
     Actor a = NEW(ACTOR);
+    a->_meth.code = act_serial;  // create a "serialized" actor
     a->behavior = beh;
     return a;
 }
@@ -46,7 +47,8 @@ inline Behavior
 behavior_new(Action act, Any data)
 {
     Behavior beh = NEW(BEHAVIOR);
-    beh->action = act;
+//    beh->action = act;
+    beh->_meth.code = act;
     beh->context = data;
     return beh;
 }
@@ -104,7 +106,9 @@ config_dispatch(Config cfg)
     }
     Event e = deque_take(cfg->event_q);
     TRACE(fprintf(stderr, "config_dispatch: actor=%p, event=%p\n", e->actor, e));
-    (e->actor->behavior->action)(e);  // INVOKE ACTOR BEHAVIOR
+//    (e->actor->behavior->action)(e);  // INVOKE ACTOR BEHAVIOR
+//    (e->actor->behavior->_meth.code)(e);  // INVOKE ACTOR BEHAVIOR
+    (e->actor->_meth.code)(e);  // INVOKE ACTOR METHOD
     return 1;
 }
 
@@ -114,5 +118,13 @@ act_sink(Event e)
     TRACE(fprintf(stderr, "act_sink{self=%p, msg=%p}\n", e->actor, e->message));
 }
 
-BEHAVIOR sink_behavior = { act_sink, NIL };
-ACTOR sink_actor = { &sink_behavior };
+void
+act_serial(Event e)  // "serialized" actor behavior
+{
+    TRACE(fprintf(stderr, "act_serial{self=%p, msg=%p}\n", e->actor, e->message));
+    (e->actor->behavior->_meth.code)(e);  // INVOKE BEHAVIOR METHOD
+}
+
+//BEHAVIOR sink_behavior = { act_sink, NIL };
+BEHAVIOR sink_behavior = { { act_sink }, NIL };
+ACTOR sink_actor = { { act_serial }, &sink_behavior };

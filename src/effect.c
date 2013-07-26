@@ -88,7 +88,7 @@ act_busy(Event e)
     config_enqueue(e->sponsor, e);
 }
 
-BEHAVIOR busy_behavior = { act_busy, NIL };
+BEHAVIOR busy_behavior = { { act_busy }, NIL };
 
 /**
 LET begin_beh(cust) = \_.[
@@ -183,5 +183,5 @@ act_commit(Event e)
     effect_commit(e->message);
 }
 
-BEHAVIOR commit_behavior = { act_commit, NIL };
-ACTOR commit_actor = { &commit_behavior };
+BEHAVIOR commit_behavior = { { act_commit }, NIL };
+ACTOR commit_actor = { { act_serial }, &commit_behavior };
