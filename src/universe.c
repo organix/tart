@@ -1053,7 +1053,7 @@ LET oper_true_beh() = \msg.[
 	CASE req OF
 	(#comb, opnd, env) : [
         (expr, _) = $(opnd->behavior->context)
-        SEND ((ok, fail), #eval, env) TO cnsq
+        SEND ((ok, fail), #eval, env) TO expr
     ]
 	_ : value_beh(msg)  # delegate
 	END
@@ -1094,7 +1094,7 @@ LET oper_false_beh() = \msg.[
 	CASE req OF
 	(#comb, opnd, env) : [
         (_, expr) = $(opnd->behavior->context)
-        SEND ((ok, fail), #eval, env) TO cnsq
+        SEND ((ok, fail), #eval, env) TO expr
     ]
 	_ : value_beh(msg)  # delegate
 	END
@@ -1162,8 +1162,8 @@ false = \(a, b).b
 ($define! #t ($vau (x) #ignore ($vau (y) e (eval x e))))  ; usage: ((#t cnsq) altn) ==> cnsq
 ($define! #f ($vau (x) #ignore ($vau (y) e (eval y e))))  ; usage: ((#f cnsq) altn) ==> altn
 
-($define! #t ($vau (x . y) e (eval x e)))  ; usage: ((#t cnsq . altn) ==> cnsq
-($define! #f ($vau (x . y) e (eval y e)))  ; usage: ((#f cnsq . altn) ==> altn
+($define! #t ($vau (x . #ignore) e (eval x . e)))  ; usage: ((#t cnsq . altn) ==> cnsq
+($define! #f ($vau (#ignore . x) e (eval x . e)))  ; usage: ((#f cnsq . altn) ==> altn
 */
 static void
 boolean_init()

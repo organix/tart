@@ -220,6 +220,22 @@ LET choice_ptrn_beh(h_ptrn, t_ptrn) = \msg.[
     END
 ]
 
+LET case_ptrn_beh(error, ptrn, var, expr) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, value, env) : [
+		SEND ((ok', fail), #match, value, env) TO ptrn
+		CREATE ok' WITH \env'.[
+			SEND ((ok'', error), #eval, env') TO expr
+			CREATE ok'' WITH \value.[
+				SEND ((ok, error), #match, value, env') TO var
+			]
+		]
+	]
+    _ : value_beh(msg)  # delegate
+    END
+]
+
 LET (pair_beh, pair_ptrn_beh) = $(
 	LET brand = NEW value_beh() IN
 	LET factory(head, tail) = \msg.[
