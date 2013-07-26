@@ -33,9 +33,13 @@ THE SOFTWARE.
 typedef struct pair PAIR, *Pair;
 
 struct pair {
+    METHOD      _meth;
     Any         h;
     Any         t;
 };
+
+extern void     meth_halt(Any arg);
+extern void     meth_pair(Any arg);
 
 #define NIL (&the_nil_pair)
 #define PR(h,t) pair_new((h),(t))

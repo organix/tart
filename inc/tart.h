@@ -44,6 +44,11 @@ THE SOFTWARE.
 #define FREE(p)     ((p) = (free(p), NULL))
 
 typedef void * Any;
+typedef struct method METHOD, *Method;
+
+struct method {
+    void        (*code)(Any arg);
+};
 
 extern void     halt(char * msg);
 
