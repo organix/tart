@@ -36,7 +36,7 @@ CREATE empty_env WITH \msg.[
     END
 ]
 
-LET value_beh() = \msg.[
+LET value_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, _) : [ SEND SELF TO ok ]
@@ -193,7 +193,7 @@ LET oper_eval_beh(form, s_x, s_e) = \msg.[
 	END
 ]
 
-CREATE empty WITH value_beh()
+CREATE empty WITH value_beh
 LET eq_ptrn_beh(value) = \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF

@@ -122,6 +122,7 @@ act_serial(Event e)  // "serialized" actor behavior
     (CODE(DATA(SELF(e))))(e);  // INVOKE BEHAVIOR METHOD
 }
 
-//BEHAVIOR sink_behavior = { act_sink, NIL };
-BEHAVIOR sink_behavior = { { act_sink }, NIL };
+ACTOR halt_actor = { { meth_halt }, &halt_actor };
+
+BEHAVIOR sink_behavior = { { act_sink }, NOTHING };
 ACTOR sink_actor = { { act_serial }, &sink_behavior };

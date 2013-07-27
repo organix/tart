@@ -50,7 +50,6 @@ typedef struct event EVENT, *Event;
 typedef void (*Action)(Event e);
 
 struct method {
-//    void        (*code)(Any arg);
     Action      code;
 };
 

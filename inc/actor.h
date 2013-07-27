@@ -32,18 +32,17 @@ THE SOFTWARE.
 #include "pair.h"
 
 typedef struct config CONFIG, *Config;
-//typedef struct behavior BEHAVIOR, *Behavior;
 typedef struct actor ACTOR, *Actor, BEHAVIOR, *Behavior;
-//typedef struct event EVENT, *Event;  <-- MOVED TO "tart.h"
-
-//typedef void (*Action)(Event e);  <-- MOVED TO "tart.h"
 
 #define MSG(e)  (((Event)(e))->message)
 #define SELF(e) (((Event)(e))->actor)
 #define CODE(a) (((Actor)(a))->_meth.code)
 #define DATA(a) (((Actor)(a))->context)
 
+#define a_halt (&halt_actor)
 #define a_sink (&sink_behavior)
+
+#define NOTHING (a_halt)
 
 struct actor {
     METHOD      _meth;      // code
@@ -76,6 +75,8 @@ extern void     config_create(Config cfg, Behavior beh);
 extern int      config_dispatch(Config cfg);
 
 extern void     act_serial(Event e);  // "serialized" actor behavior
+
+extern ACTOR halt_actor;
 
 extern BEHAVIOR sink_behavior;
 extern ACTOR sink_actor;
