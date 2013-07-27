@@ -36,7 +36,7 @@ effect_new(Config cfg, Actor a)
     fx->self = a;
     fx->actors = NIL;
     fx->events = NIL;
-    fx->behavior = a->behavior;
+    fx->behavior = a->context;
     return fx;
 }
 
@@ -83,7 +83,7 @@ LET busy_beh = \m.[
 void
 act_busy(Event e)
 {
-    TRACE(fprintf(stderr, "act_busy{self=%p, msg=%p}\n", e->actor, e->message));
+    TRACE(fprintf(stderr, "act_busy{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     // re-queue event
     config_enqueue(e->sponsor, e);
 }
@@ -99,14 +99,14 @@ LET begin_beh(cust) = \_.[
 void
 act_begin(Event e)
 {
-    TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor cust = e->actor->behavior->context;  // cust
+    TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor cust = DATA(DATA(SELF(e)));  // cust
     // initialize effects
-    Effect fx = effect_new(e->sponsor, e->actor);
+    Effect fx = effect_new(e->sponsor, SELF(e));
     // trigger continuation
     config_send(e->sponsor, cust, fx);
     // become busy
-    actor_become(e->actor, &busy_behavior);
+    actor_become(SELF(e), &busy_behavior);
 }
 
 /**
@@ -118,17 +118,17 @@ LET send_beh(cust, target, message) = \fx.[
 void
 act_send(Event e)
 {
-    TRACE(fprintf(stderr, "act_send{self=%p, msg=%p}\n", e->actor, e->message));
-    Pair p = e->actor->behavior->context;  // (cust, target, message)
+    TRACE(fprintf(stderr, "act_send{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair p = DATA(DATA(SELF(e)));  // (cust, target, message)
     Actor cust = p->h;
     p = p->t;
     Actor target = p->h;
     Any message = p->t;
     TRACE(fprintf(stderr, "act_send: to=%p, msg=%p\n", target, message));
     // store new event in effects
-    effect_send(e->message, target, message);
+    effect_send(MSG(e), target, message);
     // trigger continuation
-    config_send(e->sponsor, cust, e->message);
+    config_send(e->sponsor, cust, MSG(e));
 }
 
 /**
@@ -140,14 +140,14 @@ LET create_beh(cust, beh) = \fx.[
 void
 act_create(Event e)
 {
-    TRACE(fprintf(stderr, "act_create{self=%p, msg=%p}\n", e->actor, e->message));
-    Pair p = e->actor->behavior->context;  // (cust, behavior)
+    TRACE(fprintf(stderr, "act_create{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair p = DATA(DATA(SELF(e)));  // (cust, behavior)
     Actor cust = p->h;
     Behavior beh = p->t;
     // store new actor in effects
-    effect_create(e->message, beh);
+    effect_create(MSG(e), beh);
     // trigger continuation
-    config_send(e->sponsor, cust, e->message);
+    config_send(e->sponsor, cust, MSG(e));
 }
 
 /**
@@ -159,14 +159,14 @@ LET become_beh(cust, beh) = \fx.[
 void
 act_become(Event e)
 {
-    TRACE(fprintf(stderr, "act_become{self=%p, msg=%p}\n", e->actor, e->message));
-    Pair p = e->actor->behavior->context;  // (cust, behavior)
+    TRACE(fprintf(stderr, "act_become{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair p = DATA(DATA(SELF(e)));  // (cust, behavior)
     Actor cust = p->h;
     Behavior beh = p->t;
     // store new behavior in effects
-    effect_become(e->message, beh);
+    effect_become(MSG(e), beh);
     // trigger continuation
-    config_send(e->sponsor, cust, e->message);
+    config_send(e->sponsor, cust, MSG(e));
 }
 
 /**
@@ -179,8 +179,8 @@ act_commit(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", e->actor, e->message));
-    effect_commit(e->message);
+    TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    effect_commit(MSG(e));
 }
 
 BEHAVIOR commit_behavior = { { act_commit }, NIL };

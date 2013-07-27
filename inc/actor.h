@@ -32,21 +32,20 @@ THE SOFTWARE.
 #include "pair.h"
 
 typedef struct config CONFIG, *Config;
-typedef struct behavior BEHAVIOR, *Behavior;
-typedef struct actor ACTOR, *Actor;
+//typedef struct behavior BEHAVIOR, *Behavior;
+typedef struct actor ACTOR, *Actor, BEHAVIOR, *Behavior;
 //typedef struct event EVENT, *Event;  <-- MOVED TO "tart.h"
 
 //typedef void (*Action)(Event e);  <-- MOVED TO "tart.h"
 
-#define a_sink (&sink_actor)
+#define MSG(e)  (((Event)(e))->message)
+#define SELF(e) (((Event)(e))->actor)
+#define CODE(a) (((Actor)(a))->_meth.code)
+#define DATA(a) (((Actor)(a))->context)
+
+#define a_sink (&sink_behavior)
 
 struct actor {
-    METHOD      _meth;      // code
-    Behavior    behavior;   // current behavior
-};
-
-struct behavior {
-//    Action      action;     // code
     METHOD      _meth;      // code
     Any         context;    // data
 };

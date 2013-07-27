@@ -46,15 +46,15 @@ LET forward_beh(a) = \m.SEND () TO \_.[ SEND m TO a ]
 void
 fx_forward(Event e)
 {
-    TRACE(fprintf(stderr, "fx_forward{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor a = e->actor->behavior->context;  // target
-    Any m = e->message;  // message
+    TRACE(fprintf(stderr, "fx_forward{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor a = DATA(DATA(SELF(e)));  // target
+    Any m = MSG(e);  // message
     Pair args = PR(&commit_actor, PR(a, m));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "fx_forward: delegate=%p\n", a_begin));
     // invoke delegate
-    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }
 
 /**
@@ -66,17 +66,17 @@ LET oneshot_beh(a) = \m.[
 void
 fx_oneshot(Event e)
 {
-    TRACE(fprintf(stderr, "fx_oneshot{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor a = e->actor->behavior->context;  // target
-    Any m = e->message;  // message
+    TRACE(fprintf(stderr, "fx_oneshot{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor a = DATA(DATA(SELF(e)));  // target
+    Any m = MSG(e);  // message
     Pair args = PR(&commit_actor, PR(a, m));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "fx_oneshot: delegate=%p\n", a_begin));
     // become sink
-    actor_become(e->actor, &sink_behavior);
+    actor_become(SELF(e), &sink_behavior);
     // invoke delegate
-    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }
 
 /**
@@ -85,15 +85,15 @@ LET tag_beh(cust) = \msg.[ SEND (SELF, msg) TO cust ]
 void
 fx_tag(Event e)
 {
-    TRACE(fprintf(stderr, "fx_tag{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor cust = e->actor->behavior->context;  // cust
-    Any msg = e->message;  // msg
-    Pair args = PR(&commit_actor, PR(cust, PR(e->actor, msg)));  // (cust, target, message)
+    TRACE(fprintf(stderr, "fx_tag{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor cust = DATA(DATA(SELF(e)));  // cust
+    Any msg = MSG(e);  // msg
+    Pair args = PR(&commit_actor, PR(cust, PR(SELF(e), msg)));  // (cust, target, message)
     Actor a_send = actor_new(behavior_new(act_send, args));
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "fx_tag: delegate=%p\n", a_begin));
     // invoke delegate
-    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores e->message
+    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }
 
 /*

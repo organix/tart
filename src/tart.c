@@ -54,12 +54,12 @@ LET dump_pair_of_pairs_beh(label) = \((a, b), (c, d)).[
 void
 act_dump_pair_of_pairs(Event e)
 {
-    TRACE(fprintf(stderr, "act_dump_pair_of_pairs{self=%p, msg=%p}\n", e->actor, e->message));
-    char * label = e->actor->behavior->context;  // (cust, head, tail)
+    TRACE(fprintf(stderr, "act_dump_pair_of_pairs{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    char * label = DATA(DATA(SELF(e)));  // (cust, head, tail)
     if (label) {
         TRACE(fprintf(stderr, "%s: ", label));
     }
-    Pair p = e->message;
+    Pair p = MSG(e);
     Pair ab = p->h;
     Pair cd = p->t;
     TRACE(fprintf(stderr, "(%p, %p) = ", ab, cd));

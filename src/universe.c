@@ -37,7 +37,7 @@ CREATE fail WITH \msg.[
 static inline void
 act_fail(Event e)
 {
-    TRACE(fprintf(stderr, "act_fail{self=%p, msg=%p}\n", e->actor, e->message));
+    TRACE(fprintf(stderr, "act_fail{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     halt("FAIL!");
 }
 static BEHAVIOR fail_behavior = { { act_fail }, NIL };
@@ -57,15 +57,15 @@ act_empty_env(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_empty_env{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_empty_env{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     TRACE(fprintf(stderr, "act_empty_env: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_lookup == p->h) {  // (#lookup, _)
         TRACE(fprintf(stderr, "act_empty_env: (#lookup, _) -> FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     } else {
         act_value(e);
     }
@@ -87,18 +87,18 @@ act_value(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_value{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_value{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     TRACE(fprintf(stderr, "act_value: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_eval == p->h) {  // (#eval, _)
         TRACE(fprintf(stderr, "act_value: (#eval, _)\n"));
-        config_send(e->sponsor, ok, e->actor);
+        config_send(e->sponsor, ok, SELF(e));
     } else {
         TRACE(fprintf(stderr, "act_value: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -127,11 +127,11 @@ act_scope(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_scope{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (dict, parent)
+    TRACE(fprintf(stderr, "act_scope{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // (dict, parent)
     Pair dict = p->h;
     Actor parent = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     TRACE(fprintf(stderr, "act_scope: ok=%p, fail=%p\n", ok, fail));
@@ -139,9 +139,9 @@ act_scope(Event e)
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
         Any value = dict_lookup(dict, name);
-        TRACE(fprintf(stderr, "act_scope: (#lookup, %p \"%s\") -> %p\n", name, name->behavior->context, value));
+        TRACE(fprintf(stderr, "act_scope: (#lookup, %p \"%s\") -> %p\n", name, DATA(DATA(name)), value));
         if (value == NULL) {
-            config_send(e->sponsor, parent, e->message);
+            config_send(e->sponsor, parent, MSG(e));
         } else {
             config_send(e->sponsor, ok, value);
         }
@@ -151,10 +151,10 @@ act_scope(Event e)
         Any value = p->t;
         TRACE(fprintf(stderr, "act_scope: (#bind, %p, %p)\n", name, value));
         dict = dict_bind(dict, name, value);
-//        actor_become(e->actor, behavior_new(act_scope, PR(dict, parent)));  -- see next two lines for equivalent
-        p = e->actor->behavior->context;  // (dict, parent)
+//        actor_become(SELF(e), behavior_new(act_scope, PR(dict, parent)));  -- see next two lines for equivalent
+        p = DATA(DATA(SELF(e)));  // (dict, parent)
         p->h = dict;  // WARNING! this directly manipulates the data in this behavior
-        config_send(e->sponsor, ok, e->actor);
+        config_send(e->sponsor, ok, SELF(e));
     } else {
         act_value(e);  // delegate
     }
@@ -174,9 +174,9 @@ act_skip_ptrn(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_skip_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor name = e->actor->behavior->context;  // (name)
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_skip_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor name = DATA(DATA(SELF(e)));  // (name)
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     TRACE(fprintf(stderr, "act_skip_ptrn: ok=%p, fail=%p\n", ok, fail));
@@ -210,9 +210,9 @@ act_bind_ptrn(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_bind_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor name = e->actor->behavior->context;  // (name)
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_bind_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor name = DATA(DATA(SELF(e)));  // (name)
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     TRACE(fprintf(stderr, "act_bind_ptrn: ok=%p, fail=%p\n", ok, fail));
@@ -242,8 +242,8 @@ act_name(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_name{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_name{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -252,10 +252,10 @@ act_name(Event e)
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "act_name: (#eval, %p)\n", env));
-        config_send(e->sponsor, env, PR(cust, PR(s_lookup, e->actor)));
+        config_send(e->sponsor, env, PR(cust, PR(s_lookup, SELF(e))));
     } else {
         TRACE(fprintf(stderr, "act_name: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -269,13 +269,13 @@ act_comb_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_comb_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), opnd, env)
+    TRACE(fprintf(stderr, "act_comb_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), opnd, env)
     Pair cust = p->h;
     p = p->t;
     Actor opnd = p->h;
     Actor env = p->t;
-    Actor comb = e->message;  // (comb)
+    Actor comb = MSG(e);  // (comb)
     TRACE(fprintf(stderr, "act_comb_0: ok=%p, fail=%p, comb=%p, opnd=%p, env=%p\n", cust->h, cust->t, comb, opnd, env));
     config_send(e->sponsor, comb, PR(cust, PR(s_comb, PR(opnd, env))));
 }
@@ -296,11 +296,11 @@ act_comb(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_comb{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (oper, opnd)
+    TRACE(fprintf(stderr, "act_comb{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // (oper, opnd)
     Actor oper = p->h;
     Actor opnd = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -312,7 +312,7 @@ act_comb(Event e)
         config_send(e->sponsor, oper, PR(PR(comb_0, fail), PR(s_eval, env)));
     } else {
         TRACE(fprintf(stderr, "act_comb: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -326,13 +326,13 @@ act_appl_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_appl_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), comb, env)
+    TRACE(fprintf(stderr, "act_appl_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), comb, env)
     Pair cust = p->h;
     p = p->t;
     Actor comb = p->h;
     Actor env = p->t;
-    Actor args = e->message;  // (args)
+    Actor args = MSG(e);  // (args)
     TRACE(fprintf(stderr, "act_appl_0: ok=%p, fail=%p, comb=%p, args=%p, env=%p\n", cust->h, cust->t, comb, args, env));
     config_send(e->sponsor, comb, PR(cust, PR(s_comb, PR(args, env))));
 }
@@ -353,9 +353,9 @@ act_appl(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_appl{self=%p, msg=%p}\n", e->actor, e->message));
-    Actor comb =  e->actor->behavior->context;  // (comb)
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_appl{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor comb =  DATA(DATA(SELF(e)));  // (comb)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -382,13 +382,13 @@ act_oper_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_oper_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), evar, env_d)
+    TRACE(fprintf(stderr, "act_oper_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), evar, env_d)
     Pair cust = p->h;
     p = p->t;
     Actor evar = p->h;
     Actor env_d = p->t;
-    Actor env_p = e->message;  // (env_p)
+    Actor env_p = MSG(e);  // (env_p)
     TRACE(fprintf(stderr, "act_oper_0: ok=%p, fail=%p, evar=%p, env_p=%p, env_d=%p\n", cust->h, cust->t, evar, env_p, env_d));
     config_send(e->sponsor, evar, PR(cust, PR(s_match, PR(env_d, env_p))));
 }
@@ -402,11 +402,11 @@ act_oper_1(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_oper_1{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), body)
+    TRACE(fprintf(stderr, "act_oper_1{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), body)
     Pair cust = p->h;
     Actor body = p->t;
-    Actor env_e = e->message;  // (env_e)
+    Actor env_e = MSG(e);  // (env_e)
     TRACE(fprintf(stderr, "act_oper_1: ok=%p, fail=%p, body=%p, env_e=%p\n", cust->h, cust->t, body, env_e));
     config_send(e->sponsor, body, PR(cust, PR(s_eval, env_e)));
 }
@@ -439,15 +439,15 @@ act_oper(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_oper{self=%p, msg=%p}\n", e->actor, e->message));
-    p =  e->actor->behavior->context;  // (env_s, form, evar, body)
+    TRACE(fprintf(stderr, "act_oper{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p =  DATA(DATA(SELF(e)));  // (env_s, form, evar, body)
     Actor env_s = p->h;
     p = p->t;
     Actor form = p->h;
     p = p->t;
     Actor evar = p->h;
     Actor body = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -490,20 +490,20 @@ act_vau(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_vau{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_vau{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "act_vau: (#eval, %p)\n", env));
-        p =  e->actor->behavior->context;  // (form, evar, body)
+        p =  DATA(DATA(SELF(e)));  // (form, evar, body)
         Actor oper = actor_new(behavior_new(act_oper, PR(env, p)));
         config_send(e->sponsor, ok, oper);
     } else {
         TRACE(fprintf(stderr, "act_vau: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -525,15 +525,15 @@ act_lambda(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_lambda{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_lambda{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "act_lambda: (#eval, %p)\n", env));
-        p =  e->actor->behavior->context;  // (form, body)
+        p =  DATA(DATA(SELF(e)));  // (form, body)
         Actor form = p->h;
         Actor body = p->t;
         Actor oper = actor_new(behavior_new(act_oper, PR(env, PR(form, PR(a_skip_ptrn, body)))));
@@ -541,7 +541,7 @@ act_lambda(Event e)
         config_send(e->sponsor, ok, appl);
     } else {
         TRACE(fprintf(stderr, "act_lambda: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -576,8 +576,8 @@ act_oper_eval(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_oper_eval{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_oper_eval{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -586,16 +586,16 @@ act_oper_eval(Event e)
         p = p->t;
         Actor opnd = p->h;
 //        if (act_pair == opnd->behavior->action) {
-        if (act_pair == opnd->behavior->_meth.code) {
+        if (act_pair == CODE(DATA(opnd))) {
             // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
-            p = opnd->behavior->context;  // (head, tail)
+            p = DATA(DATA(opnd));  // (head, tail)
             Actor expr = p->h;
             Actor env = p->t;
             TRACE(fprintf(stderr, "act_oper_eval: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
             config_send(e->sponsor, expr, PR(cust, PR(s_eval, env)));
         } else {
             TRACE(fprintf(stderr, "act_oper_eval: FAIL! (non-pair arg)\n"));
-            config_send(e->sponsor, fail, e->message);
+            config_send(e->sponsor, fail, MSG(e));
         }
     } else {
         act_value(e);  // delegate
@@ -630,9 +630,9 @@ act_eq_ptrn(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_eq_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
-    Any value = e->actor->behavior->context;  // (value)
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_eq_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Any value = DATA(DATA(SELF(e)));  // (value)
+    p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
     TRACE(fprintf(stderr, "act_eq_ptrn: ok=%p, fail=%p\n", ok, fail));
@@ -645,7 +645,7 @@ act_eq_ptrn(Event e)
             config_send(e->sponsor, ok, env);
         } else {  // (#match, _)
             TRACE(fprintf(stderr, "act_eq_ptrn: (#match, _) -> FAIL!\n"));
-            config_send(e->sponsor, fail, e->message);
+            config_send(e->sponsor, fail, MSG(e));
         }
     } else {
         act_value(e);  // delegate
@@ -668,8 +668,8 @@ act_choice_ptrn_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_choice_ptrn_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), value, env, ptrn)
+    TRACE(fprintf(stderr, "act_choice_ptrn_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), value, env, ptrn)
     Pair cust = p->h;
     p = p->t;
     Actor value = p->h;
@@ -698,11 +698,11 @@ act_choice_ptrn(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_choice_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (h_ptrn, t_ptrn)
+    TRACE(fprintf(stderr, "act_choice_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // (h_ptrn, t_ptrn)
     Actor h_ptrn = p->h;
     Actor t_ptrn = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -737,13 +737,13 @@ act_pair_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_pair_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), t_ptrn, tail)
+    TRACE(fprintf(stderr, "act_pair_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), t_ptrn, tail)
     Pair cust = p->h;
     p = p->t;
     Actor t_ptrn = p->h;
     Actor tail = p->t;
-    Actor env_0 = e->message;  // (env_0)
+    Actor env_0 = MSG(e);  // (env_0)
     TRACE(fprintf(stderr, "act_pair_0: ok=%p, fail=%p, tail=%p, env_0=%p, tail_ptrn=%p\n", cust->h, cust->t, tail, env_0, t_ptrn));
     config_send(e->sponsor, t_ptrn, PR(cust, PR(s_match, PR(tail, env_0))));
 }
@@ -766,11 +766,11 @@ act_pair(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_pair{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (head, tail)
+    TRACE(fprintf(stderr, "act_pair{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // (head, tail)
     Actor head = p->h;
     Actor tail = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -807,11 +807,11 @@ act_pair_ptrn(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_pair_ptrn{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (h_ptrn, t_ptrn)
+    TRACE(fprintf(stderr, "act_pair_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // (h_ptrn, t_ptrn)
     Actor h_ptrn = p->h;
     Actor t_ptrn = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -838,8 +838,8 @@ act_seq_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_seq_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), tail_expr, env)
+    TRACE(fprintf(stderr, "act_seq_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), tail_expr, env)
     Pair cust = p->h;
     p = p->t;
     Actor tail_expr = p->h;
@@ -864,11 +864,11 @@ act_seq_expr(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_seq_expr{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // (head_expr, tail_expr)
+    TRACE(fprintf(stderr, "act_seq_expr{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // (head_expr, tail_expr)
     Actor head_expr = p->h;
     Actor tail_expr = p->t;
-    p = e->message;  // ((ok, fail), req)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -880,7 +880,7 @@ act_seq_expr(Event e)
         config_send(e->sponsor, head_expr, PR(PR(seq_0, fail), PR(s_eval, env)));
     } else {
         TRACE(fprintf(stderr, "act_seq_expr: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -897,22 +897,22 @@ act_both_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_both_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), head, k_tail)
+    TRACE(fprintf(stderr, "act_both_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), head, k_tail)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = p->t;
     Actor head = p->h;
     Actor k_tail = p->t;
-    p = e->message;
+    p = MSG(e);
     if (p->h == k_tail) {  // ($k_tail, tail)
         Any tail = p->t;
         Actor pair = actor_new(behavior_new(act_pair, PR(head, tail)));
         config_send(e->sponsor, ok, pair);
     } else {
         TRACE(fprintf(stderr, "act_both_0: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 /**
@@ -928,22 +928,22 @@ act_both_1(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_both_1{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), k_head, tail)
+    TRACE(fprintf(stderr, "act_both_1{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), k_head, tail)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = p->t;
     Actor k_head = p->h;
     Actor tail = p->t;
-    p = e->message;
+    p = MSG(e);
     if (p->h == k_head) {  // ($k_head, head)
         Any head = p->t;
         Actor pair = actor_new(behavior_new(act_pair, PR(head, tail)));
         config_send(e->sponsor, ok, pair);
     } else {
         TRACE(fprintf(stderr, "act_both_1: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 /**
@@ -964,24 +964,24 @@ act_both(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_both{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), k_head, k_tail)
+    TRACE(fprintf(stderr, "act_both{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), k_head, k_tail)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = p->t;
     Actor k_head = p->h;
     Actor k_tail = p->t;
-    p = e->message;
+    p = MSG(e);
     if (p->h == k_head) {  // ($k_head, head)
         Any head = p->t;
-        actor_become(e->actor, behavior_new(act_both_0, PR(cust, PR(head, k_tail))));
+        actor_become(SELF(e), behavior_new(act_both_0, PR(cust, PR(head, k_tail))));
     } else if (p->h == k_tail) {  // ($k_tail, tail)
         Any tail = p->t;
-        actor_become(e->actor, behavior_new(act_both_1, PR(cust, PR(k_head, tail))));
+        actor_become(SELF(e), behavior_new(act_both_1, PR(cust, PR(k_head, tail))));
     } else {
         TRACE(fprintf(stderr, "act_both: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 /**
@@ -998,20 +998,20 @@ act_par_0(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_par_0{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->actor->behavior->context;  // ((ok, fail), head_expr, tail_expr)
+    TRACE(fprintf(stderr, "act_par_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = DATA(DATA(SELF(e)));  // ((ok, fail), head_expr, tail_expr)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = p->t;
     Actor head_expr = p->h;
     Actor tail_expr = p->t;
-    Any req = e->message;  // (#eval, env)
-    Actor k_head = actor_new(behavior_new(act_tag, e->actor));
-    Actor k_tail = actor_new(behavior_new(act_tag, e->actor));
+    Any req = MSG(e);  // (#eval, env)
+    Actor k_head = actor_new(behavior_new(act_tag, SELF(e)));
+    Actor k_tail = actor_new(behavior_new(act_tag, SELF(e)));
     config_send(e->sponsor, head_expr, PR(PR(k_head, fail), req));
     config_send(e->sponsor, tail_expr, PR(PR(k_tail, fail), req));
-    actor_become(e->actor, behavior_new(act_both, PR(cust, PR(k_head, k_tail))));
+    actor_become(SELF(e), behavior_new(act_both, PR(cust, PR(k_head, k_tail))));
 }
 /**
 LET par_expr_beh(head_expr, tail_expr) = \msg.[  # parallel evaluation
@@ -1030,9 +1030,9 @@ act_par_expr(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_par_expr{self=%p, msg=%p}\n", e->actor, e->message));
-    Pair exprs = e->actor->behavior->context;  // (head_expr, tail_expr)
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_par_expr{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair exprs = DATA(DATA(SELF(e)));  // (head_expr, tail_expr)
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -1044,7 +1044,7 @@ act_par_expr(Event e)
         config_send(e->sponsor, par_0, p);
     } else {
         TRACE(fprintf(stderr, "act_par_expr: FAIL!\n"));
-        config_send(e->sponsor, fail, e->message);
+        config_send(e->sponsor, fail, MSG(e));
     }
 }
 
@@ -1065,8 +1065,8 @@ act_oper_true(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_oper_true{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_oper_true{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -1076,15 +1076,15 @@ act_oper_true(Event e)
         Actor opnd = p->h;
         Actor env = p->t;
 //        if (act_pair == opnd->behavior->action) {
-        if (act_pair == opnd->behavior->_meth.code) {
+        if (act_pair == CODE(DATA(opnd))) {
             // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
-            p = opnd->behavior->context;  // (expr, _)
+            p = DATA(DATA(opnd));  // (expr, _)
             Actor expr = p->h;
             TRACE(fprintf(stderr, "act_oper_true: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
             config_send(e->sponsor, expr, PR(cust, PR(s_eval, env)));
         } else {
             TRACE(fprintf(stderr, "act_oper_true: FAIL! (non-pair arg)\n"));
-            config_send(e->sponsor, fail, e->message);
+            config_send(e->sponsor, fail, MSG(e));
         }
     } else {
         act_value(e);  // delegate
@@ -1107,8 +1107,8 @@ act_oper_false(Event e)
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_oper_false{self=%p, msg=%p}\n", e->actor, e->message));
-    p = e->message;  // ((ok, fail), req)
+    TRACE(fprintf(stderr, "act_oper_false{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    p = MSG(e);  // ((ok, fail), req)
     Pair cust = p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -1118,15 +1118,15 @@ act_oper_false(Event e)
         Actor opnd = p->h;
         Actor env = p->t;
 //        if (act_pair == opnd->behavior->action) {
-        if (act_pair == opnd->behavior->_meth.code) {
+        if (act_pair == CODE(DATA(opnd))) {
             // WARNING!  TIGHT-COUPLING TO THE IMPLEMENTATION OF ENCAPSULATED PAIRS
-            p = opnd->behavior->context;  // (_, expr)
+            p = DATA(DATA(opnd));  // (_, expr)
             Actor expr = p->t;
             TRACE(fprintf(stderr, "act_oper_false: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
             config_send(e->sponsor, expr, PR(cust, PR(s_eval, env)));
         } else {
             TRACE(fprintf(stderr, "act_oper_false: FAIL! (non-pair arg)\n"));
-            config_send(e->sponsor, fail, e->message);
+            config_send(e->sponsor, fail, MSG(e));
         }
     } else {
         act_value(e);  // delegate
@@ -1207,9 +1207,9 @@ universe_init(Config cfg)
 static inline void
 act_expect(Event e)
 {
-    TRACE(fprintf(stderr, "act_expect{self=%p, msg=%p}\n", e->actor, e->message));
-    Any expect = e->actor->behavior->context;
-    Any actual = e->message;
+    TRACE(fprintf(stderr, "act_expect{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Any expect = DATA(DATA(SELF(e)));
+    Any actual = MSG(e);
     if (expect != actual) {
         TRACE(fprintf(stderr, "act_expect: %p != %p\n", expect, actual));
         halt("unexpected");
