@@ -74,7 +74,7 @@ fx_oneshot(Event e)
     Actor a_begin = actor_new(behavior_new(act_begin, a_send));
     TRACE(fprintf(stderr, "fx_oneshot: delegate=%p\n", a_begin));
     // become sink
-    actor_become(SELF(e), &sink_behavior);
+    actor_become(SELF(e), a_sink);
     // invoke delegate
     config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }

@@ -53,16 +53,16 @@ extern Actor s_lookup;
 extern Actor s_bind;
 extern Actor s_comb;
 
-extern void     act_value(Event e);  // ()
+extern void     beh_value(Event e);
 extern void     act_scope(Event e);  // (dict, parent)
 extern void     act_bind_ptrn(Event e);  // (name)
-extern void     act_name(Event e);  // (value)
+extern void     beh_name(Event e);
 extern void     act_comb(Event e);  // (oper, opnd)
-extern void     act_appl(Event e);  // (comb)
+extern void     val_appl(Event e);  // (comb)
 extern void     act_oper(Event e);  // (env_s, form, evar, body)
 extern void     act_vau(Event e);  // (form, evar, body)
 extern void     act_lambda(Event e);  // (form, body)
-extern void     act_eq_ptrn(Event e);  // (value)
+extern void     val_eq_ptrn(Event e);  // (value)
 extern void     act_pair(Event e);  // (head, tail)
 extern void     act_pair_ptrn(Event e);  // (h_ptrn, t_ptrn)
 extern void     act_seq_expr(Event e);  // (head_expr, tail_expr)

@@ -43,6 +43,8 @@ THE SOFTWARE.
 #define NEWxN(T,N)  ((T *)calloc(sizeof(T), (N)))
 #define FREE(p)     ((p) = (free(p), NULL))
 
+#define BEH(o)      (((Method)(o))->code)
+
 typedef void * Any;
 typedef struct method METHOD, *Method;
 typedef struct event EVENT, *Event;

@@ -80,7 +80,7 @@ LET bind_ptrn_beh(name) = \msg.[
     END
 ]
 
-LET name_beh(value) = \msg.[
+LET name_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, env) : [ SEND ((ok, fail), #lookup, SELF) TO env ]
@@ -168,17 +168,17 @@ LET lambda_beh(form, body) = \msg.[
     END
 ]
 
-CREATE s_x WITH name_beh("x")
-CREATE s_e WITH name_beh("e")
+CREATE s_x WITH name_beh
+CREATE s_e WITH name_beh
 CREATE oper_eval_form WITH pair_ptrn_beh(
 	NEW bind_ptrn_beh(s_x), 
 	NEW bind_ptrn_beh(s_e))
-LET oper_eval_beh(form, s_x, s_e) = \msg.[
+LET oper_eval_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
 	CASE req OF
 	(#comb, opnd, env_d) : [
         CREATE scope WITH scope_beh(dict_new(), env_d)  # NOTE: env_d not used
-        SEND ((oper_0, fail), #match, opnd, scope) TO form
+        SEND ((oper_0, fail), #match, opnd, scope) TO oper_eval_form
         CREATE oper_0 WITH \env_p.[
 			SEND ((oper_1, fail), #lookup, s_x) TO env_p;
 			CREATE oper_1 WITH \x.[
@@ -237,7 +237,7 @@ LET case_ptrn_beh(error, ptrn, var, expr) = \msg.[
 ]
 
 LET (pair_beh, pair_ptrn_beh) = $(
-	LET brand = NEW value_beh() IN
+	LET brand = NEW value_beh IN
 	LET factory(head, tail) = \msg.[
 		LET ((ok, fail), req) = $msg IN
 		CASE req OF
@@ -321,7 +321,7 @@ LET par_expr_beh(head_expr, tail_expr) = \msg.[  # parallel evaluation
 #
 # test case: (\x.x)(#t) -> #t
 #
-CREATE s_x WITH name_beh(#x)
+CREATE s_x WITH name_beh
 CREATE I WITH lambda_beh(NEW bind_ptrn_beh(s_x), s_x)
 CREATE expr WITH comb_beh(I, #t)
 LET expect_beh(expect) = \actual.[

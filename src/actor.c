@@ -40,6 +40,7 @@ actor_new(Behavior beh)
 inline void
 actor_become(Actor a, Behavior beh)
 {
+    if (!SERIAL(a)) { halt("actor_become: unserialized actor"); }
     DATA(a) = beh;
 }
 
@@ -104,25 +105,26 @@ config_dispatch(Config cfg)
         return 0;
     }
     Event e = deque_take(cfg->event_q);
-    TRACE(fprintf(stderr, "config_dispatch: actor=%p, event=%p\n", e->actor, e));
+    TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
     (CODE(SELF(e)))(e);  // INVOKE ACTOR METHOD
     return 1;
 }
 
 static void
-act_sink(Event e)
+beh_sink(Event e)
 {
-    TRACE(fprintf(stderr, "act_sink{self=%p, msg=%p}\n", e->actor, e->message));
+    TRACE(fprintf(stderr, "beh_sink{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
 
 void
 act_serial(Event e)  // "serialized" actor behavior
 {
-    TRACE(fprintf(stderr, "act_serial{self=%p, msg=%p}\n", e->actor, e->message));
+    TRACE(fprintf(stderr, "act_serial{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     (CODE(DATA(SELF(e))))(e);  // INVOKE BEHAVIOR METHOD
 }
 
-ACTOR halt_actor = { { meth_halt }, &halt_actor };
+ACTOR halt_actor = { { beh_halt }, &halt_actor };
 
-BEHAVIOR sink_behavior = { { act_sink }, NOTHING };
-ACTOR sink_actor = { { act_serial }, &sink_behavior };
+//BEHAVIOR sink_behavior = { { beh_sink }, NOTHING };
+//ACTOR sink_actor = { { act_serial }, &sink_behavior };
+ACTOR sink_actor = { { beh_sink }, NOTHING };

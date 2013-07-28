@@ -53,7 +53,7 @@ act_oneshot(Event e)
     Actor a = DATA(DATA(SELF(e)));  // target
     Any m = MSG(e);  // message
     config_send(e->sponsor, a, m);
-    actor_become(SELF(e), &sink_behavior);
+    actor_become(SELF(e), a_sink);
 }
 
 /**

@@ -38,9 +38,13 @@ typedef struct actor ACTOR, *Actor, BEHAVIOR, *Behavior;
 #define SELF(e) (((Event)(e))->actor)
 #define CODE(a) (((Actor)(a))->_meth.code)
 #define DATA(a) (((Actor)(a))->context)
+#define STATE(a) (DATA(DATA(a)))
+#define SERIAL(a) (act_serial == CODE(a))
+
+#define value_new(b,d) behavior_new((b),(d))
 
 #define a_halt (&halt_actor)
-#define a_sink (&sink_behavior)
+#define a_sink (&sink_actor)
 
 #define NOTHING (a_halt)
 
@@ -78,7 +82,7 @@ extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern ACTOR halt_actor;
 
-extern BEHAVIOR sink_behavior;
+//extern BEHAVIOR sink_behavior;
 extern ACTOR sink_actor;
 
 #endif /* _ACTOR_H_ */
