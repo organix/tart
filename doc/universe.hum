@@ -237,7 +237,7 @@ LET case_ptrn_beh(error, ptrn, var, expr) = \msg.[
 ]
 
 LET (pair_beh, pair_ptrn_beh) = $(
-	LET brand = NEW value_beh IN
+	LET brand = $(NEW value_beh) IN
 	LET factory(head, tail) = \msg.[
 		LET ((ok, fail), req) = $msg IN
 		CASE req OF

@@ -713,7 +713,7 @@ val_choice_ptrn(Event e)
 
 /**
 LET (pair_beh, pair_ptrn_beh) = $(
-	LET brand = NEW value_beh IN
+	LET brand = $(NEW value_beh) IN
 **/
 static VALUE pair_brand_actor = { { beh_value }, NOTHING };
 /**
