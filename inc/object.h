@@ -29,6 +29,7 @@ THE SOFTWARE.
 #define _OBJECT_H_
 
 #include "tart.h"
+#include "actor.h"
 
 typedef struct object OBJECT, *Object;
 typedef struct kind KIND, *Kind;

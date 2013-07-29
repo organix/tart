@@ -29,7 +29,6 @@ THE SOFTWARE.
 #define _UNIVERSE_H_
 
 #include "tart.h"
-#include "pair.h"
 #include "actor.h"
 
 #define a_fail (&fail_actor)

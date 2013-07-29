@@ -29,7 +29,6 @@ THE SOFTWARE.
 #define _EFFECT_H_
 
 #include "tart.h"
-#include "pair.h"
 #include "actor.h"
 
 typedef struct effect EFFECT, *Effect;

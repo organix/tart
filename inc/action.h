@@ -29,7 +29,6 @@ THE SOFTWARE.
 #define _ACTION_H_
 
 #include "tart.h"
-#include "pair.h"
 #include "actor.h"
 
 extern void     val_forward(Event e);

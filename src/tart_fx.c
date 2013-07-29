@@ -27,8 +27,8 @@ THE SOFTWARE.
 */
 
 #include "tart.h"
-#include "pair.h"
 #include "actor.h"
+#include "object.h"
 #include "effect.h"
 
 void
@@ -138,6 +138,7 @@ test_effect()
 void
 run_tests()
 {
+    test_object();
     test_effect();
 }
 

@@ -27,8 +27,6 @@ THE SOFTWARE.
 */
 
 #include "tart.h"
-#include "object.h"
-#include "pair.h"
 #include "actor.h"
 #include "action.h"
 #include "universe.h"
@@ -50,7 +48,6 @@ void
 run_tests()
 {
     test_action();
-    test_object();
     test_universe();
 }
 

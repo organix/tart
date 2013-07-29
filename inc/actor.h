@@ -29,10 +29,14 @@ THE SOFTWARE.
 #define _ACTOR_H_
 
 #include "tart.h"
-#include "pair.h"
 
-typedef struct config CONFIG, *Config;
+typedef struct pair PAIR, *Pair;
 typedef struct actor ACTOR, *Actor;
+typedef struct config CONFIG, *Config;
+
+#define NIL (&the_nil_pair)
+#define PR(h,t) pair_new((h),(t))
+#define NOTHING (a_halt)
 
 #define MSG(e)  (((Event)(e))->message)
 #define SELF(e) (((Event)(e))->actor)
@@ -44,7 +48,11 @@ typedef struct actor ACTOR, *Actor;
 #define a_halt (&halt_actor)
 #define a_sink (&sink_actor)
 
-#define NOTHING (a_halt)
+struct pair {
+    BEHAVIOR    _beh;
+    Any         h;          // head
+    Any         t;          // tail
+};
 
 struct actor {
     BEHAVIOR    _beh;       // code
@@ -62,6 +70,26 @@ struct config {
     Pair        actors;     // list of actors created
 };
 
+extern Pair     pair_new(Any h, Any t);
+
+extern Pair     list_new();
+extern int      list_empty_p(Pair list);
+extern Pair     list_pop(Pair list);
+extern Pair     list_push(Pair list, Any item);
+
+extern Pair     deque_new();
+extern int      deque_empty_p(Pair q);
+extern void     deque_give(Pair q, Any item);
+extern Any      deque_take(Pair q);
+extern void     deque_return(Pair q, Any item);
+extern Any      deque_lookup(Pair q, int i);
+extern void     deque_bind(Pair q, int i, Any item);
+
+extern Pair     dict_new();
+extern int      dict_empty_p(Pair dict);
+extern Any      dict_lookup(Pair dict, Any key);
+extern Pair     dict_bind(Pair dict, Any key, Any value);
+
 extern Actor    value_new(Action beh, Any data);
 
 extern Actor    actor_new(Action beh, Any data);
@@ -75,8 +103,11 @@ extern void     config_enlist(Config cfg, Actor a);
 extern void     config_send(Config cfg, Actor target, Any msg);
 extern int      config_dispatch(Config cfg);
 
+extern void     beh_halt(Event e);
+extern void     beh_pair(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
+extern PAIR the_nil_pair;
 extern ACTOR halt_actor;
 extern ACTOR sink_actor;
 

@@ -27,7 +27,6 @@ THE SOFTWARE.
 */
 
 #include "object.h"
-#include "pair.h"  // Scope is implemented with dictionary, and Array uses deque
 
 struct cache {
     int         n;  // number of entries in use
