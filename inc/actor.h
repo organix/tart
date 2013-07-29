@@ -45,8 +45,8 @@ typedef struct config CONFIG, *Config;
 #define STATE(a) DATA(DATA(a))
 #define SERIAL(a) (act_serial == CODE(a))
 
-#define a_halt (&halt_actor)
-#define a_sink (&sink_actor)
+#define a_halt (&the_halt_actor)
+#define a_ignore (&the_ignore_actor)
 
 struct pair {
     BEHAVIOR    _beh;
@@ -108,7 +108,7 @@ extern void     beh_pair(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern PAIR the_nil_pair;
-extern ACTOR halt_actor;
-extern ACTOR sink_actor;
+extern ACTOR the_halt_actor;
+extern ACTOR the_ignore_actor;
 
 #endif /* _ACTOR_H_ */

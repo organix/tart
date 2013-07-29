@@ -265,10 +265,10 @@ act_serial(Event e)  // "serialized" actor behavior
 }
 
 static void
-beh_sink(Event e)
+beh_ignore(Event e)
 {
-    TRACE(fprintf(stderr, "beh_sink{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    TRACE(fprintf(stderr, "beh_ignore{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
 
-ACTOR halt_actor = { { beh_halt }, &halt_actor };
-ACTOR sink_actor = { { beh_sink }, NOTHING };
+ACTOR the_halt_actor = { { beh_halt }, &the_halt_actor };
+ACTOR the_ignore_actor = { { beh_ignore }, NOTHING };

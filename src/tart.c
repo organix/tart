@@ -47,6 +47,11 @@ halt(char * msg)
 void
 run_tests()
 {
+    TRACE(fprintf(stderr, "---- tart unit tests ----\n"));
+    TRACE(fprintf(stderr, "NIL = %p\n", NIL));
+    TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
+    TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
+    TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
     test_action();
     test_universe();
 }

@@ -33,6 +33,8 @@ THE SOFTWARE.
 
 typedef struct effect EFFECT, *Effect;
 
+#define a_commit (&commit_actor)
+
 struct effect {
     Config      sponsor;    // sponsor configuration
     Actor       self;       // currently active (meta-)actor

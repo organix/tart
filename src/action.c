@@ -53,7 +53,7 @@ act_oneshot(Event e)  // SERIALIZED
     Actor a = STATE(SELF(e));  // target
     Any m = MSG(e);  // message
     config_send(e->sponsor, a, m);
-    actor_become(SELF(e), a_sink);
+    actor_become(SELF(e), a_ignore);
 }
 
 /**
@@ -235,14 +235,11 @@ void
 test_action()
 {
     TRACE(fprintf(stderr, "---- test_action ----\n"));
-    TRACE(fprintf(stderr, "NIL = %p\n", NIL));
-    TRACE(fprintf(stderr, "&sink_actor = %p\n", &sink_actor));
-    TRACE(fprintf(stderr, "a_sink = %p\n", a_sink));
     Config cfg = config_new();
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
 
     // forwarding example
-    Actor a_once = actor_new(act_oneshot, a_sink);
+    Actor a_once = actor_new(act_oneshot, a_ignore);
     TRACE(fprintf(stderr, "a_once = %p\n", a_once));    
     Actor a_fwd = value_new(val_forward, a_once);
     TRACE(fprintf(stderr, "a_fwd = %p\n", a_fwd));
