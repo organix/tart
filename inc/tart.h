@@ -43,41 +43,8 @@ THE SOFTWARE.
 #define NEWxN(T,N)  ((T *)calloc(sizeof(T), (N)))
 #define FREE(p)     ((p) = (free(p), NULL))
 
-#define BEH(o)      (((Behavior)(o))->code)
-
 typedef void * Any;
-typedef struct behavior BEHAVIOR, *Behavior;
-typedef struct event EVENT, *Event;
 
-typedef void (*Action)(Event e);
-
-struct behavior {
-    Action      code;
-};
 extern void     halt(char * msg);
-
-/**
-Behavior  [*|...]
-           |
-           V
-          CODE
-
-Value     [*|*]
-           | +--> DATA
-           V
-          CODE
-
-Actor     [*|*]
-           | +--> [*|*]
-           V       | +--> DATA
-      act_serial   V
-                  CODE
-
-Pair      [*|*|*]
-           | | +--> tail
-           | +--> head
-           V
-        val_pair
-**/
 
 #endif /* _TART_H_ */

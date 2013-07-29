@@ -193,21 +193,32 @@ dict_bind(Pair dict, Any key, Any value)
 inline Actor
 value_new(Action beh, Any data)  // create a "unserialized" (value) actor
 {
-    Actor a = NEW(ACTOR);
-    CODE(a) = beh;
-    DATA(a) = data;
-    return a;
+    Value v = NEW(VALUE);
+    CODE(v) = beh;
+    DATA(v) = data;
+    return (Actor)v;
 }
 inline Actor
-actor_new(Action beh, Any data)  // create a "serialized" actor
+serial_new(Action beh, Any data)  // create a "serialized" actor
 {
-    return value_new(act_serial, value_new(beh, data));
+    Serial s = NEW(SERIAL);
+    BEH(s) = act_serial;
+    VALUE(s) = value_new(beh, data);
+    return (Actor)s;
+}
+inline Actor
+serial_with_value(Actor v)  // create a "serialized" actor with "behavior" value
+{
+    Serial s = NEW(SERIAL);
+    BEH(s) = act_serial;
+    VALUE(s) = v;
+    return (Actor)s;
 }
 inline void
-actor_become(Actor a, Actor v)
+actor_become(Actor s, Actor v)
 {
-    if (!SERIAL(a)) { halt("actor_become: serialized actor required"); }
-    DATA(a) = v;  // an "unserialzed" behavior actor is the data
+    if (act_serial != BEH(s)) { halt("actor_become: serialized actor required"); }
+    VALUE(s) = v;  // an "unserialzed" behavior actor
 }
 
 inline Event
@@ -253,7 +264,7 @@ config_dispatch(Config cfg)
     }
     Event e = deque_take(cfg->event_q);
     TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
-    (CODE(SELF(e)))(e);  // INVOKE ACTOR METHOD
+    (CODE(SELF(e)))(e);  // INVOKE BEHAVIOR
     return 1;
 }
 
@@ -261,7 +272,7 @@ void
 act_serial(Event e)  // "serialized" actor behavior
 {
     TRACE(fprintf(stderr, "act_serial{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    (CODE(DATA(SELF(e))))(e);  // INVOKE BEHAVIOR METHOD
+    (STRATEGY(SELF(e)))(e);  // INVOKE SERIALIZED BEHAVIOR
 }
 
 static void
@@ -270,5 +281,5 @@ beh_ignore(Event e)
     TRACE(fprintf(stderr, "beh_ignore{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
 
-ACTOR the_halt_actor = { { beh_halt }, &the_halt_actor };
-ACTOR the_ignore_actor = { { beh_ignore }, NOTHING };
+VALUE the_halt_actor = { { beh_halt }, &the_halt_actor };
+VALUE the_ignore_actor = { { beh_ignore }, NOTHING };

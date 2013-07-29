@@ -33,7 +33,8 @@ THE SOFTWARE.
 
 typedef struct effect EFFECT, *Effect;
 
-#define a_commit (&commit_actor)
+#define b_busy ((Actor)(&busy_behavior))
+#define a_commit ((Actor)(&commit_actor))
 
 struct effect {
     Config      sponsor;    // sponsor configuration
@@ -43,7 +44,7 @@ struct effect {
     Actor       behavior;   // replacement behavior
 };
 
-extern Effect   effect_new(Config cfg, Actor a);
+extern Effect   effect_new(Config cfg, Actor s);
 extern void     effect_send(Effect fx, Actor target, Any msg);
 extern void     effect_create(Effect fx, Actor beh);
 extern void     effect_become(Effect fx, Actor beh);
@@ -56,8 +57,8 @@ extern void     act_create(Event e);
 extern void     act_become(Event e);
 extern void     act_commit(Event e);
 
-extern ACTOR busy_behavior;
-extern ACTOR commit_behavior;
-extern ACTOR commit_actor;
+extern VALUE busy_behavior;
+extern VALUE commit_behavior;
+extern SERIAL commit_actor;
 
 #endif /* _EFFECT_H_ */

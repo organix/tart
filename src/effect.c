@@ -29,14 +29,15 @@ THE SOFTWARE.
 #include "effect.h"
 
 inline Effect
-effect_new(Config cfg, Actor a)
+effect_new(Config cfg, Actor s)
 {
+    if (act_serial != BEH(s)) { halt("effect_new: serialized actor required"); }
     Effect fx = NEW(EFFECT);
     fx->sponsor = cfg;
-    fx->self = a;
+    fx->self = s;
     fx->actors = NIL;
     fx->events = NIL;
-    fx->behavior = a->context;
+    fx->behavior = VALUE(s);  // an "unserialzed" behavior actor
     return fx;
 }
 
@@ -49,13 +50,13 @@ effect_send(Effect fx, Actor target, Any msg)
 inline void
 effect_create(Effect fx, Actor beh)
 {
-    fx->actors = list_push(fx->actors, value_new(act_serial, beh));
+    fx->actors = list_push(fx->actors, serial_with_value(beh));
 }
 
 inline void
 effect_become(Effect fx, Actor beh)
 {
-    fx->behavior = beh;
+    fx->behavior = beh;  // an "unserialzed" behavior actor
 }
 
 inline void
@@ -87,7 +88,7 @@ act_busy(Event e)
     // re-queue event
     config_enqueue(e->sponsor, e);
 }
-ACTOR busy_behavior = { { act_busy }, NOTHING };
+VALUE busy_behavior = { { act_busy }, NOTHING };
 
 /**
 LET begin_beh(cust) = \_.[
@@ -105,7 +106,7 @@ act_begin(Event e)
     // trigger continuation
     config_send(e->sponsor, cust, fx);
     // become busy
-    actor_become(SELF(e), &busy_behavior);
+    actor_become(SELF(e), b_busy);
 }
 
 /**
@@ -181,5 +182,5 @@ act_commit(Event e)
     TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     effect_commit(MSG(e));
 }
-ACTOR commit_behavior = { { act_commit }, NOTHING };
-ACTOR commit_actor = { { act_serial }, &commit_behavior };
+VALUE commit_behavior = { { act_commit }, NOTHING };
+SERIAL commit_actor = { { act_serial }, (Actor)&commit_behavior };

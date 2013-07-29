@@ -30,33 +30,73 @@ THE SOFTWARE.
 
 #include "tart.h"
 
-typedef struct pair PAIR, *Pair;
+/**
+Actor  [*|...]
+        |
+        V
+       BEH
+
+Value  [*|*]
+        | +--> DATA
+        V
+       CODE
+
+Serial [*|*]
+        | +--> [*|*]
+        V       | +--> DATA
+   act_serial   V
+               CODE
+
+Pair   [*|*|*]
+        | | +--> tail
+        | +--> head
+        V
+     beh_pair
+**/
+
 typedef struct actor ACTOR, *Actor;
+typedef struct pair PAIR, *Pair;
+typedef struct value VALUE, *Value;
+typedef struct serial SERIAL, *Serial;
+typedef struct event EVENT, *Event;
 typedef struct config CONFIG, *Config;
+
+typedef void (*Action)(Event e);
 
 #define NIL (&the_nil_pair)
 #define PR(h,t) pair_new((h),(t))
 #define NOTHING (a_halt)
 
-#define MSG(e)  (((Event)(e))->message)
-#define SELF(e) (((Event)(e))->actor)
-#define CODE(a) BEH(a)
-#define DATA(a) (((Actor)(a))->context)
-#define STATE(a) DATA(DATA(a))
-#define SERIAL(a) (act_serial == CODE(a))
+#define BEH(a)      (((Actor)(a))->beh)
+#define MSG(e)      (((Event)(e))->message)
+#define SELF(e)     (((Event)(e))->actor)
+#define CODE(v)     BEH(v)
+#define DATA(v)     (((Value)(v))->data)
+#define VALUE(s)    (((Serial)(s))->value)
+#define STRATEGY(s) CODE(VALUE(s))
+#define STATE(s)    DATA(VALUE(s))
 
-#define a_halt (&the_halt_actor)
-#define a_ignore (&the_ignore_actor)
-
-struct pair {
-    BEHAVIOR    _beh;
-    Any         h;          // head
-    Any         t;          // tail
-};
+#define a_halt ((Actor)(&the_halt_actor))
+#define a_ignore ((Actor)(&the_ignore_actor))
 
 struct actor {
-    BEHAVIOR    _beh;       // code
-    Any         context;    // data
+    Action      beh;
+};
+
+struct pair {
+    ACTOR       _act;
+    Any         h;
+    Any         t;
+};
+
+struct value {
+    ACTOR       _act;
+    Any         data;
+};
+
+struct serial {
+    ACTOR       _act;
+    Actor       value;
 };
 
 struct event {
@@ -92,8 +132,9 @@ extern Pair     dict_bind(Pair dict, Any key, Any value);
 
 extern Actor    value_new(Action beh, Any data);
 
-extern Actor    actor_new(Action beh, Any data);
-extern void     actor_become(Actor a, Actor v);
+extern Actor    serial_new(Action beh, Any data);
+extern Actor    serial_with_value(Actor v);
+extern void     actor_become(Actor s, Actor v);
 
 extern Event    event_new(Config cfg, Actor a, Any msg);
 
@@ -108,7 +149,7 @@ extern void     beh_pair(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern PAIR the_nil_pair;
-extern ACTOR the_halt_actor;
-extern ACTOR the_ignore_actor;
+extern VALUE the_halt_actor;
+extern VALUE the_ignore_actor;
 
 #endif /* _ACTOR_H_ */

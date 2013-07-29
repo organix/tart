@@ -50,8 +50,8 @@ fx_forward(Event e)
     Actor a = STATE(SELF(e));  // target
     Any m = MSG(e);  // message
     Pair args = PR(a_commit, PR(a, m));  // (cust, target, message)
-    Actor a_send = actor_new(act_send, args);
-    Actor a_begin = actor_new(act_begin, a_send);
+    Actor a_send = serial_new(act_send, args);
+    Actor a_begin = serial_new(act_begin, a_send);
     TRACE(fprintf(stderr, "fx_forward: delegate=%p\n", a_begin));
     // invoke delegate
     config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
@@ -70,8 +70,8 @@ fx_oneshot(Event e)
     Actor a = STATE(SELF(e));  // target
     Any m = MSG(e);  // message
     Pair args = PR(a_commit, PR(a, m));  // (cust, target, message)
-    Actor a_send = actor_new(act_send, args);
-    Actor a_begin = actor_new(act_begin, a_send);
+    Actor a_send = serial_new(act_send, args);
+    Actor a_begin = serial_new(act_begin, a_send);
     TRACE(fprintf(stderr, "fx_oneshot: delegate=%p\n", a_begin));
     // become sink
     actor_become(SELF(e), a_ignore);
@@ -89,8 +89,8 @@ fx_tag(Event e)
     Actor cust = STATE(SELF(e));  // cust
     Any msg = MSG(e);  // msg
     Pair args = PR(a_commit, PR(cust, PR(SELF(e), msg)));  // (cust, target, message)
-    Actor a_send = actor_new(act_send, args);
-    Actor a_begin = actor_new(act_begin, a_send);
+    Actor a_send = serial_new(act_send, args);
+    Actor a_begin = serial_new(act_begin, a_send);
     TRACE(fprintf(stderr, "fx_tag: delegate=%p\n", a_begin));
     // invoke delegate
     config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
@@ -117,15 +117,15 @@ test_effect()
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
 
     // forwarding example
-    Actor a_tag = actor_new(fx_tag, a_ignore);
+    Actor a_tag = serial_new(fx_tag, a_ignore);
     TRACE(fprintf(stderr, "a_tag = %p\n", a_tag));    
-    Actor a_once = actor_new(fx_oneshot, a_ignore);
+    Actor a_once = serial_new(fx_oneshot, a_ignore);
     TRACE(fprintf(stderr, "a_once = %p\n", a_once));    
-    Actor a_fwd = actor_new(fx_forward, a_once);
+    Actor a_fwd = serial_new(fx_forward, a_once);
     TRACE(fprintf(stderr, "a_fwd = %p\n", a_fwd));
     Pair args = PR(a_commit, PR(a_fwd, NIL));  // (cust, target, message)
-    Actor a = actor_new(act_send, args);
-    Actor a_doit = actor_new(act_begin, a);
+    Actor a = serial_new(act_send, args);
+    Actor a_doit = serial_new(act_begin, a);
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     config_send(cfg, a_doit, a_once);
     config_send(cfg, a_doit, a_tag);

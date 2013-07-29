@@ -39,7 +39,7 @@ beh_fail(Event e)
     TRACE(fprintf(stderr, "beh_fail{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     halt("FAIL!");
 }
-ACTOR fail_actor = { { beh_fail }, NOTHING };
+VALUE fail_actor = { { beh_fail }, NOTHING };
 
 /**
 CREATE empty_env WITH \msg.[
@@ -68,7 +68,7 @@ beh_empty_env(Event e)
         beh_value(e);
     }
 }
-ACTOR empty_env_actor = { { beh_empty_env }, NOTHING };
+VALUE empty_env_actor = { { beh_empty_env }, NOTHING };
 
 /**
 LET value_beh = \msg.[
@@ -120,23 +120,23 @@ LET scope_beh(dict, parent) = \msg.[
 ]
 **/
 void
-act_scope(Event e)  // SERIALIZED
+ser_scope(Event e)  // SERIALIZED
 {
     Pair p;
 
-    TRACE(fprintf(stderr, "act_scope{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    TRACE(fprintf(stderr, "ser_scope{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = STATE(SELF(e));  // (dict, parent)
     Pair dict = p->h;
     Actor parent = p->t;
     p = MSG(e);  // ((ok, fail), req)
     Actor ok = ((Pair)p->h)->h;
     Actor fail = ((Pair)p->h)->t;
-    TRACE(fprintf(stderr, "act_scope: ok=%p, fail=%p\n", ok, fail));
+    TRACE(fprintf(stderr, "ser_scope: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
         Any value = dict_lookup(dict, name);
-        TRACE(fprintf(stderr, "act_scope: (#lookup, %p \"%s\") -> %p\n", name, DATA(DATA(name)), value));
+        TRACE(fprintf(stderr, "ser_scope: (#lookup, %p \"%s\") -> %p\n", name, DATA(DATA(name)), value));
         if (value == NULL) {
             config_send(e->sponsor, parent, MSG(e));
         } else {
@@ -146,9 +146,9 @@ act_scope(Event e)  // SERIALIZED
         p = p->t;
         Actor name = p->h;
         Any value = p->t;
-        TRACE(fprintf(stderr, "act_scope: (#bind, %p, %p)\n", name, value));
+        TRACE(fprintf(stderr, "ser_scope: (#bind, %p, %p)\n", name, value));
         dict = dict_bind(dict, name, value);
-//        actor_become(SELF(e), value_new(act_scope, PR(dict, parent)));  -- see next two lines for equivalent
+//        actor_become(SELF(e), value_new(ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
         p = STATE(SELF(e));  // (dict, parent)
         p->h = dict;  // WARNING! this directly manipulates the data in this behavior
         config_send(e->sponsor, ok, SELF(e));
@@ -189,7 +189,7 @@ beh_skip_ptrn(Event e)
 /**
 CREATE skip_ptrn WITH skip_ptrn_beh
 **/
-ACTOR skip_ptrn_actor = { { beh_skip_ptrn }, NOTHING };
+VALUE skip_ptrn_actor = { { beh_skip_ptrn }, NOTHING };
 
 /**
 LET bind_ptrn_beh(name) = \msg.[
@@ -451,7 +451,7 @@ val_oper(Event e)
         p = p->t;
         Actor opnd = p->h;
         Actor env_d = p->t;
-        Actor scope = actor_new(act_scope, PR(dict_new(), env_s));
+        Actor scope = serial_new(ser_scope, PR(dict_new(), env_s));
         TRACE(fprintf(stderr, "val_oper: opnd=%p, env_d=%p, scope=%p\n", opnd, env_d, scope));
         if (a_skip_ptrn == evar) {  // optimize "lambda" case
             Actor oper_1 = value_new(val_oper_1, PR(cust, body));
@@ -599,13 +599,13 @@ beh_oper_eval(Event e)
 CREATE oper_eval WITH oper_eval_beh
 CREATE appl_eval WITH appl_beh(oper_eval);
 **/
-static ACTOR oper_eval_actor = { { beh_oper_eval }, NOTHING };
-ACTOR appl_eval_actor = { { val_appl }, &oper_eval_actor };
+static VALUE oper_eval_actor = { { beh_oper_eval }, NOTHING };
+SERIAL appl_eval_actor = { { val_appl }, (Actor)&oper_eval_actor };
 
 /**
 CREATE empty WITH value_beh
 **/
-ACTOR empty_actor = { { beh_value }, NOTHING };
+VALUE empty_actor = { { beh_value }, NOTHING };
 /**
 LET eq_ptrn_beh(value) = \msg.[
     LET ((ok, fail), req) = $msg IN
@@ -645,7 +645,7 @@ val_eq_ptrn(Event e)
 /**
 CREATE empty_ptrn WITH eq_ptrn_beh(empty)
 **/
-ACTOR empty_ptrn_actor = { { val_eq_ptrn }, a_empty };
+VALUE empty_ptrn_actor = { { val_eq_ptrn }, a_empty };
 
 /**
 LET choice_ptrn_0_beh((ok, fail), value, env, ptrn) = \_.[
@@ -666,7 +666,7 @@ val_choice_ptrn_0(Event e)
     p = p->t;
     Actor env = p->h;
     Actor ptrn = p->t;
-    Actor scope = actor_new(act_scope, PR(dict_new(), env));
+    Actor scope = serial_new(ser_scope, PR(dict_new(), env));
     TRACE(fprintf(stderr, "val_choice_ptrn_0: ok=%p, fail=%p, value=%p, scope=%p, ptrn=%p\n", cust->h, cust->t, value, scope, ptrn));
     config_send(e->sponsor, ptrn, PR(cust, PR(s_match, PR(value, scope))));
 }
@@ -715,7 +715,7 @@ val_choice_ptrn(Event e)
 LET (pair_beh, pair_ptrn_beh) = $(
 	LET brand = NEW value_beh IN
 **/
-static ACTOR pair_brand_actor = { { beh_value }, NOTHING };
+static VALUE pair_brand_actor = { { beh_value }, NOTHING };
 /**
     LET pair_0_beh((ok, fail), t_ptrn, tail) = \env_0.[
         SEND ((ok, fail), #match, tail, env_0) TO t_ptrn
@@ -1041,7 +1041,7 @@ val_par_expr(Event e)
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_par_expr: (#eval, %p)\n", env));
-        Actor par_0 = actor_new(act_par_0, PR(cust, exprs));
+        Actor par_0 = serial_new(act_par_0, PR(cust, exprs));
         config_send(e->sponsor, par_0, p);
     } else {
         TRACE(fprintf(stderr, "val_par_expr: FAIL!\n"));

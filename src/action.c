@@ -239,7 +239,7 @@ test_action()
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
 
     // forwarding example
-    Actor a_once = actor_new(act_oneshot, a_ignore);
+    Actor a_once = serial_new(act_oneshot, a_ignore);
     TRACE(fprintf(stderr, "a_once = %p\n", a_once));    
     Actor a_fwd = value_new(val_forward, a_once);
     TRACE(fprintf(stderr, "a_fwd = %p\n", a_fwd));

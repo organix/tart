@@ -31,17 +31,19 @@ THE SOFTWARE.
 #include "tart.h"
 #include "actor.h"
 
-#define a_fail (&fail_actor)
-#define a_empty_env (&empty_env_actor)
-#define a_skip_ptrn (&skip_ptrn_actor)
-#define a_empty (&empty_actor)
-#define a_empty_ptrn (&empty_ptrn_actor)
-#define a_appl_eval (&appl_eval_actor)
+#define a_fail ((Actor)(&fail_actor))
+#define a_empty_env ((Actor)(&empty_env_actor))
+#define a_skip_ptrn ((Actor)(&skip_ptrn_actor))
+#define a_empty ((Actor)(&empty_actor))
+#define a_empty_ptrn ((Actor)(&empty_ptrn_actor))
+#define a_appl_eval ((Actor)(&appl_eval_actor))
 
-extern ACTOR fail_actor;
-extern ACTOR empty_env_actor;
-extern ACTOR skip_ptrn_actor;
-extern ACTOR empty_ptrn_actor;
+extern VALUE fail_actor;
+extern VALUE empty_env_actor;
+extern VALUE skip_ptrn_actor;
+extern VALUE empty_actor;
+extern VALUE empty_ptrn_actor;
+extern SERIAL appl_eval_actor;
 
 extern Actor b_true;
 extern Actor b_false;
@@ -53,7 +55,7 @@ extern Actor s_bind;
 extern Actor s_comb;
 
 extern void     beh_value(Event e);
-extern void     act_scope(Event e);  // (dict, parent) -- SERIALIZED
+extern void     ser_scope(Event e);  // (dict, parent) -- SERIALIZED
 extern void     val_bind_ptrn(Event e);  // (name)
 extern void     beh_name(Event e);
 extern void     val_comb(Event e);  // (oper, opnd)
