@@ -29,28 +29,25 @@ THE SOFTWARE.
 #include "actor.h"
 
 inline Actor
-actor_new(Behavior beh)
+value_new(Action beh, Any data)  // create a "unserialized" (value) actor
 {
     Actor a = NEW(ACTOR);
-    CODE(a) = act_serial;  // create a "serialized" actor
-    DATA(a) = beh;  // a behavior actor is the data
+    CODE(a) = beh;
+    DATA(a) = data;
     return a;
 }
 
-inline void
-actor_become(Actor a, Behavior beh)
+inline Actor
+actor_new(Action beh, Any data)  // create a "serialized" actor
 {
-    if (!SERIAL(a)) { halt("actor_become: unserialized actor"); }
-    DATA(a) = beh;
+    return value_new(act_serial, value_new(beh, data));
 }
 
-inline Behavior
-behavior_new(Action act, Any data)
+inline void
+actor_become(Actor a, Actor v)
 {
-    Behavior b = NEW(BEHAVIOR);
-    CODE(b) = act;
-    DATA(b) = data;
-    return b;
+    if (!SERIAL(a)) { halt("actor_become: serialized actor required"); }
+    DATA(a) = v;  // an "unserialzed" behavior actor is the data
 }
 
 inline Event
@@ -91,12 +88,6 @@ config_send(Config cfg, Actor target, Any msg)
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
 
-inline void
-config_create(Config cfg, Behavior beh)
-{
-    config_enlist(cfg, actor_new(beh));
-}
-
 int
 config_dispatch(Config cfg)
 {
@@ -125,6 +116,4 @@ act_serial(Event e)  // "serialized" actor behavior
 
 ACTOR halt_actor = { { beh_halt }, &halt_actor };
 
-//BEHAVIOR sink_behavior = { { beh_sink }, NOTHING };
-//ACTOR sink_actor = { { act_serial }, &sink_behavior };
 ACTOR sink_actor = { { beh_sink }, NOTHING };

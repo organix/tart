@@ -47,13 +47,13 @@ effect_send(Effect fx, Actor target, Any msg)
 }
 
 inline void
-effect_create(Effect fx, Behavior beh)
+effect_create(Effect fx, Actor beh)
 {
-    fx->actors = list_push(fx->actors, actor_new(beh));
+    fx->actors = list_push(fx->actors, value_new(act_serial, beh));
 }
 
 inline void
-effect_become(Effect fx, Behavior beh)
+effect_become(Effect fx, Actor beh)
 {
     fx->behavior = beh;
 }
@@ -87,8 +87,7 @@ act_busy(Event e)
     // re-queue event
     config_enqueue(e->sponsor, e);
 }
-
-BEHAVIOR busy_behavior = { { act_busy }, NIL };
+ACTOR busy_behavior = { { act_busy }, NOTHING };
 
 /**
 LET begin_beh(cust) = \_.[
@@ -100,7 +99,7 @@ void
 act_begin(Event e)
 {
     TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Actor cust = DATA(DATA(SELF(e)));  // cust
+    Actor cust = STATE(SELF(e));  // cust
     // initialize effects
     Effect fx = effect_new(e->sponsor, SELF(e));
     // trigger continuation
@@ -119,7 +118,7 @@ void
 act_send(Event e)
 {
     TRACE(fprintf(stderr, "act_send{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Pair p = DATA(DATA(SELF(e)));  // (cust, target, message)
+    Pair p = STATE(SELF(e));  // (cust, target, message)
     Actor cust = p->h;
     p = p->t;
     Actor target = p->h;
@@ -141,9 +140,9 @@ void
 act_create(Event e)
 {
     TRACE(fprintf(stderr, "act_create{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Pair p = DATA(DATA(SELF(e)));  // (cust, behavior)
+    Pair p = STATE(SELF(e));  // (cust, behavior)
     Actor cust = p->h;
-    Behavior beh = p->t;
+    Actor beh = p->t;
     // store new actor in effects
     effect_create(MSG(e), beh);
     // trigger continuation
@@ -160,9 +159,9 @@ void
 act_become(Event e)
 {
     TRACE(fprintf(stderr, "act_become{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Pair p = DATA(DATA(SELF(e)));  // (cust, behavior)
+    Pair p = STATE(SELF(e));  // (cust, behavior)
     Actor cust = p->h;
-    Behavior beh = p->t;
+    Actor beh = p->t;
     // store new behavior in effects
     effect_become(MSG(e), beh);
     // trigger continuation
@@ -182,6 +181,5 @@ act_commit(Event e)
     TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     effect_commit(MSG(e));
 }
-
-BEHAVIOR commit_behavior = { { act_commit }, NIL };
+ACTOR commit_behavior = { { act_commit }, NOTHING };
 ACTOR commit_actor = { { act_serial }, &commit_behavior };

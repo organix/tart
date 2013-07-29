@@ -54,19 +54,19 @@ extern Actor s_bind;
 extern Actor s_comb;
 
 extern void     beh_value(Event e);
-extern void     act_scope(Event e);  // (dict, parent)
-extern void     act_bind_ptrn(Event e);  // (name)
+extern void     act_scope(Event e);  // (dict, parent) -- SERIALIZED
+extern void     val_bind_ptrn(Event e);  // (name)
 extern void     beh_name(Event e);
-extern void     act_comb(Event e);  // (oper, opnd)
+extern void     val_comb(Event e);  // (oper, opnd)
 extern void     val_appl(Event e);  // (comb)
-extern void     act_oper(Event e);  // (env_s, form, evar, body)
-extern void     act_vau(Event e);  // (form, evar, body)
-extern void     act_lambda(Event e);  // (form, body)
+extern void     val_oper(Event e);  // (env_s, form, evar, body)
+extern void     val_vau(Event e);  // (form, evar, body)
+extern void     val_lambda(Event e);  // (form, body)
 extern void     val_eq_ptrn(Event e);  // (value)
-extern void     act_pair(Event e);  // (head, tail)
-extern void     act_pair_ptrn(Event e);  // (h_ptrn, t_ptrn)
-extern void     act_seq_expr(Event e);  // (head_expr, tail_expr)
-extern void     act_par_expr(Event e);  // (head_expr, tail_expr)
+extern void     val_pair(Event e);  // (head, tail)
+extern void     val_pair_ptrn(Event e);  // (h_ptrn, t_ptrn)
+extern void     val_seq_expr(Event e);  // (head_expr, tail_expr)
+extern void     val_par_expr(Event e);  // (head_expr, tail_expr)
 
 extern void     test_universe();  // unit-test method
 

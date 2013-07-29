@@ -32,11 +32,13 @@ THE SOFTWARE.
 #include "pair.h"
 #include "actor.h"
 
-extern void     act_forward(Event e);
-extern void     act_oneshot(Event e);
-extern void     act_prefix(Event e);
-extern void     act_label(Event e);
-extern void     act_tag(Event e);
-extern void     act_fork(Event e);
+extern void     val_forward(Event e);
+extern void     act_oneshot(Event e);  // SERIALIZED
+extern void     val_prefix(Event e);
+extern void     val_label(Event e);
+extern void     val_tag(Event e);
+extern void     act_fork(Event e);  // SERIALIZED
+
+extern void     test_action();  // unit-test method
 
 #endif /* _ACTION_H_ */

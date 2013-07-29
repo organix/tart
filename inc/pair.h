@@ -39,7 +39,7 @@ struct pair {
 };
 
 extern void     beh_halt(Event e);
-extern void     val_pair(Event e);
+extern void     beh_pair(Event e);
 
 #define NIL (&the_nil_pair)
 #define PR(h,t) pair_new((h),(t))

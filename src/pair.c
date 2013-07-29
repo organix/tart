@@ -36,14 +36,14 @@ beh_halt(Event e)
 }
 
 void
-val_pair(Event e)
+beh_pair(Event e)
 {
-    TRACE(fprintf(stderr, "val_pair{event=%p}\n", e));
+    TRACE(fprintf(stderr, "beh_pair{event=%p}\n", e));
     beh_halt(e);
 }
 
 PAIR the_nil_pair = {
-    { val_pair },
+    { beh_pair },
     &the_nil_pair,
     &the_nil_pair
 };
@@ -52,7 +52,7 @@ inline Pair
 pair_new(Any h, Any t)
 {
     Pair p = NEW(PAIR);
-    BEH(p) = val_pair;
+    BEH(p) = beh_pair;
     p->h = h;
     p->t = t;
     return p;
@@ -66,19 +66,19 @@ list_new()
 inline int
 list_empty_p(Pair list)
 {
-//    if (val_pair != BEH(list)) { halt("list_empty_p: list required"); }
+//    if (beh_pair != BEH(list)) { halt("list_empty_p: list required"); }
     return (list == NIL);
 }
 inline Pair
 list_pop(Pair list)
 {
-    if (val_pair != BEH(list)) { halt("list_pop: pair required"); }
+    if (beh_pair != BEH(list)) { halt("list_pop: pair required"); }
     return list;
 }
 inline Pair
 list_push(Pair list, Any item)
 {
-    if (val_pair != BEH(list)) { halt("list_push: pair required"); }
+    if (beh_pair != BEH(list)) { halt("list_push: pair required"); }
     return PR(item, list);
 }
 
@@ -90,13 +90,13 @@ deque_new()
 inline int
 deque_empty_p(Pair q)
 {
-    if (val_pair != BEH(q)) { halt("deque_empty_p: pair required"); }
+    if (beh_pair != BEH(q)) { halt("deque_empty_p: pair required"); }
     return (q->h == NIL);
 }
 inline void
 deque_give(Pair q, Any item)
 {
-    if (val_pair != BEH(q)) { halt("deque_give: pair required"); }
+    if (beh_pair != BEH(q)) { halt("deque_give: pair required"); }
     Pair p = PR(item, NIL);
     if (deque_empty_p(q)) {
         q->h = p;
@@ -109,7 +109,7 @@ deque_give(Pair q, Any item)
 inline Any
 deque_take(Pair q)
 {
-    if (val_pair != BEH(q)) { halt("deque_take: pair required"); }
+    if (beh_pair != BEH(q)) { halt("deque_take: pair required"); }
     if (deque_empty_p(q)) {
         halt("deque_take from empty!");
     }
@@ -122,7 +122,7 @@ deque_take(Pair q)
 inline void
 deque_return(Pair q, Any item)
 {
-    if (val_pair != BEH(q)) { halt("deque_return: pair required"); }
+    if (beh_pair != BEH(q)) { halt("deque_return: pair required"); }
     Pair p = PR(item, q->h);
     if (deque_empty_p(q)) {
         q->t = p;
@@ -132,10 +132,10 @@ deque_return(Pair q, Any item)
 inline Any
 deque_lookup(Pair q, int i)
 {
-    if (val_pair != BEH(q)) { halt("deque_lookup: pair required"); }
+    if (beh_pair != BEH(q)) { halt("deque_lookup: pair required"); }
     Pair p = q->h;
     while (p != NIL) {
-        if (val_pair != BEH(p)) { halt("deque_lookup: non-pair in chain"); }
+        if (beh_pair != BEH(p)) { halt("deque_lookup: non-pair in chain"); }
         if (i <= 0) {
             return p->h;
         }
@@ -147,10 +147,10 @@ deque_lookup(Pair q, int i)
 inline void
 deque_bind(Pair q, int i, Any item)
 {
-    if (val_pair != BEH(q)) { halt("deque_bind: pair required"); }
+    if (beh_pair != BEH(q)) { halt("deque_bind: pair required"); }
     Pair p = q->h;
     while (p != NIL) {
-        if (val_pair != BEH(p)) { halt("deque_bind: non-pair in chain"); }
+        if (beh_pair != BEH(p)) { halt("deque_bind: non-pair in chain"); }
         if (i <= 0) {
             p->h = item;
         }
@@ -174,7 +174,7 @@ inline Any
 dict_lookup(Pair dict, Any key)
 {
     while (!dict_empty_p(dict)) {
-        if (val_pair != BEH(dict)) { halt("dict_lookup: non-pair in chain"); }
+        if (beh_pair != BEH(dict)) { halt("dict_lookup: non-pair in chain"); }
         Pair p = dict->h;
         if (p->h == key) {
             return p->t;
@@ -186,6 +186,6 @@ dict_lookup(Pair dict, Any key)
 inline Pair
 dict_bind(Pair dict, Any key, Any value)
 {
-    if (val_pair != BEH(dict)) { halt("dict_bind: pair required"); }
+    if (beh_pair != BEH(dict)) { halt("dict_bind: pair required"); }
     return PR(PR(key, value), dict);
 }

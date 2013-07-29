@@ -54,7 +54,30 @@ typedef void (*Action)(Event e);
 struct method {
     Action      code;
 };
-
 extern void     halt(char * msg);
+
+/**
+Behavior  [*|...]
+           |
+           V
+          CODE
+
+Value     [*|*]
+           | +--> DATA
+           V
+          CODE
+
+Actor     [*|*]
+           | +--> [*|*]
+           V       | +--> DATA
+      act_serial   V
+                  CODE
+
+Pair      [*|*|*]
+           | | +--> tail
+           | +--> head
+           V
+        val_pair
+**/
 
 #endif /* _TART_H_ */

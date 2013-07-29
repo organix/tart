@@ -39,13 +39,13 @@ struct effect {
     Actor       self;       // currently active (meta-)actor
     Pair        actors;     // list of actors created
     Pair        events;     // list of messages sent
-    Behavior    behavior;   // replacement behavior
+    Actor       behavior;   // replacement behavior
 };
 
 extern Effect   effect_new(Config cfg, Actor a);
 extern void     effect_send(Effect fx, Actor target, Any msg);
-extern void     effect_create(Effect fx, Behavior beh);
-extern void     effect_become(Effect fx, Behavior beh);
+extern void     effect_create(Effect fx, Actor beh);
+extern void     effect_become(Effect fx, Actor beh);
 extern void     effect_commit(Effect fx);
 
 extern void     act_busy(Event e);
@@ -55,8 +55,8 @@ extern void     act_create(Event e);
 extern void     act_become(Event e);
 extern void     act_commit(Event e);
 
-extern BEHAVIOR busy_behavior;
-extern BEHAVIOR commit_behavior;
+extern ACTOR busy_behavior;
+extern ACTOR commit_behavior;
 extern ACTOR commit_actor;
 
 #endif /* _EFFECT_H_ */
