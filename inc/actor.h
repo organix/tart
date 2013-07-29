@@ -36,9 +36,9 @@ typedef struct actor ACTOR, *Actor;
 
 #define MSG(e)  (((Event)(e))->message)
 #define SELF(e) (((Event)(e))->actor)
-#define CODE(a) (((Actor)(a))->_meth.code)
+#define CODE(a) BEH(a)
 #define DATA(a) (((Actor)(a))->context)
-#define STATE(a) (DATA(DATA(a)))
+#define STATE(a) DATA(DATA(a))
 #define SERIAL(a) (act_serial == CODE(a))
 
 #define a_halt (&halt_actor)
@@ -47,7 +47,7 @@ typedef struct actor ACTOR, *Actor;
 #define NOTHING (a_halt)
 
 struct actor {
-    METHOD      _meth;      // code
+    BEHAVIOR    _beh;       // code
     Any         context;    // data
 };
 

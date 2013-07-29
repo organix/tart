@@ -115,5 +115,4 @@ act_serial(Event e)  // "serialized" actor behavior
 }
 
 ACTOR halt_actor = { { beh_halt }, &halt_actor };
-
 ACTOR sink_actor = { { beh_sink }, NOTHING };

@@ -43,15 +43,15 @@ THE SOFTWARE.
 #define NEWxN(T,N)  ((T *)calloc(sizeof(T), (N)))
 #define FREE(p)     ((p) = (free(p), NULL))
 
-#define BEH(o)      (((Method)(o))->code)
+#define BEH(o)      (((Behavior)(o))->code)
 
 typedef void * Any;
-typedef struct method METHOD, *Method;
+typedef struct behavior BEHAVIOR, *Behavior;
 typedef struct event EVENT, *Event;
 
 typedef void (*Action)(Event e);
 
-struct method {
+struct behavior {
     Action      code;
 };
 extern void     halt(char * msg);

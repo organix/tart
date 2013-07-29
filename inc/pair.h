@@ -33,7 +33,7 @@ THE SOFTWARE.
 typedef struct pair PAIR, *Pair;
 
 struct pair {
-    METHOD      _meth;
+    BEHAVIOR    _beh;
     Any         h;
     Any         t;
 };
