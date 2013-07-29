@@ -100,12 +100,14 @@ struct serial {
 };
 
 struct event {
+    ACTOR       _act;
     Config      sponsor;    // sponsor configuration
     Actor       actor;      // target actor
     Any         message;    // message to deliver
 };
 
 struct config {
+    ACTOR       _act;
     Pair        event_q;    // queue of messages in-transit
     Pair        actors;     // list of actors created
 };
@@ -146,6 +148,8 @@ extern int      config_dispatch(Config cfg);
 
 extern void     beh_halt(Event e);
 extern void     beh_pair(Event e);
+extern void     beh_event(Event e);
+extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern PAIR the_nil_pair;

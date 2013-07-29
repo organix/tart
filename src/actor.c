@@ -221,20 +221,35 @@ actor_become(Actor s, Actor v)
     VALUE(s) = v;  // an "unserialzed" behavior actor
 }
 
+void
+beh_event(Event e)
+{
+    TRACE(fprintf(stderr, "beh_event{event=%p}\n", e));
+    beh_halt(e);
+}
 inline Event
 event_new(Config cfg, Actor a, Any msg)
 {
+    if (beh_config != BEH(cfg)) { halt("event_new: config actor required"); }
     Event e = NEW(EVENT);
+    BEH(e) = beh_event;
     e->sponsor = cfg;
     e->actor = a;
     e->message = msg;
     return e;
 }
 
+void
+beh_config(Event e)
+{
+    TRACE(fprintf(stderr, "beh_config{event=%p}\n", e));
+    beh_halt(e);
+}
 inline Config
 config_new()
 {
     Config cfg = NEW(CONFIG);
+    BEH(cfg) = beh_config;
     cfg->event_q = deque_new();
     cfg->actors = NIL;
     return cfg;
@@ -242,6 +257,7 @@ config_new()
 inline void
 config_enqueue(Config cfg, Event e)
 {
+    if (beh_event != BEH(e)) { halt("config_enqueue: event actor required"); }
     deque_give(cfg->event_q, e);
 }
 inline void
@@ -252,12 +268,14 @@ config_enlist(Config cfg, Actor a)
 inline void
 config_send(Config cfg, Actor target, Any msg)
 {
+    if (beh_config != BEH(cfg)) { halt("config_send: config actor required"); }
     TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
 int
 config_dispatch(Config cfg)
 {
+    if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
     if (deque_empty_p(cfg->event_q)) {
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
         return 0;
