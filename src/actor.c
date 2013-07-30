@@ -39,7 +39,7 @@ void
 beh_pair(Event e)
 {
     TRACE(fprintf(stderr, "beh_pair{event=%p}\n", e));
-    expr_value(e);
+    expr_value(e);  // DON'T PANIC!
 }
 
 PAIR the_nil_pair = {
@@ -414,7 +414,7 @@ LET value_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, _) : [ SEND SELF TO ok ]
-    _ : [ SEND msg TO fail ]
+    _ : [ SEND (SELF, msg) TO fail ]
     END
 ]
 **/
@@ -430,6 +430,6 @@ expr_value(Event e)
         config_send(e->sponsor, r->ok, SELF(e));
     } else {
         TRACE(fprintf(stderr, "expr_value: FAIL!\n"));
-        config_send(e->sponsor, r->fail, MSG(e));
+        config_send(e->sponsor, r->fail, e);
     }
 }
