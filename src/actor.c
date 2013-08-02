@@ -154,13 +154,7 @@ deque_bind(Pair q, int i, Any item)
     // not found
 }
 
-static void
-beh_empty_dict(Event e)
-{
-    TRACE(fprintf(stderr, "empty_dict{event=%p}\n", e));
-    expr_value(e);
-}
-PAIR the_empty_dict_actor = { { beh_empty_dict }, NIL, NIL };
+PAIR the_empty_dict_actor = { { expr_env_empty }, NIL, NIL };
 inline Pair
 dict_new()
 {
@@ -178,9 +172,9 @@ dict_lookup(Pair dict, Any key)
         if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
         Pair p = dict->h;
         if (p->h == key) {
-            return p->t;
+            return p->t;  // value
         }
-        dict = dict->t;
+        dict = dict->t;  // next
     }
     return NULL;  // NOT FOUND
 }
@@ -227,7 +221,7 @@ void
 beh_event(Event e)
 {
     TRACE(fprintf(stderr, "beh_event{event=%p}\n", e));
-    beh_halt(e);
+    expr_value(e);
 }
 inline Event
 event_new(Config cfg, Actor a, Any msg)
@@ -245,7 +239,7 @@ void
 beh_config(Event e)
 {
     TRACE(fprintf(stderr, "beh_config{event=%p}\n", e));
-    beh_halt(e);
+    expr_value(e);
 }
 inline Config
 config_new()

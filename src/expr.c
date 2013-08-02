@@ -140,6 +140,7 @@ LET value_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#eval, _) : [ SEND SELF TO ok ]
+    (#match, $SELF, env) : [ SEND env TO ok ]
     _ : [ SEND (SELF, msg) TO fail ]
     END
 ]
@@ -154,9 +155,48 @@ expr_value(Event e)
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
         TRACE(fprintf(stderr, "expr_value: (#eval, _)\n"));
         config_send(e->sponsor, r->ok, SELF(e));
+    } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
+        ReqMatch rm = (ReqMatch)r->req;
+        TRACE(fprintf(stderr, "expr_value: (#match, %p, %p)\n", rm->value, rm->env));
+        if (SELF(e) == rm->value) {
+            config_send(e->sponsor, r->ok, rm->env);
+        } else {
+            TRACE(fprintf(stderr, "expr_value: MISMATCH!\n"));
+            config_send(e->sponsor, r->fail, e);
+        }
     } else {
         TRACE(fprintf(stderr, "expr_value: FAIL!\n"));
         config_send(e->sponsor, r->fail, e);
+    }
+}
+
+/**
+LET empty_env_beh((key, value), next) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#bind, key', value') : [
+        CREATE dict' WITH env_beh((key', value'), SELF)
+        SEND dict' TO ok
+    ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+**/
+void
+expr_env_empty(Event e)
+{
+    TRACE(fprintf(stderr, "expr_env_empty{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair self = (Pair)SELF(e);
+    if (val_request != BEH(MSG(e))) { halt("expr_env_empty: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "expr_env_empty: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
+        ReqBind rb = (ReqBind)r->req;
+        TRACE(fprintf(stderr, "expr_env_empty: (#bind, %p -> %p)\n", rb->key, rb->value));
+        Pair dict = dict_bind(self, rb->key, rb->value);
+        config_send(e->sponsor, r->ok, dict);
+    } else {
+        expr_value(e);  // delegate
     }
 }
 
@@ -201,4 +241,154 @@ expr_env(Event e)
     } else {
         expr_value(e);  // delegate
     }
+}
+
+/**
+LET skip_ptrn_beh = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, _, env) : [ SEND env TO ok ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+**/
+static void
+ptrn_skip(Event e)
+{
+    TRACE(fprintf(stderr, "ptrn_skip{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("ptrn_skip: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "ptrn_skip: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_match == BEH(r->req)) {  // (#match, _, env)
+        ReqMatch rm = (ReqMatch)r->req;
+        TRACE(fprintf(stderr, "ptrn_skip: (#match, %p, %p)\n", rm->value, rm->env));
+        config_send(e->sponsor, r->ok, rm->env);
+    } else {
+        expr_value(e);  // delegate
+    }
+}
+/**
+CREATE skip_ptrn WITH skip_ptrn_beh
+**/
+VALUE the_ptrn_skip_actor = { { ptrn_skip }, NOTHING };
+
+/**
+LET bind_ptrn_beh(name) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#match, value, env) : [ SEND ((ok, fail), #bind, name, value) TO env ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+**/
+void
+ptrn_bind(Event e)
+{
+    TRACE(fprintf(stderr, "ptrn_bind{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor name = DATA(SELF(e));  // (name)
+    if (val_request != BEH(MSG(e))) { halt("ptrn_bind: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "ptrn_bind: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_match == BEH(r->req)) {  // (#match, value, env)
+        ReqMatch rm = (ReqMatch)r->req;
+        TRACE(fprintf(stderr, "ptrn_bind: (#match, %p, %p)\n", rm->value, rm->env));
+        config_send(e->sponsor, rm->env, req_bind_new(r->ok, r->fail, name, rm->value));
+    } else {
+        expr_value(e);  // delegate
+    }
+}
+
+/**
+LET name_beh = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, env) : [ SEND ((ok, fail), #lookup, SELF) TO env ]
+    _ : [ SEND (SELF, msg) TO fail ]
+    END
+]
+**/
+void
+expr_name(Event e)
+{
+    TRACE(fprintf(stderr, "expr_name{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("expr_name: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "expr_name: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_eval == BEH(r->req)) {  // (#eval, env)
+        ReqEval re = (ReqEval)r->req;
+        TRACE(fprintf(stderr, "expr_name: (#eval, %p)\n", re->env));
+        config_send(e->sponsor, re->env, req_lookup_new(r->ok, r->fail, SELF(e)));
+    } else {
+        TRACE(fprintf(stderr, "expr_name: FAIL!\n"));
+        config_send(e->sponsor, r->fail, e);
+    }
+}
+
+/**
+LET eval_body_beh((ok, fail), body) = \env.[
+    SEND ((ok, fail), #eval, env) TO body
+]
+**/
+static void
+beh_eval_body(Event e)
+{
+    TRACE(fprintf(stderr, "beh_eval_body{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair p = DATA(SELF(e));  // ((ok, fail), body)
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
+    Actor body = p->t;
+    Actor env = MSG(e);  // (env)
+    TRACE(fprintf(stderr, "beh_eval_body: ok=%p, fail=%p, body=%p, env=%p\n", ok, fail, body, env));
+    config_send(e->sponsor, body, req_eval_new(ok, fail, env));
+}
+static inline void
+val_expect(Event e)
+{
+    TRACE(fprintf(stderr, "val_expect{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Any expect = DATA(SELF(e));
+    Any actual = MSG(e);
+    if (expect != actual) {
+        TRACE(fprintf(stderr, "val_expect: %p != %p\n", expect, actual));
+        halt("unexpected");
+    }
+}
+#define a_empty_env (a_empty_dict)
+void
+test_expr()
+{
+    Actor expr;
+    Actor cust;
+
+    TRACE(fprintf(stderr, "---- test_expr ----\n"));
+    Config cfg = config_new();
+    TRACE(fprintf(stderr, "cfg = %p\n", cfg));
+    TRACE(fprintf(stderr, "a_empty_env = %p\n", a_empty_env));
+    /* empty environment evaluates to itself */
+    expr = a_empty_env;
+    TRACE(fprintf(stderr, "expr = %p\n", expr));
+    cust = value_new(val_expect, a_empty_env);
+    TRACE(fprintf(stderr, "cust = %p\n", cust));
+    config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
+    /* the configuration evaluates to itself */
+    expr = (Actor)cfg;
+    TRACE(fprintf(stderr, "expr = %p\n", expr));
+    cust = value_new(val_expect, cfg);
+    TRACE(fprintf(stderr, "cust = %p\n", cust));
+    config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
+    /* dispatch until empty */
+    while (config_dispatch(cfg))
+        ;
+
+    /* name binding can be resolved */
+    cust = value_new(val_expect, cfg);
+    TRACE(fprintf(stderr, "cust = %p\n", cust));
+    Actor s_x = value_new(expr_name, NOTHING);
+    TRACE(fprintf(stderr, "s_x = %p\n", s_x));
+    expr = value_new(beh_eval_body, PR(PR(cust, a_halt), s_x));
+    TRACE(fprintf(stderr, "expr = %p\n", expr));
+    config_send(cfg, a_empty_dict, req_bind_new(expr, a_halt, s_x, (Actor)cfg));
+    /* dispatch until empty */
+    while (config_dispatch(cfg))
+        ;
 }

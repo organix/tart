@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 #include "tart.h"
 #include "actor.h"
+#include "expr.h"
 #include "action.h"
 #include "universe.h"
 
@@ -54,6 +55,7 @@ run_tests()
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
     test_action();
     test_universe();
+    test_expr();
 }
 
 /*
