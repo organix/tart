@@ -27,13 +27,13 @@ THE SOFTWARE.
 */
 
 #include "actor.h"
+#include "expr.h"
 
-void
-beh_halt(Event e)
-{
-    TRACE(fprintf(stderr, "beh_halt{event=%p}\n", e));
-    halt("HALT!");
-}
+PAIR the_nil_pair = {
+    { beh_pair },
+    &the_nil_pair,
+    &the_nil_pair
+};
 
 void
 beh_pair(Event e)
@@ -41,12 +41,6 @@ beh_pair(Event e)
     TRACE(fprintf(stderr, "beh_pair{event=%p}\n", e));
     expr_value(e);  // DON'T PANIC!
 }
-
-PAIR the_nil_pair = {
-    { beh_pair },
-    &the_nil_pair,
-    &the_nil_pair
-};
 
 inline Pair
 pair_new(Any h, Any t)
@@ -160,21 +154,28 @@ deque_bind(Pair q, int i, Any item)
     // not found
 }
 
+static void
+beh_empty_dict(Event e)
+{
+    TRACE(fprintf(stderr, "empty_dict{event=%p}\n", e));
+    expr_value(e);
+}
+PAIR the_empty_dict_actor = { { beh_empty_dict }, NIL, NIL };
 inline Pair
 dict_new()
 {
-    return NIL;
+    return &the_empty_dict_actor;
 }
 inline int
 dict_empty_p(Pair dict)
 {
-    return (dict == NIL);
+    return (dict == &the_empty_dict_actor);
 }
 inline Any
 dict_lookup(Pair dict, Any key)
 {
     while (!dict_empty_p(dict)) {
-        if (beh_pair != BEH(dict)) { halt("dict_lookup: non-pair in chain"); }
+        if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
         Pair p = dict->h;
         if (p->h == key) {
             return p->t;
@@ -186,8 +187,9 @@ dict_lookup(Pair dict, Any key)
 inline Pair
 dict_bind(Pair dict, Any key, Any value)
 {
-    if (beh_pair != BEH(dict)) { halt("dict_bind: pair required"); }
-    return PR(PR(key, value), dict);
+    Pair p = PR(PR(key, value), dict);
+    BEH(p) = expr_env;  // override pair behavior with env behavior
+    return p;
 }
 
 inline Actor
@@ -298,6 +300,12 @@ beh_ignore(Event e)
 {
     TRACE(fprintf(stderr, "beh_ignore{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
-
-VALUE the_halt_actor = { { beh_halt }, &the_halt_actor };
 VALUE the_ignore_actor = { { beh_ignore }, NOTHING };
+
+void
+beh_halt(Event e)
+{
+    TRACE(fprintf(stderr, "beh_halt{event=%p}\n", e));
+    halt("HALT!");
+}
+VALUE the_halt_actor = { { beh_halt }, &the_halt_actor };

@@ -87,5 +87,6 @@ extern void     val_req_combine(Event e);
 extern Actor    req_combine_new(Actor ok, Actor fail, Actor opnd, Actor env);
 
 extern void     expr_value(Event e);
+extern void     expr_env(Event e);
 
 #endif /* _EXPR_H_ */

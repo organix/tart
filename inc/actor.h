@@ -76,8 +76,9 @@ typedef void (*Action)(Event e);
 #define STRATEGY(s) CODE(VALUE(s))
 #define STATE(s)    DATA(VALUE(s))
 
-#define a_halt ((Actor)(&the_halt_actor))
+#define a_empty_dict ((Actor)(&the_empty_dict_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
+#define a_halt ((Actor)(&the_halt_actor))
 
 struct actor {
     Action      beh;
@@ -153,7 +154,8 @@ extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern PAIR the_nil_pair;
-extern VALUE the_halt_actor;
+extern PAIR the_empty_dict_actor;
 extern VALUE the_ignore_actor;
+extern VALUE the_halt_actor;
 
 #endif /* _ACTOR_H_ */

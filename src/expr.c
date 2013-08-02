@@ -159,3 +159,46 @@ expr_value(Event e)
         config_send(e->sponsor, r->fail, e);
     }
 }
+
+/**
+LET env_beh((key, value), next) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#lookup, $key) : [ SEND value TO ok ]
+    (#lookup, _) : [ SEND msg TO parent ]
+    (#bind, key', value') : [
+        CREATE dict' WITH env_beh((key', value'), SELF)
+        SEND dict' TO ok
+    ]
+    _ : value_beh(msg)  # delegate
+    END
+]
+**/
+void
+expr_env(Event e)
+{
+    TRACE(fprintf(stderr, "expr_env{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Pair self = (Pair)SELF(e);
+    if (val_request != BEH(MSG(e))) { halt("expr_env: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "expr_env: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_lookup == BEH(r->req)) {  // (#lookup, _)
+        ReqLookup rl = (ReqLookup)r->req;
+        TRACE(fprintf(stderr, "expr_env: (#lookup, _)\n"));
+        Any value = dict_lookup(self, rl->key);
+        TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
+        if (value != NULL) {
+            config_send(e->sponsor, r->ok, value);
+        } else {
+            TRACE(fprintf(stderr, "expr_env: FAIL!\n"));
+            config_send(e->sponsor, r->fail, e);
+        }
+    } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
+        ReqBind rb = (ReqBind)r->req;
+        TRACE(fprintf(stderr, "expr_env: (#bind, %p -> %p)\n", rb->key, rb->value));
+        Pair dict = dict_bind(self, rb->key, rb->value);
+        config_send(e->sponsor, r->ok, dict);
+    } else {
+        expr_value(e);  // delegate
+    }
+}

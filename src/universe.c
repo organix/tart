@@ -1137,7 +1137,7 @@ beh_oper_false(Event e)
  */
 Actor b_true;
 Actor b_false;
-static Pair symbol_table = NIL;
+static Pair symbol_table = (Pair)a_empty_dict;
 Actor s_eval;
 Actor s_match;
 Actor s_lookup;
