@@ -202,7 +202,7 @@ act_fork(Event e)  // SERIALIZED
     Actor k_tail = value_new(val_tag, SELF(e));
     config_send(e->sponsor, head, PR(k_head, h_req));
     config_send(e->sponsor, tail, PR(k_tail, t_req));
-    Pair args = PR(cust, PR(k_head, k_tail));  // (cust, k_head, k_tail)
+    Actor args = PR(cust, PR(k_head, k_tail));  // (cust, k_head, k_tail)
     actor_become(SELF(e), value_new(act_join, args));
 }
 

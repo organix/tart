@@ -39,8 +39,8 @@ typedef struct effect EFFECT, *Effect;
 struct effect {
     Config      sponsor;    // sponsor configuration
     Actor       self;       // currently active (meta-)actor
-    Pair        actors;     // list of actors created
-    Pair        events;     // list of messages sent
+    Actor       actors;     // list of actors created
+    Actor       events;     // list of messages sent
     Actor       behavior;   // replacement behavior
 };
 

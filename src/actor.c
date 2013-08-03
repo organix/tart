@@ -29,10 +29,10 @@ THE SOFTWARE.
 #include "actor.h"
 #include "expr.h"
 
-PAIR the_nil_pair = {
-    { beh_pair },
-    &the_nil_pair,
-    &the_nil_pair
+PAIR the_nil_pair_actor = {
+    { beh_pair }, 
+    NIL, 
+    NIL 
 };
 
 void
@@ -42,57 +42,58 @@ beh_pair(Event e)
     expr_value(e);  // DON'T PANIC!
 }
 
-inline Pair
+inline Actor
 pair_new(Any h, Any t)
 {
     Pair p = NEW(PAIR);
     BEH(p) = beh_pair;
     p->h = h;
     p->t = t;
-    return p;
+    return (Actor)p;
 }
 
-inline Pair
+inline Actor
 list_new()
 {
-    return NIL;
+    return a_empty_list;
 }
 inline int
-list_empty_p(Pair list)
+list_empty_p(Actor list)
 {
-//    if (beh_pair != BEH(list)) { halt("list_empty_p: list required"); }
-    return (list == NIL);
+    return (list == a_empty_list);
 }
 inline Pair
-list_pop(Pair list)
+list_pop(Actor list)  // returns: (first, rest)
 {
     if (beh_pair != BEH(list)) { halt("list_pop: pair required"); }
-    return list;
+    return (Pair)list;
 }
-inline Pair
-list_push(Pair list, Any item)
+inline Actor
+list_push(Actor list, Any item)
 {
     if (beh_pair != BEH(list)) { halt("list_push: pair required"); }
     return PR(item, list);
 }
 
-inline Pair
+inline Actor
 deque_new()
 {
     return PR(NIL, NIL);
 }
 inline int
-deque_empty_p(Pair q)
+deque_empty_p(Actor queue)
 {
-    if (beh_pair != BEH(q)) { halt("deque_empty_p: pair required"); }
+    if (beh_pair != BEH(queue)) { halt("deque_empty_p: pair required"); }
+    Pair q = (Pair)queue;
     return (q->h == NIL);
 }
 inline void
-deque_give(Pair q, Any item)
+deque_give(Actor queue, Any item)
 {
-    if (beh_pair != BEH(q)) { halt("deque_give: pair required"); }
-    Pair p = PR(item, NIL);
-    if (deque_empty_p(q)) {
+    if (beh_pair != BEH(queue)) { halt("deque_give: pair required"); }
+    Pair q = (Pair)queue;
+    Actor p = PR(item, NIL);
+    if (q->h == NIL) {
         q->h = p;
     } else {
         Pair t = q->t;
@@ -101,12 +102,11 @@ deque_give(Pair q, Any item)
     q->t = p;
 }
 inline Any
-deque_take(Pair q)
+deque_take(Actor queue)
 {
-    if (beh_pair != BEH(q)) { halt("deque_take: pair required"); }
-    if (deque_empty_p(q)) {
-        halt("deque_take from empty!");
-    }
+    if (deque_empty_p(queue)) { halt("deque_take from empty!"); }
+//    if (beh_pair != BEH(queue)) { halt("deque_take: pair required"); }
+    Pair q = (Pair)queue;
     Pair p = q->h;
     Any item = p->h;
     q->h = p->t;
@@ -114,76 +114,81 @@ deque_take(Pair q)
     return item;
 }
 inline void
-deque_return(Pair q, Any item)
+deque_return(Actor queue, Any item)
 {
-    if (beh_pair != BEH(q)) { halt("deque_return: pair required"); }
-    Pair p = PR(item, q->h);
-    if (deque_empty_p(q)) {
+    if (beh_pair != BEH(queue)) { halt("deque_return: pair required"); }
+    Pair q = (Pair)queue;
+    Actor p = PR(item, q->h);
+    if (q->h == NIL) {
         q->t = p;
     }
     q->h = p;
 }
 inline Any
-deque_lookup(Pair q, int i)
+deque_lookup(Actor queue, int index)
 {
-    if (beh_pair != BEH(q)) { halt("deque_lookup: pair required"); }
+    if (beh_pair != BEH(queue)) { halt("deque_lookup: pair required"); }
+    Pair q = (Pair)queue;
     Pair p = q->h;
     while (p != NIL) {
         if (beh_pair != BEH(p)) { halt("deque_lookup: non-pair in chain"); }
-        if (i <= 0) {
+        if (index <= 0) {
             return p->h;
         }
-        --i;
+        --index;
         p = p->t;
     }
     return NULL;  // not found
 }
 inline void
-deque_bind(Pair q, int i, Any item)
+deque_bind(Actor queue, int index, Any item)
 {
-    if (beh_pair != BEH(q)) { halt("deque_bind: pair required"); }
+    if (beh_pair != BEH(queue)) { halt("deque_bind: pair required"); }
+    Pair q = (Pair)queue;
     Pair p = q->h;
     while (p != NIL) {
         if (beh_pair != BEH(p)) { halt("deque_bind: non-pair in chain"); }
-        if (i <= 0) {
+        if (index <= 0) {
             p->h = item;
         }
-        --i;
+        --index;
         p = p->t;
     }
     // not found
 }
 
-PAIR the_empty_dict_actor = { { expr_env_empty }, NIL, NIL };
-inline Pair
+VALUE the_empty_dict_actor = { { expr_env_empty }, NOTHING };
+//ACTOR the_empty_dict_actor = { expr_env_empty };  -- [FIXME] ELIMINATE SUPERFLOUS USE OF NOTHING
+inline Actor
 dict_new()
 {
-    return &the_empty_dict_actor;
+    return a_empty_dict;
 }
 inline int
-dict_empty_p(Pair dict)
+dict_empty_p(Actor dict)
 {
-    return (dict == &the_empty_dict_actor);
+    return (dict == a_empty_dict);
 }
 inline Any
-dict_lookup(Pair dict, Any key)
+dict_lookup(Actor dict, Any key)
 {
     while (!dict_empty_p(dict)) {
         if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
-        Pair p = dict->h;
-        if (p->h == key) {
-            return p->t;  // value
+        Pair p = (Pair)dict;
+        Pair q = p->h;
+        if (q->h == key) {
+            return q->t;  // value
         }
-        dict = dict->t;  // next
+        dict = p->t;  // next
     }
     return NULL;  // NOT FOUND
 }
-inline Pair
-dict_bind(Pair dict, Any key, Any value)
+inline Actor
+dict_bind(Actor dict, Any key, Any value)
 {
-    Pair p = PR(PR(key, value), dict);
-    BEH(p) = expr_env;  // override pair behavior with env behavior
-    return p;
+    Actor a = PR(PR(key, value), dict);
+    BEH(a) = expr_env;  // override pair behavior with env behavior
+    return a;
 }
 
 inline Actor
@@ -246,15 +251,15 @@ config_new()
 {
     Config cfg = NEW(CONFIG);
     BEH(cfg) = beh_config;
-    cfg->event_q = deque_new();
-    cfg->actors = NIL;
+    cfg->events = deque_new();
+    cfg->actors = list_new();
     return cfg;
 }
 inline void
 config_enqueue(Config cfg, Event e)
 {
     if (beh_event != BEH(e)) { halt("config_enqueue: event actor required"); }
-    deque_give(cfg->event_q, e);
+    deque_give(cfg->events, e);
 }
 inline void
 config_enlist(Config cfg, Actor a)
@@ -272,11 +277,11 @@ int
 config_dispatch(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
-    if (deque_empty_p(cfg->event_q)) {
+    if (deque_empty_p(cfg->events)) {
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
         return 0;
     }
-    Event e = deque_take(cfg->event_q);
+    Event e = deque_take(cfg->events);
     TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
     (CODE(SELF(e)))(e);  // INVOKE BEHAVIOR
     return 1;

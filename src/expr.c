@@ -186,14 +186,13 @@ void
 expr_env_empty(Event e)
 {
     TRACE(fprintf(stderr, "expr_env_empty{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Pair self = (Pair)SELF(e);
     if (val_request != BEH(MSG(e))) { halt("expr_env_empty: request msg required"); }
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "expr_env_empty: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env_empty: (#bind, %p -> %p)\n", rb->key, rb->value));
-        Pair dict = dict_bind(self, rb->key, rb->value);
+        Actor dict = dict_bind(SELF(e), rb->key, rb->value);
         config_send(e->sponsor, r->ok, dict);
     } else {
         expr_value(e);  // delegate
@@ -218,14 +217,13 @@ void
 expr_env(Event e)
 {
     TRACE(fprintf(stderr, "expr_env{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Pair self = (Pair)SELF(e);
     if (val_request != BEH(MSG(e))) { halt("expr_env: request msg required"); }
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "expr_env: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_lookup == BEH(r->req)) {  // (#lookup, _)
         ReqLookup rl = (ReqLookup)r->req;
         TRACE(fprintf(stderr, "expr_env: (#lookup, _)\n"));
-        Any value = dict_lookup(self, rl->key);
+        Any value = dict_lookup(SELF(e), rl->key);
         TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
         if (value != NULL) {
             config_send(e->sponsor, r->ok, value);
@@ -236,7 +234,7 @@ expr_env(Event e)
     } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env: (#bind, %p -> %p)\n", rb->key, rb->value));
-        Pair dict = dict_bind(self, rb->key, rb->value);
+        Actor dict = dict_bind(SELF(e), rb->key, rb->value);
         config_send(e->sponsor, r->ok, dict);
     } else {
         expr_value(e);  // delegate

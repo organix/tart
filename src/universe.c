@@ -57,8 +57,9 @@ beh_empty_env(Event e)
 
     TRACE(fprintf(stderr, "beh_empty_env{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     TRACE(fprintf(stderr, "beh_empty_env: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_lookup == p->h) {  // (#lookup, _)
@@ -86,8 +87,9 @@ beh_value(Event e)
 
     TRACE(fprintf(stderr, "beh_value{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     TRACE(fprintf(stderr, "beh_value: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_eval == p->h) {  // (#eval, _)
@@ -126,11 +128,12 @@ ser_scope(Event e)  // SERIALIZED
 
     TRACE(fprintf(stderr, "ser_scope{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = STATE(SELF(e));  // (dict, parent)
-    Pair dict = p->h;
+    Actor dict = p->h;
     Actor parent = p->t;
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     TRACE(fprintf(stderr, "ser_scope: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_lookup == p->h) {  // (#lookup, name)
@@ -173,8 +176,9 @@ beh_skip_ptrn(Event e)
 
     TRACE(fprintf(stderr, "beh_skip_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     TRACE(fprintf(stderr, "beh_skip_ptrn: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_match == p->h) {  // (#match, _, env)
@@ -208,8 +212,9 @@ val_bind_ptrn(Event e)
     TRACE(fprintf(stderr, "val_bind_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor name = DATA(SELF(e));  // (name)
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     TRACE(fprintf(stderr, "val_bind_ptrn: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_match == p->h) {  // (#match, value, env)
@@ -487,8 +492,9 @@ val_vau(Event e)
 
     TRACE(fprintf(stderr, "val_vau{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
@@ -522,8 +528,9 @@ val_lambda(Event e)
 
     TRACE(fprintf(stderr, "val_lambda{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = p->t;
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
@@ -624,8 +631,9 @@ val_eq_ptrn(Event e)
     TRACE(fprintf(stderr, "val_eq_ptrn{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Any value = DATA(SELF(e));  // (value)
     p = MSG(e);  // ((ok, fail), req)
-    Actor ok = ((Pair)p->h)->h;
-    Actor fail = ((Pair)p->h)->t;
+    Pair cust = p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     TRACE(fprintf(stderr, "val_eq_ptrn: ok=%p, fail=%p\n", ok, fail));
     p = p->t;
     if (s_match == p->h) {  // (#match, ...)
@@ -1137,7 +1145,7 @@ beh_oper_false(Event e)
  */
 Actor b_true;
 Actor b_false;
-static Pair symbol_table = (Pair)a_empty_dict;
+static Actor symbol_table = a_empty_dict;
 Actor s_eval;
 Actor s_match;
 Actor s_lookup;

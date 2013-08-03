@@ -409,7 +409,7 @@ Object o_empty_string = (Object)&the_empty_string_object;
 typedef struct scope SCOPE, *Scope;
 struct scope {
     OBJECT      o;
-    Pair        dict;  // dictionary of local bindings
+    Actor       dict;  // dictionary of local bindings
     Object      parent;  // enclosing scope (read-only)
 };
 inline Object
@@ -425,7 +425,7 @@ static Object
 scope_lookup_method(Object this, Object key)
 {
     while (this != o_empty_scope) {
-        Pair dict = ((Scope)this)->dict;
+        Actor dict = ((Scope)this)->dict;
         Any value = dict_lookup(dict, key);
         if (value != NULL) {  // found in local scope
             return (Object)value;
@@ -440,7 +440,7 @@ scope_bind_method(Object this, Object key, Object value)
     if (this == o_empty_scope) {
         return NULL;  // empty scope is immutable
     }
-    Pair dict = ((Scope)this)->dict;
+    Actor dict = ((Scope)this)->dict;
     ((Scope)this)->dict = dict_bind(dict, key, value);  // bind in local scope
     return this;
 }
@@ -473,7 +473,7 @@ static KIND the_scope_kind = {
 Kind k_scope = &the_scope_kind;
 static SCOPE the_empty_scope_object = {
     { &the_scope_kind },
-    NIL,
+    a_empty_dict,
     (Object)&the_empty_scope_object
 };
 Object o_empty_scope = (Object)&the_empty_scope_object;
@@ -481,7 +481,7 @@ Object o_empty_scope = (Object)&the_empty_scope_object;
 typedef struct array ARRAY, *Array;
 struct array {
     OBJECT      o;
-    Pair        q;  // deque of array items
+    Actor       q;  // deque of array items
     int         n;  // number of items
 };
 inline Object
@@ -515,7 +515,7 @@ array_lookup_method(Object this, Object key)
     }
     int n = ((Array)this)->n;
     int i = ((Number)key)->i;
-    Pair q = ((Array)this)->q;
+    Actor q = ((Array)this)->q;
     return deque_lookup(q, i);
 }
 static Object
@@ -526,7 +526,7 @@ array_bind_method(Object this, Object key, Object value)
     }
     int n = ((Array)this)->n;
     int i = ((Number)key)->i;
-    Pair q = ((Array)this)->q;
+    Actor q = ((Array)this)->q;
     if ((i < 0) || (i > n)) {
         return NULL;  // offset out of bounds
     }

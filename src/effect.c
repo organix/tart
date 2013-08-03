@@ -35,8 +35,8 @@ effect_new(Config cfg, Actor s)
     Effect fx = NEW(EFFECT);
     fx->sponsor = cfg;
     fx->self = s;
-    fx->actors = NIL;
-    fx->events = NIL;
+    fx->actors = a_empty_list;
+    fx->events = a_empty_list;
     fx->behavior = VALUE(s);  // an "unserialzed" behavior actor
     return fx;
 }
@@ -62,16 +62,19 @@ effect_become(Effect fx, Actor beh)
 inline void
 effect_commit(Effect fx)
 {
+    Actor list;
     Pair p;
 
     // update actor behavior
     actor_become(fx->self, fx->behavior);
     // add new actors to configuration
-    for (p = fx->actors; !list_empty_p(p); p = p->t) {
+    for (list = fx->actors; !list_empty_p(list); list = p->t) {
+        p = list_pop(list);
         config_enlist(fx->sponsor, p->h);
     }
     // add new events to dispatch queue
-    for (p = fx->events; !list_empty_p(p); p = p->t) {
+    for (list = fx->events; !list_empty_p(list); list = p->t) {
+        p = list_pop(list);
         config_enqueue(fx->sponsor, p->h);
     }
 }

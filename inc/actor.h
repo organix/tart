@@ -43,9 +43,9 @@ Value  [*|*]
 
 Serial [*|*]
         | +--> [*|*]
-        V       | +--> DATA
+        V       | +--> STATE
    act_serial   V
-               CODE
+               STRATEGY
 
 Pair   [*|*|*]
         | | +--> tail
@@ -63,7 +63,7 @@ typedef struct config CONFIG, *Config;
 
 typedef void (*Action)(Event e);
 
-#define NIL (&the_nil_pair)
+#define NIL (&the_nil_pair_actor)
 #define PR(h,t) pair_new((h),(t))
 #define NOTHING (a_halt)
 
@@ -76,6 +76,7 @@ typedef void (*Action)(Event e);
 #define STRATEGY(s) CODE(VALUE(s))
 #define STATE(s)    DATA(VALUE(s))
 
+#define a_empty_list ((Actor)(&the_nil_pair_actor))
 #define a_empty_dict ((Actor)(&the_empty_dict_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
 #define a_halt ((Actor)(&the_halt_actor))
@@ -109,29 +110,29 @@ struct event {
 
 struct config {
     ACTOR       _act;
-    Pair        event_q;    // queue of messages in-transit
-    Pair        actors;     // list of actors created
+    Actor       events;     // queue of messages in-transit
+    Actor       actors;     // list of actors created
 };
 
-extern Pair     pair_new(Any h, Any t);
+extern Actor    pair_new(Any h, Any t);
 
-extern Pair     list_new();
-extern int      list_empty_p(Pair list);
-extern Pair     list_pop(Pair list);
-extern Pair     list_push(Pair list, Any item);
+extern Actor    list_new();
+extern int      list_empty_p(Actor list);
+extern Pair     list_pop(Actor list);  // returns: (first, rest)
+extern Actor    list_push(Actor list, Any item);
 
-extern Pair     deque_new();
-extern int      deque_empty_p(Pair q);
-extern void     deque_give(Pair q, Any item);
-extern Any      deque_take(Pair q);
-extern void     deque_return(Pair q, Any item);
-extern Any      deque_lookup(Pair q, int i);
-extern void     deque_bind(Pair q, int i, Any item);
+extern Actor    deque_new();
+extern int      deque_empty_p(Actor queue);
+extern void     deque_give(Actor queue, Any item);
+extern Any      deque_take(Actor queue);
+extern void     deque_return(Actor queue, Any item);
+extern Any      deque_lookup(Actor queue, int index);
+extern void     deque_bind(Actor queue, int index, Any item);
 
-extern Pair     dict_new();
-extern int      dict_empty_p(Pair dict);
-extern Any      dict_lookup(Pair dict, Any key);
-extern Pair     dict_bind(Pair dict, Any key, Any value);
+extern Actor    dict_new();
+extern int      dict_empty_p(Actor dict);
+extern Any      dict_lookup(Actor dict, Any key);
+extern Actor    dict_bind(Actor dict, Any key, Any value);
 
 extern Actor    value_new(Action beh, Any data);
 
@@ -153,8 +154,8 @@ extern void     beh_event(Event e);
 extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
-extern PAIR the_nil_pair;
-extern PAIR the_empty_dict_actor;
+extern PAIR the_nil_pair_actor;
+extern VALUE the_empty_dict_actor;
 extern VALUE the_ignore_actor;
 extern VALUE the_halt_actor;
 
