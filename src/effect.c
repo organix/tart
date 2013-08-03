@@ -89,7 +89,7 @@ act_busy(Event e)
 {
     TRACE(fprintf(stderr, "act_busy{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     // re-queue event
-    config_enqueue(e->sponsor, e);
+    config_enqueue(SPONSOR(e), e);
 }
 ACTOR busy_behavior = { act_busy };
 
@@ -105,9 +105,9 @@ act_begin(Event e)
     TRACE(fprintf(stderr, "act_begin{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor cust = STATE(SELF(e));  // cust
     // initialize effects
-    Effect fx = effect_new(e->sponsor, SELF(e));
+    Effect fx = effect_new(SPONSOR(e), SELF(e));
     // trigger continuation
-    config_send(e->sponsor, cust, fx);
+    config_send(SPONSOR(e), cust, fx);
     // become busy
     actor_become(SELF(e), b_busy);
 }
@@ -131,7 +131,7 @@ act_send(Event e)
     // store new event in effects
     effect_send(MSG(e), target, message);
     // trigger continuation
-    config_send(e->sponsor, cust, MSG(e));
+    config_send(SPONSOR(e), cust, MSG(e));
 }
 
 /**
@@ -150,7 +150,7 @@ act_create(Event e)
     // store new actor in effects
     effect_create(MSG(e), beh);
     // trigger continuation
-    config_send(e->sponsor, cust, MSG(e));
+    config_send(SPONSOR(e), cust, MSG(e));
 }
 
 /**
@@ -169,7 +169,7 @@ act_become(Event e)
     // store new behavior in effects
     effect_become(MSG(e), beh);
     // trigger continuation
-    config_send(e->sponsor, cust, MSG(e));
+    config_send(SPONSOR(e), cust, MSG(e));
 }
 
 /**

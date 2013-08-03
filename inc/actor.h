@@ -68,8 +68,9 @@ typedef void (*Action)(Event e);
 #define NOTHING (a_halt)
 
 #define BEH(a)      (((Actor)(a))->beh)
-#define MSG(e)      (((Event)(e))->message)
+#define SPONSOR(e)  (((Event)(e))->sponsor)
 #define SELF(e)     (((Event)(e))->actor)
+#define MSG(e)      (((Event)(e))->message)
 #define CODE(v)     BEH(v)
 #define DATA(v)     (((Value)(v))->data)
 #define VALUE(s)    (((Serial)(s))->value)

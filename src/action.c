@@ -37,7 +37,7 @@ val_forward(Event e)
     TRACE(fprintf(stderr, "val_forward{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor a = DATA(SELF(e));  // target
     Any m = MSG(e);  // message
-    config_send(e->sponsor, a, m);
+    config_send(SPONSOR(e), a, m);
 }
 
 /**
@@ -52,7 +52,7 @@ act_oneshot(Event e)  // SERIALIZED
     TRACE(fprintf(stderr, "act_oneshot{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor a = STATE(SELF(e));  // target
     Any m = MSG(e);  // message
-    config_send(e->sponsor, a, m);
+    config_send(SPONSOR(e), a, m);
     actor_become(SELF(e), a_ignore);
 }
 
@@ -69,7 +69,7 @@ val_prefix(Event e)
     p = MSG(e);  // (cust, req)
     Actor cust = p->h;
     Any req = p->t;
-    config_send(e->sponsor, cust, PR(prefix, req));
+    config_send(SPONSOR(e), cust, PR(prefix, req));
 }
 
 /**
@@ -84,7 +84,7 @@ val_label(Event e)
     p = DATA(SELF(e));  // (cust, label)
     Actor cust = p->h;
     Any label = p->t;
-    config_send(e->sponsor, cust, PR(label, MSG(e)));
+    config_send(SPONSOR(e), cust, PR(label, MSG(e)));
 }
 
 /**
@@ -96,7 +96,7 @@ val_tag(Event e)
     TRACE(fprintf(stderr, "val_tag{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor cust = DATA(SELF(e));  // cust
     Any msg = MSG(e);  // msg
-    config_send(e->sponsor, cust, PR(SELF(e), msg));
+    config_send(SPONSOR(e), cust, PR(SELF(e), msg));
 }
 /**
 LET join_0_beh(cust, first, k_rest) = \($k_rest, rest).[ SEND (first, rest) TO cust ]
@@ -115,7 +115,7 @@ act_join_0(Event e)
     p = MSG(e);  // ($k_rest, rest)
     if (p->h == k_rest) {
         Any rest = p->t;
-        config_send(e->sponsor, cust, PR(first, rest));
+        config_send(SPONSOR(e), cust, PR(first, rest));
         return;
     }
 }
@@ -136,7 +136,7 @@ act_join_1(Event e)
     p = MSG(e);  // ($k_first, first)
     if (p->h == k_first) {
         Any first = p->t;
-        config_send(e->sponsor, cust, PR(first, rest));
+        config_send(SPONSOR(e), cust, PR(first, rest));
         return;
     }
 }
@@ -200,8 +200,8 @@ act_fork(Event e)  // SERIALIZED
     Any t_req = p->t;
     Actor k_head = value_new(val_tag, SELF(e));
     Actor k_tail = value_new(val_tag, SELF(e));
-    config_send(e->sponsor, head, PR(k_head, h_req));
-    config_send(e->sponsor, tail, PR(k_tail, t_req));
+    config_send(SPONSOR(e), head, PR(k_head, h_req));
+    config_send(SPONSOR(e), tail, PR(k_tail, t_req));
     Actor args = PR(cust, PR(k_head, k_tail));  // (cust, k_head, k_tail)
     actor_become(SELF(e), value_new(act_join, args));
 }

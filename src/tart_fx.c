@@ -54,7 +54,7 @@ fx_forward(Event e)
     Actor a_begin = serial_new(act_begin, a_send);
     TRACE(fprintf(stderr, "fx_forward: delegate=%p\n", a_begin));
     // invoke delegate
-    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
+    config_send(SPONSOR(e), a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }
 
 /**
@@ -76,7 +76,7 @@ fx_oneshot(Event e)
     // become sink
     actor_become(SELF(e), a_ignore);
     // invoke delegate
-    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
+    config_send(SPONSOR(e), a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }
 
 /**
@@ -93,7 +93,7 @@ fx_tag(Event e)
     Actor a_begin = serial_new(act_begin, a_send);
     TRACE(fprintf(stderr, "fx_tag: delegate=%p\n", a_begin));
     // invoke delegate
-    config_send(e->sponsor, a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
+    config_send(SPONSOR(e), a_begin, NIL);  // NOTE: act_begin() ignores MSG(e)
 }
 
 /*

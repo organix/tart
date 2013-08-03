@@ -154,19 +154,19 @@ expr_value(Event e)
     TRACE(fprintf(stderr, "expr_value: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
         TRACE(fprintf(stderr, "expr_value: (#eval, _)\n"));
-        config_send(e->sponsor, r->ok, SELF(e));
+        config_send(SPONSOR(e), r->ok, SELF(e));
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "expr_value: (#match, %p, %p)\n", rm->value, rm->env));
         if (SELF(e) == rm->value) {
-            config_send(e->sponsor, r->ok, rm->env);
+            config_send(SPONSOR(e), r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "expr_value: MISMATCH!\n"));
-            config_send(e->sponsor, r->fail, e);
+            config_send(SPONSOR(e), r->fail, e);
         }
     } else {
         TRACE(fprintf(stderr, "expr_value: FAIL!\n"));
-        config_send(e->sponsor, r->fail, e);
+        config_send(SPONSOR(e), r->fail, e);
     }
 }
 
@@ -193,7 +193,7 @@ expr_env_empty(Event e)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env_empty: (#bind, %p -> %p)\n", rb->key, rb->value));
         Actor dict = dict_bind(SELF(e), rb->key, rb->value);
-        config_send(e->sponsor, r->ok, dict);
+        config_send(SPONSOR(e), r->ok, dict);
     } else {
         expr_value(e);  // delegate
     }
@@ -226,16 +226,16 @@ expr_env(Event e)
         Any value = dict_lookup(SELF(e), rl->key);
         TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
         if (value != NULL) {
-            config_send(e->sponsor, r->ok, value);
+            config_send(SPONSOR(e), r->ok, value);
         } else {
             TRACE(fprintf(stderr, "expr_env: FAIL!\n"));
-            config_send(e->sponsor, r->fail, e);
+            config_send(SPONSOR(e), r->fail, e);
         }
     } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env: (#bind, %p -> %p)\n", rb->key, rb->value));
         Actor dict = dict_bind(SELF(e), rb->key, rb->value);
-        config_send(e->sponsor, r->ok, dict);
+        config_send(SPONSOR(e), r->ok, dict);
     } else {
         expr_value(e);  // delegate
     }
@@ -260,7 +260,7 @@ ptrn_skip(Event e)
     if (val_req_match == BEH(r->req)) {  // (#match, _, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "ptrn_skip: (#match, %p, %p)\n", rm->value, rm->env));
-        config_send(e->sponsor, r->ok, rm->env);
+        config_send(SPONSOR(e), r->ok, rm->env);
     } else {
         expr_value(e);  // delegate
     }
@@ -290,7 +290,7 @@ ptrn_bind(Event e)
     if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "ptrn_bind: (#match, %p, %p)\n", rm->value, rm->env));
-        config_send(e->sponsor, rm->env, req_bind_new(r->ok, r->fail, name, rm->value));
+        config_send(SPONSOR(e), rm->env, req_bind_new(r->ok, r->fail, name, rm->value));
     } else {
         expr_value(e);  // delegate
     }
@@ -315,10 +315,10 @@ expr_name(Event e)
     if (val_req_eval == BEH(r->req)) {  // (#eval, env)
         ReqEval re = (ReqEval)r->req;
         TRACE(fprintf(stderr, "expr_name: (#eval, %p)\n", re->env));
-        config_send(e->sponsor, re->env, req_lookup_new(r->ok, r->fail, SELF(e)));
+        config_send(SPONSOR(e), re->env, req_lookup_new(r->ok, r->fail, SELF(e)));
     } else {
         TRACE(fprintf(stderr, "expr_name: FAIL!\n"));
-        config_send(e->sponsor, r->fail, e);
+        config_send(SPONSOR(e), r->fail, e);
     }
 }
 
@@ -338,7 +338,7 @@ beh_eval_body(Event e)
     Actor body = p->t;
     Actor env = MSG(e);  // (env)
     TRACE(fprintf(stderr, "beh_eval_body: ok=%p, fail=%p, body=%p, env=%p\n", ok, fail, body, env));
-    config_send(e->sponsor, body, req_eval_new(ok, fail, env));
+    config_send(SPONSOR(e), body, req_eval_new(ok, fail, env));
 }
 static inline void
 val_expect(Event e)
