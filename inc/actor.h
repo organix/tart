@@ -134,8 +134,8 @@ extern int      dict_empty_p(Actor dict);
 extern Any      dict_lookup(Actor dict, Any key);
 extern Actor    dict_bind(Actor dict, Any key, Any value);
 
+extern Actor    actor_new(Action beh);
 extern Actor    value_new(Action beh, Any data);
-
 extern Actor    serial_new(Action beh, Any data);
 extern Actor    serial_with_value(Actor v);
 extern void     actor_become(Actor s, Actor v);
@@ -155,8 +155,8 @@ extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern PAIR the_nil_pair_actor;
-extern VALUE the_empty_dict_actor;
-extern VALUE the_ignore_actor;
+extern ACTOR the_empty_dict_actor;
+extern ACTOR the_ignore_actor;
 extern VALUE the_halt_actor;
 
 #endif /* _ACTOR_H_ */

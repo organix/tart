@@ -57,8 +57,8 @@ extern void     act_create(Event e);
 extern void     act_become(Event e);
 extern void     act_commit(Event e);
 
-extern VALUE busy_behavior;
-extern VALUE commit_behavior;
+extern ACTOR busy_behavior;
+extern ACTOR commit_behavior;
 extern SERIAL commit_actor;
 
 #endif /* _EFFECT_H_ */

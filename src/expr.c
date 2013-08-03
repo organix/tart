@@ -268,7 +268,7 @@ ptrn_skip(Event e)
 /**
 CREATE skip_ptrn WITH skip_ptrn_beh
 **/
-VALUE the_ptrn_skip_actor = { { ptrn_skip }, NOTHING };
+ACTOR the_ptrn_skip_actor = { ptrn_skip };
 
 /**
 LET bind_ptrn_beh(name) = \msg.[
@@ -381,7 +381,7 @@ test_expr()
     /* name binding can be resolved */
     cust = value_new(val_expect, cfg);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    Actor s_x = value_new(expr_name, NOTHING);
+    Actor s_x = actor_new(expr_name);
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
     expr = value_new(beh_eval_body, PR(PR(cust, a_halt), s_x));
     TRACE(fprintf(stderr, "expr = %p\n", expr));

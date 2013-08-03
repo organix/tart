@@ -157,8 +157,7 @@ deque_bind(Actor queue, int index, Any item)
     // not found
 }
 
-VALUE the_empty_dict_actor = { { expr_env_empty }, NOTHING };
-//ACTOR the_empty_dict_actor = { expr_env_empty };  -- [FIXME] ELIMINATE SUPERFLOUS USE OF NOTHING
+ACTOR the_empty_dict_actor = { expr_env_empty };
 inline Actor
 dict_new()
 {
@@ -191,6 +190,13 @@ dict_bind(Actor dict, Any key, Any value)
     return a;
 }
 
+inline Actor
+actor_new(Action beh)  // create an actor with only a behavior procedure
+{
+    Actor a = NEW(ACTOR);
+    BEH(a) = beh;
+    return a;
+}
 inline Actor
 value_new(Action beh, Any data)  // create a "unserialized" (value) actor
 {
@@ -299,7 +305,7 @@ beh_ignore(Event e)
 {
     TRACE(fprintf(stderr, "beh_ignore{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
-VALUE the_ignore_actor = { { beh_ignore }, NOTHING };
+ACTOR the_ignore_actor = { beh_ignore };
 
 void
 beh_halt(Event e)
@@ -307,4 +313,4 @@ beh_halt(Event e)
     TRACE(fprintf(stderr, "beh_halt{event=%p}\n", e));
     halt("HALT!");
 }
-VALUE the_halt_actor = { { beh_halt }, &the_halt_actor };
+VALUE the_halt_actor = { { beh_halt }, NOTHING };  // qualifies as both VALUE and SERIAL

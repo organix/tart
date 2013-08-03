@@ -38,13 +38,6 @@ THE SOFTWARE.
 #define a_empty_ptrn ((Actor)(&empty_ptrn_actor))
 #define a_appl_eval ((Actor)(&appl_eval_actor))
 
-extern VALUE fail_actor;
-extern VALUE empty_env_actor;
-extern VALUE skip_ptrn_actor;
-extern VALUE empty_actor;
-extern VALUE empty_ptrn_actor;
-extern SERIAL appl_eval_actor;
-
 extern Actor b_true;
 extern Actor b_false;
 
@@ -70,5 +63,12 @@ extern void     val_seq_expr(Event e);  // (head_expr, tail_expr)
 extern void     val_par_expr(Event e);  // (head_expr, tail_expr)
 
 extern void     test_universe();  // unit-test method
+
+extern ACTOR fail_actor;
+extern ACTOR empty_env_actor;
+extern ACTOR skip_ptrn_actor;
+extern ACTOR empty_actor;
+extern VALUE empty_ptrn_actor;
+extern SERIAL appl_eval_actor;
 
 #endif /* _PAIR_H_ */

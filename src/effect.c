@@ -91,7 +91,7 @@ act_busy(Event e)
     // re-queue event
     config_enqueue(e->sponsor, e);
 }
-VALUE busy_behavior = { { act_busy }, NOTHING };
+ACTOR busy_behavior = { act_busy };
 
 /**
 LET begin_beh(cust) = \_.[
@@ -185,5 +185,5 @@ act_commit(Event e)
     TRACE(fprintf(stderr, "act_commit{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     effect_commit(MSG(e));
 }
-VALUE commit_behavior = { { act_commit }, NOTHING };
+ACTOR commit_behavior = { act_commit };
 SERIAL commit_actor = { { act_serial }, (Actor)&commit_behavior };

@@ -39,7 +39,7 @@ beh_fail(Event e)
     TRACE(fprintf(stderr, "beh_fail{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     halt("FAIL!");
 }
-VALUE fail_actor = { { beh_fail }, NOTHING };
+ACTOR fail_actor = { beh_fail };
 
 /**
 CREATE empty_env WITH \msg.[
@@ -69,7 +69,7 @@ beh_empty_env(Event e)
         beh_value(e);
     }
 }
-VALUE empty_env_actor = { { beh_empty_env }, NOTHING };
+ACTOR empty_env_actor = { beh_empty_env };
 
 /**
 LET value_beh = \msg.[
@@ -139,7 +139,7 @@ ser_scope(Event e)  // SERIALIZED
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
         Any value = dict_lookup(dict, name);
-        TRACE(fprintf(stderr, "ser_scope: (#lookup, %p \"%s\") -> %p\n", name, DATA(DATA(name)), value));
+        TRACE(fprintf(stderr, "ser_scope: (#lookup, %p) -> %p\n", name, value));
         if (value == NULL) {
             config_send(e->sponsor, parent, MSG(e));
         } else {
@@ -193,7 +193,7 @@ beh_skip_ptrn(Event e)
 /**
 CREATE skip_ptrn WITH skip_ptrn_beh
 **/
-VALUE skip_ptrn_actor = { { beh_skip_ptrn }, NOTHING };
+ACTOR skip_ptrn_actor = { beh_skip_ptrn };
 
 /**
 LET bind_ptrn_beh(name) = \msg.[
@@ -606,13 +606,13 @@ beh_oper_eval(Event e)
 CREATE oper_eval WITH oper_eval_beh
 CREATE appl_eval WITH appl_beh(oper_eval);
 **/
-static VALUE oper_eval_actor = { { beh_oper_eval }, NOTHING };
-SERIAL appl_eval_actor = { { val_appl }, (Actor)&oper_eval_actor };
+static ACTOR oper_eval_actor = { beh_oper_eval };
+SERIAL appl_eval_actor = { { val_appl }, &oper_eval_actor };
 
 /**
 CREATE empty WITH value_beh
 **/
-VALUE empty_actor = { { beh_value }, NOTHING };
+ACTOR empty_actor = { beh_value };
 /**
 LET eq_ptrn_beh(value) = \msg.[
     LET ((ok, fail), req) = $msg IN
@@ -723,7 +723,7 @@ val_choice_ptrn(Event e)
 LET (pair_beh, pair_ptrn_beh) = $(
 	LET brand = $(NEW value_beh) IN
 **/
-static VALUE pair_brand_actor = { { beh_value }, NOTHING };
+static ACTOR pair_brand_actor = { beh_value };
 /**
     LET pair_0_beh((ok, fail), t_ptrn, tail) = \env_0.[
         SEND ((ok, fail), #match, tail, env_0) TO t_ptrn
@@ -1157,7 +1157,7 @@ symbol_intern(char * name)
 {
     Actor a_symbol = dict_lookup(symbol_table, name);
     if (a_symbol == NULL) {
-        a_symbol = value_new(beh_name, NOTHING);
+        a_symbol = actor_new(beh_name);
         symbol_table = dict_bind(symbol_table, name, a_symbol);
     }
     return a_symbol;
@@ -1178,8 +1178,8 @@ false = \(a, b).b
 static void
 boolean_init()
 {
-    Actor s_e = value_new(beh_name, NOTHING); //symbol_intern("e");
-    Actor s_x = value_new(beh_name, NOTHING); //symbol_intern("x");
+    Actor s_e = actor_new(beh_name); //symbol_intern("e");
+    Actor s_x = actor_new(beh_name); //symbol_intern("x");
     Actor T_form = value_new(val_pair_ptrn, PR(
         value_new(val_bind_ptrn, s_x),
         a_skip_ptrn));
@@ -1199,8 +1199,8 @@ boolean_init()
 void
 universe_init(Config cfg)
 {
-    b_true = value_new(beh_oper_true, NOTHING);
-    b_false = value_new(beh_oper_false, NOTHING);
+    b_true = actor_new(beh_oper_true);
+    b_false = actor_new(beh_oper_false);
 //    boolean_init();
     TRACE(fprintf(stderr, "b_true = %p\n", b_true));
     TRACE(fprintf(stderr, "b_false = %p\n", b_false));
