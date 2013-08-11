@@ -57,10 +57,10 @@ list_new()
 {
     return a_empty_list;
 }
-inline int
+inline Boolean
 list_empty_p(Actor list)
 {
-    return (list == a_empty_list);
+    return ((list == a_empty_list) ? a_true : a_false);
 }
 inline Pair
 list_pop(Actor list)  // returns: (first, rest)
@@ -80,12 +80,12 @@ deque_new()
 {
     return PR(NIL, NIL);
 }
-inline int
+inline Boolean
 deque_empty_p(Actor queue)
 {
     if (beh_pair != BEH(queue)) { halt("deque_empty_p: pair required"); }
     Pair q = (Pair)queue;
-    return (q->h == NIL);
+    return ((q->h == NIL) ? a_true : a_false);
 }
 inline void
 deque_give(Actor queue, Any item)
@@ -104,7 +104,7 @@ deque_give(Actor queue, Any item)
 inline Any
 deque_take(Actor queue)
 {
-    if (deque_empty_p(queue)) { halt("deque_take from empty!"); }
+    if (deque_empty_p(queue) != a_false) { halt("deque_take from empty!"); }
 //    if (beh_pair != BEH(queue)) { halt("deque_take: pair required"); }
     Pair q = (Pair)queue;
     Pair p = q->h;
@@ -163,15 +163,15 @@ dict_new()
 {
     return a_empty_dict;
 }
-inline int
+inline Boolean
 dict_empty_p(Actor dict)
 {
-    return (dict == a_empty_dict);
+    return ((dict == a_empty_dict) ? a_true : a_false);
 }
 inline Any
 dict_lookup(Actor dict, Any key)
 {
-    while (!dict_empty_p(dict)) {
+    while (dict_empty_p(dict) == a_false) {
         if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
         Pair p = (Pair)dict;
         Pair q = p->h;
@@ -279,18 +279,18 @@ config_send(Config cfg, Actor target, Any msg)
     TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
-int
+Boolean
 config_dispatch(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
-    if (deque_empty_p(cfg->events)) {
+    if (deque_empty_p(cfg->events) != a_false) {
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
-        return 0;
+        return a_false;
     }
     Event e = deque_take(cfg->events);
     TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
     (CODE(SELF(e)))(e);  // INVOKE BEHAVIOR
-    return 1;
+    return a_true;
 }
 
 void

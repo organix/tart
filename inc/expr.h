@@ -96,6 +96,6 @@ extern void     expr_name(Event e);
 
 extern void     test_expr();  // unit-test method
 
-extern VALUE the_skip_ptrn_actor;
+extern ACTOR the_skip_ptrn_actor;
 
 #endif /* _EXPR_H_ */

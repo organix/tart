@@ -129,7 +129,7 @@ test_effect()
     TRACE(fprintf(stderr, "a_doit = %p\n", a_doit));
     config_send(cfg, a_doit, a_once);
     config_send(cfg, a_doit, a_tag);
-    while (config_dispatch(cfg))
+    while (config_dispatch(cfg) == a_true)
         ;
 }
 

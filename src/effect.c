@@ -68,12 +68,12 @@ effect_commit(Effect fx)
     // update actor behavior
     actor_become(fx->self, fx->behavior);
     // add new actors to configuration
-    for (list = fx->actors; !list_empty_p(list); list = p->t) {
+    for (list = fx->actors; list_empty_p(list) == a_false; list = p->t) {
         p = list_pop(list);
         config_enlist(fx->sponsor, p->h);
     }
     // add new events to dispatch queue
-    for (list = fx->events; !list_empty_p(list); list = p->t) {
+    for (list = fx->events; list_empty_p(list) == a_false; list = p->t) {
         p = list_pop(list);
         config_enqueue(fx->sponsor, p->h);
     }

@@ -54,7 +54,7 @@ Pair   [*|*|*]
      beh_pair
 **/
 
-typedef struct actor ACTOR, *Actor;
+typedef struct actor ACTOR, *Actor, BOOLEAN, *Boolean;
 typedef struct pair PAIR, *Pair;
 typedef struct value VALUE, *Value;
 typedef struct serial SERIAL, *Serial;
@@ -79,6 +79,8 @@ typedef void (*Action)(Event e);
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
 #define a_empty_dict ((Actor)(&the_empty_dict_actor))
+#define a_true ((Boolean)(&the_true_actor))
+#define a_false ((Boolean)(&the_false_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
 #define a_halt ((Actor)(&the_halt_actor))
 
@@ -118,12 +120,12 @@ struct config {
 extern Actor    pair_new(Any h, Any t);
 
 extern Actor    list_new();
-extern int      list_empty_p(Actor list);
+extern Boolean  list_empty_p(Actor list);
 extern Pair     list_pop(Actor list);  // returns: (first, rest)
 extern Actor    list_push(Actor list, Any item);
 
 extern Actor    deque_new();
-extern int      deque_empty_p(Actor queue);
+extern Boolean  deque_empty_p(Actor queue);
 extern void     deque_give(Actor queue, Any item);
 extern Any      deque_take(Actor queue);
 extern void     deque_return(Actor queue, Any item);
@@ -131,7 +133,7 @@ extern Any      deque_lookup(Actor queue, int index);
 extern void     deque_bind(Actor queue, int index, Any item);
 
 extern Actor    dict_new();
-extern int      dict_empty_p(Actor dict);
+extern Boolean  dict_empty_p(Actor dict);
 extern Any      dict_lookup(Actor dict, Any key);
 extern Actor    dict_bind(Actor dict, Any key, Any value);
 
@@ -147,7 +149,7 @@ extern Config   config_new();
 extern void     config_enqueue(Config cfg, Event e);
 extern void     config_enlist(Config cfg, Actor a);
 extern void     config_send(Config cfg, Actor target, Any msg);
-extern int      config_dispatch(Config cfg);
+extern Boolean  config_dispatch(Config cfg);
 
 extern void     beh_halt(Event e);
 extern void     beh_pair(Event e);
@@ -157,6 +159,8 @@ extern void     act_serial(Event e);  // "serialized" actor behavior
 
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
+extern BOOLEAN the_true_actor;
+extern BOOLEAN the_false_actor;
 extern ACTOR the_ignore_actor;
 extern VALUE the_halt_actor;
 

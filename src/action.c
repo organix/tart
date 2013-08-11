@@ -245,7 +245,7 @@ test_action()
     TRACE(fprintf(stderr, "a_fwd = %p\n", a_fwd));
     config_send(cfg, a_fwd, NIL);
     config_send(cfg, a_fwd, a_once);
-    while (config_dispatch(cfg))
+    while (config_dispatch(cfg) == a_true)
         ;
 
     // fork-join example
@@ -263,6 +263,6 @@ test_action()
     Actor beh = value_new(act_fork, PR(a_dump, PR(a_zero, a_one)));
     config_send(cfg, value_new(act_serial, beh), PR(s_123, s_456));
     config_send(cfg, value_new(act_serial, beh), PR(s_456, s_123));
-    while (config_dispatch(cfg))
+    while (config_dispatch(cfg) == a_true)
         ;
 }
