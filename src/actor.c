@@ -29,19 +29,6 @@ THE SOFTWARE.
 #include "actor.h"
 #include "expr.h"
 
-PAIR the_nil_pair_actor = {
-    { beh_pair }, 
-    NIL, 
-    NIL 
-};
-
-void
-beh_pair(Event e)
-{
-    TRACE(fprintf(stderr, "beh_pair{event=%p}\n", e));
-    expr_value(e);  // DON'T PANIC!
-}
-
 inline Actor
 pair_new(Any h, Any t)
 {
@@ -299,6 +286,145 @@ act_serial(Event e)  // "serialized" actor behavior
     TRACE(fprintf(stderr, "act_serial{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     (STRATEGY(SELF(e)))(e);  // INVOKE SERIALIZED BEHAVIOR
 }
+
+/**
+LET pair_beh_0((ok, fail), t, tail) = \env'.[
+    SEND ((ok, fail), #match, t, env') TO tail
+]
+**/
+static void
+beh_pair_0(Event e)
+{
+    TRACE(fprintf(stderr, "beh_pair_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Request r = (Request)DATA(SELF(e));
+    ReqMatch rm = (ReqMatch)r->req;
+    Actor tail = rm->env;  // extract hijacked target
+    rm->env = (Actor)MSG(e);  // replace with extended environment
+    config_send(SPONSOR(e), tail, r);
+}
+/**
+LET pair_beh(head, tail) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, _) : [ SEND SELF TO ok ]
+    (#match, $SELF, env) : [ SEND env TO ok ]
+    (#match, (h, t), env) : [
+			SEND ((ok', fail), #match, h, env) TO head
+			CREATE ok' WITH \env'.[
+				SEND ((ok, fail), #match, t, env') TO tail
+			]
+        SEND env TO ok
+    ]
+    _ : [ SEND (SELF, msg) TO fail ]
+    END
+]
+**/
+void
+beh_pair(Event e)
+{
+    TRACE(fprintf(stderr, "beh_pair{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("beh_pair: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "beh_pair: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_eval == BEH(r->req)) {  // (#eval, _)
+        TRACE(fprintf(stderr, "beh_pair: (#eval, _)\n"));
+        config_send(SPONSOR(e), r->ok, SELF(e));
+    } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
+        ReqMatch rm = (ReqMatch)r->req;
+        TRACE(fprintf(stderr, "beh_pair: (#match, %p, %p)\n", rm->value, rm->env));
+        if (SELF(e) == rm->value) {
+            config_send(SPONSOR(e), r->ok, rm->env);
+        } else if (beh_pair == BEH(rm->value)) {
+            Pair p = (Pair)SELF(e);
+            Pair q = (Pair)rm->value;
+            Actor ok = value_new(beh_pair_0, req_match_new(r->ok, r->fail, q->t, p->t));
+            config_send(SPONSOR(e), p->h, req_match_new(ok, r->fail, q->h, rm->env));
+        } else {
+            TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));
+            config_send(SPONSOR(e), r->fail, e);
+        }
+    } else {
+        TRACE(fprintf(stderr, "beh_pair: FAIL!\n"));
+        config_send(SPONSOR(e), r->fail, e);
+    }
+}
+PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
+
+/**
+LET oper_true_beh = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, (expr, _), env) : [
+        SEND ((ok, fail), #eval, env) TO expr
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+**/
+static void
+comb_true(Event e)
+{
+    TRACE(fprintf(stderr, "comb_true{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("comb_true: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "comb_true: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_combine == BEH(r->req)) {  // (#comb, (expr, _), env)
+        ReqCombine rc = (ReqCombine)r->req;
+        TRACE(fprintf(stderr, "comb_true: (#comb, %p, %p)\n", rc->opnd, rc->env));
+        if (beh_pair == BEH(rc->opnd)) {
+            Pair p = (Pair)rc->opnd;
+            Actor expr = p->h;
+            config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
+        } else {
+            TRACE(fprintf(stderr, "comb_true: opnd must be a Pair\n"));
+            config_send(SPONSOR(e), r->fail, e);
+        }
+    } else {
+        expr_value(e);  // delegate
+    }
+}
+/**
+CREATE true_oper WITH oper_true_beh
+**/
+BOOLEAN the_true_actor = { comb_true };
+
+/**
+LET oper_false_beh = \msg.[
+    LET ((ok, fail), req) = $msg IN
+	CASE req OF
+	(#comb, (_, expr), env) : [
+        SEND ((ok, fail), #eval, env) TO expr
+    ]
+	_ : value_beh(msg)  # delegate
+	END
+]
+**/
+static void
+comb_false(Event e)
+{
+    TRACE(fprintf(stderr, "comb_false{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("comb_false: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "comb_false: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_combine == BEH(r->req)) {  // (#comb, (_, expr), env)
+        ReqCombine rc = (ReqCombine)r->req;
+        TRACE(fprintf(stderr, "comb_false: (#comb, %p, %p)\n", rc->opnd, rc->env));
+        if (beh_pair == BEH(rc->opnd)) {
+            Pair p = (Pair)rc->opnd;
+            Actor expr = p->t;
+            config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
+        } else {
+            TRACE(fprintf(stderr, "comb_false: opnd must be a Pair\n"));
+            config_send(SPONSOR(e), r->fail, e);
+        }
+    } else {
+        expr_value(e);  // delegate
+    }
+}
+/**
+CREATE false_oper WITH oper_false_beh
+**/
+BOOLEAN the_false_actor = { comb_false };
 
 static void
 beh_ignore(Event e)

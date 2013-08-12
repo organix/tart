@@ -323,82 +323,6 @@ expr_name(Event e)
 }
 
 /**
-LET oper_true_beh = \msg.[
-    LET ((ok, fail), req) = $msg IN
-	CASE req OF
-	(#comb, (expr, _), env) : [
-        SEND ((ok, fail), #eval, env) TO expr
-    ]
-	_ : value_beh(msg)  # delegate
-	END
-]
-**/
-static void
-comb_true(Event e)
-{
-    TRACE(fprintf(stderr, "comb_true{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("comb_true: request msg required"); }
-    Request r = (Request)MSG(e);
-    TRACE(fprintf(stderr, "comb_true: ok=%p, fail=%p\n", r->ok, r->fail));
-    if (val_req_combine == BEH(r->req)) {  // (#comb, (expr, _), env)
-        ReqCombine rc = (ReqCombine)r->req;
-        TRACE(fprintf(stderr, "comb_true: (#comb, %p, %p)\n", rc->opnd, rc->env));
-        if (beh_pair == BEH(rc->opnd)) {
-            Pair p = (Pair)rc->opnd;
-            Actor expr = p->h;
-            config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
-        } else {
-            TRACE(fprintf(stderr, "comb_true: opnd must be a Pair\n"));
-            config_send(SPONSOR(e), r->fail, e);
-        }
-    } else {
-        expr_value(e);  // delegate
-    }
-}
-/**
-CREATE true_oper WITH oper_true_beh
-**/
-BOOLEAN the_true_actor = { comb_true };
-
-/**
-LET oper_false_beh = \msg.[
-    LET ((ok, fail), req) = $msg IN
-	CASE req OF
-	(#comb, (_, expr), env) : [
-        SEND ((ok, fail), #eval, env) TO expr
-    ]
-	_ : value_beh(msg)  # delegate
-	END
-]
-**/
-static void
-comb_false(Event e)
-{
-    TRACE(fprintf(stderr, "comb_false{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("comb_false: request msg required"); }
-    Request r = (Request)MSG(e);
-    TRACE(fprintf(stderr, "comb_false: ok=%p, fail=%p\n", r->ok, r->fail));
-    if (val_req_combine == BEH(r->req)) {  // (#comb, (_, expr), env)
-        ReqCombine rc = (ReqCombine)r->req;
-        TRACE(fprintf(stderr, "comb_false: (#comb, %p, %p)\n", rc->opnd, rc->env));
-        if (beh_pair == BEH(rc->opnd)) {
-            Pair p = (Pair)rc->opnd;
-            Actor expr = p->t;
-            config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
-        } else {
-            TRACE(fprintf(stderr, "comb_false: opnd must be a Pair\n"));
-            config_send(SPONSOR(e), r->fail, e);
-        }
-    } else {
-        expr_value(e);  // delegate
-    }
-}
-/**
-CREATE false_oper WITH oper_false_beh
-**/
-BOOLEAN the_false_actor = { comb_false };
-
-/**
 LET eval_body_beh((ok, fail), body) = \env.[
     SEND ((ok, fail), #eval, env) TO body
 ]
@@ -462,6 +386,20 @@ test_expr()
     expr = value_new(beh_eval_body, PR(PR(cust, a_halt), s_x));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     config_send(cfg, a_empty_dict, req_bind_new(expr, a_halt, s_x, (Actor)cfg));
+    /* dispatch until empty */
+    while (config_dispatch(cfg) == a_true)
+        ;
+
+    /* pair values can be matched */
+    cust = value_new(val_expect, a_empty_env);
+    TRACE(fprintf(stderr, "cust = %p\n", cust));
+    Actor p = PR(a_true, a_false);
+    TRACE(fprintf(stderr, "p = %p\n", p));
+    Actor q = PR(a_true, a_false);
+    TRACE(fprintf(stderr, "q = %p\n", q));
+    if (p == q) { halt("expected p != q"); }
+    config_send(cfg, p, req_match_new(cust, a_halt, p, a_empty_env));  // match p to itself
+    config_send(cfg, q, req_match_new(cust, a_halt, p, a_empty_env));  // match p to q
     /* dispatch until empty */
     while (config_dispatch(cfg) == a_true)
         ;
