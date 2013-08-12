@@ -1,6 +1,6 @@
 /*
 
-tart.c -- Tiny Actor Run-Time
+number.h -- Tiny Actor Run-Time
 
 "MIT License"
 
@@ -25,47 +25,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 */
+#ifndef _NUMBER_H_
+#define _NUMBER_H_
 
 #include "tart.h"
 #include "actor.h"
-#include "expr.h"
-#include "action.h"
-#include "universe.h"
 
-void
-halt(char * msg)
-{
-    TRACE(fprintf(stderr, "%s **** HALTED ****\n", msg));
-    assert(0);
-    for (;;)    // loop forever
-        ;
-}
+typedef struct integer INTEGER, *Integer;
 
-/*
- *  Unit tests
- */
+#define a_minus_one ((Actor)(&the_number_minus_one))
+#define a_zero ((Actor)(&the_number_zero))
+#define a_one ((Actor)(&the_number_one))
+#define a_two ((Actor)(&the_number_two))
 
-void
-run_tests()
-{
-    TRACE(fprintf(stderr, "---- tart unit tests ----\n"));
-    TRACE(fprintf(stderr, "NIL = %p\n", NIL));
-    TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
-    TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
-    TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
-    test_action();
-    test_universe();
-    test_expr();
-    test_number();
-}
+struct integer {
+    ACTOR       _act;
+    int         i;
+};
 
-/*
- *  Main entry-point
- */
+extern Actor    integer_new(int i);
+extern Boolean  number_match_method(Actor this, Actor that);
+extern Actor    number_diff_method(Actor this, Actor that);
+extern Actor    number_plus_method(Actor this, Actor that);
+extern Actor    number_times_method(Actor this, Actor that);
 
-int
-main()
-{
-    run_tests();
-    return 0;
-}
+extern void     beh_integer(Event e);
+
+extern void     test_number();  // unit-test method
+
+extern INTEGER the_number_minus_one;
+extern INTEGER the_number_zero;
+extern INTEGER the_number_one;
+extern INTEGER the_number_two;
+
+#endif /* _NUMBER_H_ */

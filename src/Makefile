@@ -9,12 +9,14 @@ LIBTART=$(LIB)/libtart.a
 INCS=	$(INC)/tart.h \
 		$(INC)/actor.h \
 		$(INC)/expr.h \
+		$(INC)/number.h \
 		$(INC)/object.h \
 		$(INC)/effect.h \
 		$(INC)/action.h \
 		$(INC)/universe.h
 OBJS=	actor.o \
 		expr.o \
+		number.o \
 		object.o \
 		effect.o \
 		action.o \
