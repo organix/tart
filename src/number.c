@@ -110,7 +110,29 @@ INTEGER the_number_two = { { beh_integer }, 2 };
 void
 test_number()
 {
+    Actor a, b;
+    Integer n, m;
+
     TRACE(fprintf(stderr, "---- test_number ----\n"));
+    TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
+    a = integer_new(0);
+    if (a_zero != a) { halt("expected a_zero == a"); }
+    a = number_plus_method(a, a_one);
+    if (a_one != a) { halt("expected a_one == a"); }
+    a = number_diff_method(a, a_two);
+    if (a_minus_one != a) { halt("expected a_minus_one == a"); }
 /*
 */
+    a = number_times_method(a_two, a_two);
+    TRACE(fprintf(stderr, "a = %p\n", a));
+    if (beh_integer != BEH(a)) { halt("beh_integer == BEH(a)"); }
+    n = (Integer)a;
+    TRACE(fprintf(stderr, "n->i = %d\n", n->i));
+    b = integer_new(4);
+    TRACE(fprintf(stderr, "b = %p\n", b));
+    if (a == b) { halt("expected a != b"); }
+    if (beh_integer != BEH(b)) { halt("beh_integer == BEH(b)"); }
+    m = (Integer)b;
+    TRACE(fprintf(stderr, "m->i = %d\n", m->i));
+    if (n->i != m->i) { halt("expected n->i == m->i"); }
 }
