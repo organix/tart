@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 #include "actor.h"
 #include "expr.h"
+#include "number.h"
 
 inline Actor
 pair_new(Any h, Any t)
@@ -112,33 +113,41 @@ deque_return(Actor queue, Any item)
     q->h = p;
 }
 inline Any
-deque_lookup(Actor queue, int index)
+deque_lookup(Actor queue, Actor index)
 {
+    int i;
+
+    if (beh_integer != BEH(index)) { halt("deque_lookup: index must be an integer"); }
+    i = ((Integer)index)->i;
     if (beh_pair != BEH(queue)) { halt("deque_lookup: pair required"); }
     Pair q = (Pair)queue;
     Pair p = q->h;
     while (p != NIL) {
         if (beh_pair != BEH(p)) { halt("deque_lookup: non-pair in chain"); }
-        if (index <= 0) {
+        if (i <= 0) {
             return p->h;
         }
-        --index;
+        --i;
         p = p->t;
     }
     return NULL;  // not found
 }
 inline void
-deque_bind(Actor queue, int index, Any item)
+deque_bind(Actor queue, Actor index, Any item)
 {
+    int i;
+
+    if (beh_integer != BEH(index)) { halt("deque_lookup: index must be an integer"); }
+    i = ((Integer)index)->i;
     if (beh_pair != BEH(queue)) { halt("deque_bind: pair required"); }
     Pair q = (Pair)queue;
     Pair p = q->h;
     while (p != NIL) {
         if (beh_pair != BEH(p)) { halt("deque_bind: non-pair in chain"); }
-        if (index <= 0) {
+        if (i <= 0) {
             p->h = item;
         }
-        --index;
+        --i;
         p = p->t;
     }
     // not found

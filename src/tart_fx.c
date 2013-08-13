@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include "tart.h"
 #include "actor.h"
-#include "object.h"
+//#include "object.h"
 #include "effect.h"
 
 void
@@ -140,7 +140,7 @@ run_tests()
     TRACE(fprintf(stderr, "NIL = %p\n", NIL));
     TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
-    test_object();
+//    test_object();
     test_effect();
 }
 

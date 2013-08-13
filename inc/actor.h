@@ -129,8 +129,8 @@ extern Boolean  deque_empty_p(Actor queue);
 extern void     deque_give(Actor queue, Any item);
 extern Any      deque_take(Actor queue);
 extern void     deque_return(Actor queue, Any item);
-extern Any      deque_lookup(Actor queue, int index);
-extern void     deque_bind(Actor queue, int index, Any item);
+extern Any      deque_lookup(Actor queue, Actor index);
+extern void     deque_bind(Actor queue, Actor index, Any item);
 
 extern Actor    dict_new();
 extern Boolean  dict_empty_p(Actor dict);

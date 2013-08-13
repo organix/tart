@@ -500,6 +500,7 @@ test_number()
     TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
     a = integer_new(0);
     if (a_zero != a) { halt("expected a_zero == a"); }
+    if (number_match_method(a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
     a = number_plus_method(a, a_one);
     if (a_one != a) { halt("expected a_one == a"); }
     a = number_diff_method(a, a_two);
@@ -512,13 +513,14 @@ test_number()
     if (beh_integer != BEH(a)) { halt("expected beh_integer == BEH(a)"); }
     n = (Integer)a;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
-    b = integer_new(10000);
+    b = integer_new(100 * 100);
     TRACE(fprintf(stderr, "b = %p\n", b));
     if (a == b) { halt("expected a != b"); }
     if (beh_integer != BEH(b)) { halt("expected beh_integer == BEH(b)"); }
     m = (Integer)b;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (n->i != m->i) { halt("expected n->i == m->i"); }
+    if (number_match_method(a, b) != a_true) { halt("expected number_match_method(a, b) == a_true"); }
 /*
 */
     a = integer_new(N);
