@@ -28,14 +28,40 @@ THE SOFTWARE.
 
 #include "number.h"
 
+#define N (8)
+INTEGER small_integers[N + 2*N] = {
+    { { beh_integer }, -8 },
+    { { beh_integer }, -7 },
+    { { beh_integer }, -6 },
+    { { beh_integer }, -5 },
+    { { beh_integer }, -4 },
+    { { beh_integer }, -3 },
+    { { beh_integer }, -2 },
+    { { beh_integer }, -1 },
+    { { beh_integer }, 0 },
+    { { beh_integer }, 1 },
+    { { beh_integer }, 2 },
+    { { beh_integer }, 3 },
+    { { beh_integer }, 4 },
+    { { beh_integer }, 5 },
+    { { beh_integer }, 6 },
+    { { beh_integer }, 7 },
+    { { beh_integer }, 8 },
+    { { beh_integer }, 9 },
+    { { beh_integer }, 10 },
+    { { beh_integer }, 11 },
+    { { beh_integer }, 12 },
+    { { beh_integer }, 13 },
+    { { beh_integer }, 14 },
+    { { beh_integer }, 15 }
+};
+Integer the_integer_zero = &small_integers[N];
+
 inline Actor
 integer_new(int i)
 {
-    switch (i) {  // check for cached objects
-        case -1 : return a_minus_one;
-        case 0 : return a_zero;
-        case 1 : return a_one;
-        case 2 : return a_two;
+    if ((i < 2*N) && (i >= -N)) {  // check for cached objects
+        return ((Actor)(the_integer_zero + i));
     }
     Integer n = NEW(INTEGER);
     BEH(n) = beh_integer;
@@ -102,10 +128,6 @@ beh_integer(Event e)
     TRACE(fprintf(stderr, "beh_integer{event=%p}\n", e));
     halt("HALT!");
 }
-INTEGER the_number_minus_one = { { beh_integer }, -1 };
-INTEGER the_number_zero = { { beh_integer }, 0 };
-INTEGER the_number_one = { { beh_integer }, 1 };
-INTEGER the_number_two = { { beh_integer }, 2 };
 
 void
 test_number()
@@ -123,15 +145,16 @@ test_number()
     if (a_minus_one != a) { halt("expected a_minus_one == a"); }
 /*
 */
-    a = number_times_method(a_two, a_two);
+    a = integer_new(100);
+    a = number_times_method(a, a);
     TRACE(fprintf(stderr, "a = %p\n", a));
-    if (beh_integer != BEH(a)) { halt("beh_integer == BEH(a)"); }
+    if (beh_integer != BEH(a)) { halt("expected beh_integer == BEH(a)"); }
     n = (Integer)a;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
-    b = integer_new(4);
+    b = integer_new(10000);
     TRACE(fprintf(stderr, "b = %p\n", b));
     if (a == b) { halt("expected a != b"); }
-    if (beh_integer != BEH(b)) { halt("beh_integer == BEH(b)"); }
+    if (beh_integer != BEH(b)) { halt("expected beh_integer == BEH(b)"); }
     m = (Integer)b;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (n->i != m->i) { halt("expected n->i == m->i"); }

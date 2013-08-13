@@ -33,10 +33,12 @@ THE SOFTWARE.
 
 typedef struct integer INTEGER, *Integer;
 
-#define a_minus_one ((Actor)(&the_number_minus_one))
-#define a_zero ((Actor)(&the_number_zero))
-#define a_one ((Actor)(&the_number_one))
-#define a_two ((Actor)(&the_number_two))
+#define a_minus_one ((Actor)(the_integer_zero - 1))
+#define a_zero ((Actor)(the_integer_zero))
+#define a_one ((Actor)(the_integer_zero + 1))
+#define a_two ((Actor)(the_integer_zero + 2))
+
+extern Integer the_integer_zero;
 
 struct integer {
     ACTOR       _act;
@@ -52,10 +54,5 @@ extern Actor    number_times_method(Actor this, Actor that);
 extern void     beh_integer(Event e);
 
 extern void     test_number();  // unit-test method
-
-extern INTEGER the_number_minus_one;
-extern INTEGER the_number_zero;
-extern INTEGER the_number_one;
-extern INTEGER the_number_two;
 
 #endif /* _NUMBER_H_ */
