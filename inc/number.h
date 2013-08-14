@@ -31,10 +31,6 @@ THE SOFTWARE.
 #include "tart.h"
 #include "actor.h"
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
 typedef struct integer INTEGER, *Integer;
 
 #define a_minus_one ((Actor)(the_integer_zero - 1))
@@ -55,10 +51,10 @@ extern Actor    number_diff_method(Actor this, Actor that);
 extern Actor    number_plus_method(Actor this, Actor that);
 extern Actor    number_times_method(Actor this, Actor that);
 
-extern u16      u16_load(u8* p);
-extern void     u16_store(u8* p, u16 n);
-extern u32      u32_load(u8* p);
-extern void     u32_store(u8* p, u32 n);
+extern uint16_t u16_load(uint8_t* p);
+extern void     u16_store(uint8_t* p, uint16_t n);
+extern uint32_t u32_load(uint8_t* p);
+extern void     u32_store(uint8_t* p, uint32_t n);
 
 extern void     beh_integer(Event e);
 

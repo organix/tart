@@ -482,32 +482,32 @@ number_times_method(Actor this, Actor that)
     return this;
 }
 
-inline u16
-u16_load(u8* p)
+inline uint16_t
+u16_load(uint8_t* p)
 {
     return ((p[0] << 8) | p[1]);
 }
 
 inline void
-u16_store(u8* p, u16 n)
+u16_store(uint8_t* p, uint16_t n)
 {
-    p[0] = (u8)(n >> 8);
-    p[1] = (u8)(n);
+    p[0] = (uint8_t)(n >> 8);
+    p[1] = (uint8_t)(n);
 }
 
-inline u32
-u32_load(u8* p)
+inline uint32_t
+u32_load(uint8_t* p)
 {
     return ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
 }
 
 inline void
-u32_store(u8* p, u32 n)
+u32_store(uint8_t* p, uint32_t n)
 {
-    p[0] = (u8)(n >> 24);
-    p[1] = (u8)(n >> 16);
-    p[2] = (u8)(n >> 8);
-    p[3] = (u8)(n);
+    p[0] = (uint8_t)(n >> 24);
+    p[1] = (uint8_t)(n >> 16);
+    p[2] = (uint8_t)(n >> 8);
+    p[3] = (uint8_t)(n);
 }
 
 void
