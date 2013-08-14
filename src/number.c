@@ -482,6 +482,35 @@ number_times_method(Actor this, Actor that)
     return this;
 }
 
+inline Actor
+u16_new(u8* p)
+{
+    int i = (int)((p[0] << 8) | p[1]);
+#ifdef USE_U_BYTES
+    U_bytes n = NEW(U_BYTES);
+    BEH(n) = beh_integer;
+    n->p = p;
+    n->_int.i = i;
+    return (Actor)n;
+#else /* !USE_U_BYTES */
+    return integer_new(i);
+#endif /* USE_U_BYTES */
+}
+inline Actor
+u32_new(u8* p)
+{
+    int i = (int)((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
+#ifdef USE_U_BYTES
+    U_bytes n = NEW(U_BYTES);
+    BEH(n) = beh_integer;
+    n->p = p;
+    n->_int.i = i;
+    return (Actor)n;
+#else /* !USE_U_BYTES */
+    return integer_new(i);
+#endif /* USE_U_BYTES */
+}
+
 void
 beh_integer(Event e)
 {

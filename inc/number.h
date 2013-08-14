@@ -31,7 +31,16 @@ THE SOFTWARE.
 #include "tart.h"
 #include "actor.h"
 
+#undef USE_U_BYTES     /* maintain raw data pointer in integer structure */
+
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+
 typedef struct integer INTEGER, *Integer;
+#ifdef USE_U_BYTES
+typedef struct u_bytes U_BYTES, *U_bytes;
+#endif /* USE_U_BYTES */
 
 #define a_minus_one ((Actor)(the_integer_zero - 1))
 #define a_zero ((Actor)(the_integer_zero))
@@ -45,11 +54,21 @@ struct integer {
     int         i;
 };
 
+#ifdef USE_U_BYTES
+struct u_bytes {
+    INTEGER     _int;
+    u8 *        p;
+};
+#endif /* USE_U_BYTES */
+
 extern Actor    integer_new(int i);
 extern Boolean  number_match_method(Actor this, Actor that);
 extern Actor    number_diff_method(Actor this, Actor that);
 extern Actor    number_plus_method(Actor this, Actor that);
 extern Actor    number_times_method(Actor this, Actor that);
+
+extern Actor    u16_new(u8* p);
+extern Actor    u32_new(u8* p);
 
 extern void     beh_integer(Event e);
 
