@@ -482,33 +482,32 @@ number_times_method(Actor this, Actor that)
     return this;
 }
 
-inline Actor
-u16_new(u8* p)
+inline u16
+u16_load(u8* p)
 {
-    int i = (int)((p[0] << 8) | p[1]);
-#ifdef USE_U_BYTES
-    U_bytes n = NEW(U_BYTES);
-    BEH(n) = beh_integer;
-    n->p = p;
-    n->_int.i = i;
-    return (Actor)n;
-#else /* !USE_U_BYTES */
-    return integer_new(i);
-#endif /* USE_U_BYTES */
+    return ((p[0] << 8) | p[1]);
 }
-inline Actor
-u32_new(u8* p)
+
+inline void
+u16_store(u8* p, u16 n)
 {
-    int i = (int)((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
-#ifdef USE_U_BYTES
-    U_bytes n = NEW(U_BYTES);
-    BEH(n) = beh_integer;
-    n->p = p;
-    n->_int.i = i;
-    return (Actor)n;
-#else /* !USE_U_BYTES */
-    return integer_new(i);
-#endif /* USE_U_BYTES */
+    p[0] = (u8)(n >> 8);
+    p[1] = (u8)(n);
+}
+
+inline u32
+u32_load(u8* p)
+{
+    return ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
+}
+
+inline void
+u32_store(u8* p, u32 n)
+{
+    p[0] = (u8)(n >> 24);
+    p[1] = (u8)(n >> 16);
+    p[2] = (u8)(n >> 8);
+    p[3] = (u8)(n);
 }
 
 void
