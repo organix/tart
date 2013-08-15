@@ -69,7 +69,7 @@ val_req_match(Event e)
 {
     TRACE(fprintf(stderr, "val_req_match{event=%p}\n", e));
     ReqMatch req = (ReqMatch)REQ(SELF(e));
-    TRACE(fprintf(stderr, "val_req_match: value=&p, env=%p\n", req->value, req->env));
+    TRACE(fprintf(stderr, "val_req_match: value=%p, env=%p\n", req->value, req->env));
     beh_halt(e);
 }
 Actor

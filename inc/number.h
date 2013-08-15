@@ -28,6 +28,7 @@ THE SOFTWARE.
 #ifndef _NUMBER_H_
 #define _NUMBER_H_
 
+#include <stdint.h>
 #include "tart.h"
 #include "actor.h"
 
