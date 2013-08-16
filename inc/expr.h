@@ -37,6 +37,9 @@ typedef struct req_match REQ_MATCH, *ReqMatch;
 typedef struct req_bind REQ_BIND, *ReqBind;
 typedef struct req_lookup REQ_LOOKUP, *ReqLookup;
 typedef struct req_combine REQ_COMBINE, *ReqCombine;
+typedef struct req_read REQ_READ, *ReqRead;
+typedef struct req_write REQ_WRITE, *ReqWrite;
+typedef struct req_call REQ_CALL, *ReqCall;
 
 #define REQ(r)      (((Request)(r))->req)
 
@@ -87,6 +90,27 @@ struct req_combine {
 };
 extern void     val_req_combine(Event e);
 extern Actor    req_combine_new(Actor ok, Actor fail, Actor opnd, Actor env);
+
+struct req_read {
+    ACTOR       _act;
+};
+extern void     val_req_read(Event e);
+extern Actor    req_read_new(Actor ok, Actor fail);
+
+struct req_write {
+    ACTOR       _act;
+    Actor       value;      // value to transmit
+};
+extern void     val_req_write(Event e);
+extern Actor    req_write_new(Actor ok, Actor fail, Actor value);
+
+struct req_call {
+    ACTOR       _act;
+    Actor       selector;   // request identification
+    Actor       parameter;  // parameter data
+};
+extern void     val_req_call(Event e);
+extern Actor    req_call_new(Actor ok, Actor fail, Actor selector, Actor parameter);
 
 extern void     expr_value(Event e);
 extern void     expr_env_empty(Event e);

@@ -135,6 +135,56 @@ req_combine_new(Actor ok, Actor fail, Actor opnd, Actor env)
     return request_new(ok, fail, (Actor)req);
 }
 
+void
+val_req_read(Event e)
+{
+    TRACE(fprintf(stderr, "val_req_read{event=%p}\n", e));
+//    ReqRead req = (ReqRead)REQ(SELF(e));
+    beh_halt(e);
+}
+Actor
+req_read_new(Actor ok, Actor fail)
+{
+    ReqRead req = NEW(REQ_READ);
+    BEH(req) = val_req_read;
+    return request_new(ok, fail, (Actor)req);
+}
+
+void
+val_req_write(Event e)
+{
+    TRACE(fprintf(stderr, "val_req_write{event=%p}\n", e));
+    ReqWrite req = (ReqWrite)REQ(SELF(e));
+    TRACE(fprintf(stderr, "val_req_write: value=%p\n", req->value));
+    beh_halt(e);
+}
+Actor
+req_write_new(Actor ok, Actor fail, Actor value)
+{
+    ReqWrite req = NEW(REQ_WRITE);
+    BEH(req) = val_req_write;
+    req->value = value;
+    return request_new(ok, fail, (Actor)req);
+}
+
+void
+val_req_call(Event e)
+{
+    TRACE(fprintf(stderr, "val_req_call{event=%p}\n", e));
+    ReqCall req = (ReqCall)REQ(SELF(e));
+    TRACE(fprintf(stderr, "val_req_call: selector=%p, parameter=%p\n", req->selector, req->parameter));
+    beh_halt(e);
+}
+Actor
+req_call_new(Actor ok, Actor fail, Actor selector, Actor parameter)
+{
+    ReqCall req = NEW(REQ_CALL);
+    BEH(req) = val_req_call;
+    req->selector = selector;
+    req->parameter = parameter;
+    return request_new(ok, fail, (Actor)req);
+}
+
 /**
 LET value_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
