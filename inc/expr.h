@@ -31,6 +31,15 @@ THE SOFTWARE.
 #include "tart.h"
 #include "actor.h"
 
+/**
+Request [*|*|*|*]
+         | | | +------> [*|*|*] ReqCall
+         | | +-> fail    | | +--> parameter
+         | +-> ok        | +--> selector
+         V               V
+      val_request     val_req_call
+**/
+
 typedef struct request REQUEST, *Request;
 typedef struct req_eval REQ_EVAL, *ReqEval;
 typedef struct req_match REQ_MATCH, *ReqMatch;

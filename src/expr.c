@@ -34,7 +34,7 @@ val_request(Event e)
     TRACE(fprintf(stderr, "val_request{event=%p}\n", e));
     Request r = (Request)SELF(e);
     TRACE(fprintf(stderr, "val_request: ok=%p, fail=%p, req=%p\n", r->ok, r->fail, r->req));
-    beh_halt(e);
+    expr_value(e);
 }
 static Actor
 request_new(Actor ok, Actor fail, Actor req)
@@ -53,7 +53,7 @@ val_req_eval(Event e)
     TRACE(fprintf(stderr, "val_req_eval{event=%p}\n", e));
     ReqEval req = (ReqEval)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_eval: env=%p\n", req->env));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_eval_new(Actor ok, Actor fail, Actor env)
@@ -70,7 +70,7 @@ val_req_match(Event e)
     TRACE(fprintf(stderr, "val_req_match{event=%p}\n", e));
     ReqMatch req = (ReqMatch)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_match: value=%p, env=%p\n", req->value, req->env));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_match_new(Actor ok, Actor fail, Actor value, Actor env)
@@ -88,7 +88,7 @@ val_req_bind(Event e)
     TRACE(fprintf(stderr, "val_req_bind{event=%p}\n", e));
     ReqBind req = (ReqBind)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_bind: key=%p, value=%p\n", req->key, req->value));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_bind_new(Actor ok, Actor fail, Actor key, Actor value)
@@ -106,7 +106,7 @@ val_req_lookup(Event e)
     TRACE(fprintf(stderr, "val_req_lookup{event=%p}\n", e));
     ReqLookup req = (ReqLookup)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_lookup: key=%p\n", req->key));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_lookup_new(Actor ok, Actor fail, Actor key)
@@ -123,7 +123,7 @@ val_req_combine(Event e)
     TRACE(fprintf(stderr, "val_req_combine{event=%p}\n", e));
     ReqCombine req = (ReqCombine)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_combine: opnd=%p, env=%p\n", req->opnd, req->env));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_combine_new(Actor ok, Actor fail, Actor opnd, Actor env)
@@ -140,7 +140,7 @@ val_req_read(Event e)
 {
     TRACE(fprintf(stderr, "val_req_read{event=%p}\n", e));
 //    ReqRead req = (ReqRead)REQ(SELF(e));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_read_new(Actor ok, Actor fail)
@@ -156,7 +156,7 @@ val_req_write(Event e)
     TRACE(fprintf(stderr, "val_req_write{event=%p}\n", e));
     ReqWrite req = (ReqWrite)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_write: value=%p\n", req->value));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_write_new(Actor ok, Actor fail, Actor value)
@@ -173,7 +173,7 @@ val_req_call(Event e)
     TRACE(fprintf(stderr, "val_req_call{event=%p}\n", e));
     ReqCall req = (ReqCall)REQ(SELF(e));
     TRACE(fprintf(stderr, "val_req_call: selector=%p, parameter=%p\n", req->selector, req->parameter));
-    beh_halt(e);
+    expr_value(e);
 }
 Actor
 req_call_new(Actor ok, Actor fail, Actor selector, Actor parameter)

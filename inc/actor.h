@@ -151,14 +151,15 @@ extern void     config_enlist(Config cfg, Actor a);
 extern void     config_send(Config cfg, Actor target, Any msg);
 extern Boolean  config_dispatch(Config cfg);
 
-extern void     beh_halt(Event e);
 extern void     beh_pair(Event e);
+extern void     beh_deque(Event e);
 extern void     beh_event(Event e);
 extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
+extern void     beh_halt(Event e);
 
-extern ACTOR the_empty_dict_actor;
 extern PAIR the_nil_pair_actor;
+extern ACTOR the_empty_dict_actor;
 extern BOOLEAN the_true_actor;
 extern BOOLEAN the_false_actor;
 extern ACTOR the_ignore_actor;

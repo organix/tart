@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "expr.h"
 #include "number.h"
 
+PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
 inline Actor
 pair_new(Any h, Any t)
 {
@@ -66,19 +67,21 @@ list_push(Actor list, Any item)
 inline Actor
 deque_new()
 {
-    return PR(NIL, NIL);
+    Actor a = PR(NIL, NIL);
+    BEH(a) = beh_deque;  // override pair behavior with deque behavior
+    return a;
 }
 inline Boolean
 deque_empty_p(Actor queue)
 {
-    if (beh_pair != BEH(queue)) { halt("deque_empty_p: pair required"); }
+    if (beh_deque != BEH(queue)) { halt("deque_empty_p: deque required"); }
     Pair q = (Pair)queue;
     return ((q->h == NIL) ? a_true : a_false);
 }
 inline void
 deque_give(Actor queue, Any item)
 {
-    if (beh_pair != BEH(queue)) { halt("deque_give: pair required"); }
+    if (beh_deque != BEH(queue)) { halt("deque_give: deque required"); }
     Pair q = (Pair)queue;
     Actor p = PR(item, NIL);
     if (q->h == NIL) {
@@ -93,7 +96,7 @@ inline Any
 deque_take(Actor queue)
 {
     if (deque_empty_p(queue) != a_false) { halt("deque_take from empty!"); }
-//    if (beh_pair != BEH(queue)) { halt("deque_take: pair required"); }
+//    if (beh_deque != BEH(queue)) { halt("deque_take: deque required"); }
     Pair q = (Pair)queue;
     Pair p = q->h;
     Any item = p->h;
@@ -104,7 +107,7 @@ deque_take(Actor queue)
 inline void
 deque_return(Actor queue, Any item)
 {
-    if (beh_pair != BEH(queue)) { halt("deque_return: pair required"); }
+    if (beh_deque != BEH(queue)) { halt("deque_return: deque required"); }
     Pair q = (Pair)queue;
     Actor p = PR(item, q->h);
     if (q->h == NIL) {
@@ -119,7 +122,7 @@ deque_lookup(Actor queue, Actor index)
 
     if (beh_integer != BEH(index)) { halt("deque_lookup: index must be an integer"); }
     i = ((Integer)index)->i;
-    if (beh_pair != BEH(queue)) { halt("deque_lookup: pair required"); }
+    if (beh_deque != BEH(queue)) { halt("deque_lookup: deque required"); }
     Pair q = (Pair)queue;
     Pair p = q->h;
     while (p != NIL) {
@@ -139,7 +142,7 @@ deque_bind(Actor queue, Actor index, Any item)
 
     if (beh_integer != BEH(index)) { halt("deque_lookup: index must be an integer"); }
     i = ((Integer)index)->i;
-    if (beh_pair != BEH(queue)) { halt("deque_bind: pair required"); }
+    if (beh_deque != BEH(queue)) { halt("deque_bind: deque required"); }
     Pair q = (Pair)queue;
     Pair p = q->h;
     while (p != NIL) {
@@ -318,12 +321,13 @@ LET pair_beh(head, tail) = \msg.[
     (#eval, _) : [ SEND SELF TO ok ]
     (#match, $SELF, env) : [ SEND env TO ok ]
     (#match, (h, t), env) : [
-			SEND ((ok', fail), #match, h, env) TO head
-			CREATE ok' WITH \env'.[
-				SEND ((ok, fail), #match, t, env') TO tail
-			]
-        SEND env TO ok
+        SEND ((ok', fail), #match, h, env) TO head
+        CREATE ok' WITH \env'.[
+            SEND ((ok, fail), #match, t, env') TO tail
+        ]
     ]
+    (#read) : [ SEND list_pop(SELF) TO ok ]
+    (#write, value) : [ SEND list_push(SELF, value) TO ok ]
     _ : [ SEND (SELF, msg) TO fail ]
     END
 ]
@@ -352,12 +356,68 @@ beh_pair(Event e)
             TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));
             config_send(SPONSOR(e), r->fail, e);
         }
+    } else if (val_req_read == BEH(r->req)) {  // (#read)
+        Pair p = (Pair)SELF(e);
+        TRACE(fprintf(stderr, "beh_pair: (#read) -> (%p, %p)\n", p->h, p->t));
+        config_send(SPONSOR(e), r->ok, list_pop(SELF(e)));
+    } else if (val_req_write == BEH(r->req)) {  // (#write, value)
+        ReqWrite rw = (ReqWrite)r->req;
+        TRACE(fprintf(stderr, "beh_pair: (#write, %p)\n", rw->value));
+        config_send(SPONSOR(e), r->ok, list_push(SELF(e), rw->value));
     } else {
         TRACE(fprintf(stderr, "beh_pair: FAIL!\n"));
         config_send(SPONSOR(e), r->fail, e);
     }
 }
-PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
+
+/**
+LET deque_beh(head, tail) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, _) : [ SEND SELF TO ok ]
+    (#match, $SELF, env) : [ SEND env TO ok ]
+    (#read) : [ SEND (deque_take(SELF), SELF) TO ok ]
+    (#write, value) : [
+        LET _ = $deque_give(SELF, value)
+        IN SEND SELF TO ok
+    ]
+    _ : [ SEND (SELF, msg) TO fail ]
+    END
+]
+**/
+void
+beh_deque(Event e)
+{
+    TRACE(fprintf(stderr, "beh_deque{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("beh_deque: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "beh_deque: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_eval == BEH(r->req)) {  // (#eval, _)
+        TRACE(fprintf(stderr, "beh_deque: (#eval, _)\n"));
+        config_send(SPONSOR(e), r->ok, SELF(e));
+    } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
+        ReqMatch rm = (ReqMatch)r->req;
+        TRACE(fprintf(stderr, "beh_deque: (#match, %p, %p)\n", rm->value, rm->env));
+        if (SELF(e) == rm->value) {
+            config_send(SPONSOR(e), r->ok, rm->env);
+        } else {
+            TRACE(fprintf(stderr, "beh_deque: MISMATCH!\n"));
+            config_send(SPONSOR(e), r->fail, e);
+        }
+    } else if (val_req_read == BEH(r->req)) {  // (#read)
+        Pair p = (Pair)SELF(e);
+        TRACE(fprintf(stderr, "beh_deque: (#read) -> (%p, %p)\n", p->h, p->t));
+        config_send(SPONSOR(e), r->ok, PR(deque_take(SELF(e)), SELF(e)));
+    } else if (val_req_write == BEH(r->req)) {  // (#write, value)
+        ReqWrite rw = (ReqWrite)r->req;
+        TRACE(fprintf(stderr, "beh_deque: (#write, %p)\n", rw->value));
+        deque_give(SELF(e), rw->value);
+        config_send(SPONSOR(e), r->ok, SELF(e));
+    } else {
+        TRACE(fprintf(stderr, "beh_deque: FAIL!\n"));
+        config_send(SPONSOR(e), r->fail, e);
+    }
+}
 
 /**
 LET oper_true_beh = \msg.[
