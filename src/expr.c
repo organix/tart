@@ -212,11 +212,11 @@ expr_value(Event e)
             config_send(SPONSOR(e), r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "expr_value: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, e);
+            config_send(SPONSOR(e), r->fail, (Actor)e);
         }
     } else {
         TRACE(fprintf(stderr, "expr_value: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, e);
+        config_send(SPONSOR(e), r->fail, (Actor)e);
     }
 }
 
@@ -273,13 +273,13 @@ expr_env(Event e)
     if (val_req_lookup == BEH(r->req)) {  // (#lookup, _)
         ReqLookup rl = (ReqLookup)r->req;
         TRACE(fprintf(stderr, "expr_env: (#lookup, _)\n"));
-        Any value = dict_lookup(SELF(e), rl->key);
+        Actor value = dict_lookup(SELF(e), rl->key);
         TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
         if (value != NULL) {
             config_send(SPONSOR(e), r->ok, value);
         } else {
             TRACE(fprintf(stderr, "expr_env: FAIL!\n"));
-            config_send(SPONSOR(e), r->fail, e);
+            config_send(SPONSOR(e), r->fail, (Actor)e);
         }
     } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
@@ -368,7 +368,7 @@ expr_name(Event e)
         config_send(SPONSOR(e), re->env, req_lookup_new(r->ok, r->fail, SELF(e)));
     } else {
         TRACE(fprintf(stderr, "expr_name: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, e);
+        config_send(SPONSOR(e), r->fail, (Actor)e);
     }
 }
 
@@ -381,11 +381,15 @@ static void
 beh_eval_body(Event e)
 {
     TRACE(fprintf(stderr, "beh_eval_body{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Pair p = DATA(SELF(e));  // ((ok, fail), body)
-    Pair cust = p->h;
+    Actor a = DATA(SELF(e));  // ((ok, fail), body)
+    if (beh_pair != BEH(a)) { halt("beh_eval_body: (cust, body) required"); }
+    Pair p = (Pair)a;
+    Actor body = p->t;
+    a = p->h;
+    if (beh_pair != BEH(a)) { halt("beh_eval_body: (ok, fail) required"); }
+    Pair cust = (Pair)a;
     Actor ok = cust->h;
     Actor fail = cust->t;
-    Actor body = p->t;
     Actor env = MSG(e);  // (env)
     TRACE(fprintf(stderr, "beh_eval_body: ok=%p, fail=%p, body=%p, env=%p\n", ok, fail, body, env));
     config_send(SPONSOR(e), body, req_eval_new(ok, fail, env));

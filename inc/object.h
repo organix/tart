@@ -28,6 +28,8 @@ THE SOFTWARE.
 #ifndef _OBJECT_H_
 #define _OBJECT_H_
 
+#error UNSUPPORTED!
+
 #include "tart.h"
 #include "actor.h"
 

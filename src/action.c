@@ -36,7 +36,7 @@ val_forward(Event e)
 {
     TRACE(fprintf(stderr, "val_forward{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor a = DATA(SELF(e));  // target
-    Any m = MSG(e);  // message
+    Actor m = MSG(e);  // message
     config_send(SPONSOR(e), a, m);
 }
 
@@ -51,7 +51,7 @@ act_oneshot(Event e)  // SERIALIZED
 {
     TRACE(fprintf(stderr, "act_oneshot{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor a = STATE(SELF(e));  // target
-    Any m = MSG(e);  // message
+    Actor m = MSG(e);  // message
     config_send(SPONSOR(e), a, m);
     actor_become(SELF(e), a_ignore);
 }
@@ -62,13 +62,11 @@ LET prefix_beh(prefix) = \(cust, req).[ SEND (prefix, req) TO cust ]
 void
 val_prefix(Event e)
 {
-    Pair p;
-
     TRACE(fprintf(stderr, "val_prefix{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Any prefix = DATA(SELF(e));  // prefix
-    p = MSG(e);  // (cust, req)
+    Actor prefix = DATA(SELF(e));  // prefix
+    Pair p = (Pair)MSG(e);  // (cust, req)
     Actor cust = p->h;
-    Any req = p->t;
+    Actor req = p->t;
     config_send(SPONSOR(e), cust, PR(prefix, req));
 }
 
@@ -78,12 +76,10 @@ LET label_beh(cust, label) = \msg.[ SEND (label, msg) TO cust ]
 void
 val_label(Event e)
 {
-    Pair p;
-
     TRACE(fprintf(stderr, "val_label{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    p = DATA(SELF(e));  // (cust, label)
+    Pair p = (Pair)DATA(SELF(e));  // (cust, label)
     Actor cust = p->h;
-    Any label = p->t;
+    Actor label = p->t;
     config_send(SPONSOR(e), cust, PR(label, MSG(e)));
 }
 
@@ -95,7 +91,7 @@ val_tag(Event e)
 {
     TRACE(fprintf(stderr, "val_tag{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor cust = DATA(SELF(e));  // cust
-    Any msg = MSG(e);  // msg
+    Actor msg = MSG(e);  // msg
     config_send(SPONSOR(e), cust, PR(SELF(e), msg));
 }
 /**
@@ -107,14 +103,14 @@ act_join_0(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_join_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    p = STATE(SELF(e));  // (cust, first, k_rest)
+    p = (Pair)STATE(SELF(e));  // (cust, first, k_rest)
     Actor cust = p->h;
-    p = p->t;
-    Any first = p->h;
+    p = (Pair)p->t;
+    Actor first = p->h;
     Actor k_rest = p->t;
-    p = MSG(e);  // ($k_rest, rest)
+    p = (Pair)MSG(e);  // ($k_rest, rest)
     if (p->h == k_rest) {
-        Any rest = p->t;
+        Actor rest = p->t;
         config_send(SPONSOR(e), cust, PR(first, rest));
         return;
     }
@@ -128,14 +124,14 @@ act_join_1(Event e)
     Pair p;
 
     TRACE(fprintf(stderr, "act_join_1{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    p = STATE(SELF(e));  // (cust, k_first, rest)
+    p = (Pair)STATE(SELF(e));  // (cust, k_first, rest)
     Actor cust = p->h;
-    p = p->t;
+    p = (Pair)p->t;
     Actor k_first = p->h;
-    Any rest = p->t;
-    p = MSG(e);  // ($k_first, first)
+    Actor rest = p->t;
+    p = (Pair)MSG(e);  // ($k_first, first)
     if (p->h == k_first) {
-        Any first = p->t;
+        Actor first = p->t;
         config_send(SPONSOR(e), cust, PR(first, rest));
         return;
     }
@@ -158,19 +154,19 @@ act_join(Event e)  // SERIALIZED
     Pair p;
 
     TRACE(fprintf(stderr, "act_join{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    p = STATE(SELF(e));  // (cust, k_first, k_rest)
+    p = (Pair)STATE(SELF(e));  // (cust, k_first, k_rest)
     Actor cust = p->h;
-    p = p->t;
+    p = (Pair)p->t;
     Actor k_first = p->h;
     Actor k_rest = p->t;
-    p = MSG(e);  // ($k_first, first) | ($k_rest, rest)
+    p = (Pair)MSG(e);  // ($k_first, first) | ($k_rest, rest)
     if (p->h == k_first) {
-        Any first = p->t;
+        Actor first = p->t;
         actor_become(SELF(e), value_new(act_join_0, PR(cust, PR(first, k_rest))));
         return;
     }
     if (p->h == k_rest) {
-        Any rest = p->t;
+        Actor rest = p->t;
         actor_become(SELF(e), value_new(act_join_1, PR(cust, PR(k_first, rest))));
         return;
     }
@@ -190,14 +186,14 @@ act_fork(Event e)  // SERIALIZED
     Pair p;
 
     TRACE(fprintf(stderr, "act_fork{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    p = STATE(SELF(e));  // (cust, head, tail)
+    p = (Pair)STATE(SELF(e));  // (cust, head, tail)
     Actor cust = p->h;
-    p = p->t;
+    p = (Pair)p->t;
     Actor head = p->h;
     Actor tail = p->t;
-    p = MSG(e);  // (h_req, t_req)
-    Any h_req = p->h;
-    Any t_req = p->t;
+    p = (Pair)MSG(e);  // (h_req, t_req)
+    Actor h_req = p->h;
+    Actor t_req = p->t;
     Actor k_head = value_new(val_tag, SELF(e));
     Actor k_tail = value_new(val_tag, SELF(e));
     config_send(SPONSOR(e), head, PR(k_head, h_req));
@@ -207,23 +203,19 @@ act_fork(Event e)  // SERIALIZED
 }
 
 /**
-LET dump_pair_of_pairs_beh(label) = \((a, b), (c, d)).[
-    Console.println("%s: ((%s, %s), (%s, %s))", label, a, b, c, d)
+LET dump_pair_of_pairs_beh = \((a, b), (c, d)).[
+    Console.println("((%s, %s), (%s, %s))", a, b, c, d)
 ]
 **/
 void
-val_dump_pair_of_pairs(Event e)
+act_dump_pair_of_pairs(Event e)
 {
     TRACE(fprintf(stderr, "val_dump_pair_of_pairs{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    char * label = DATA(SELF(e));  // (cust, head, tail)
-    if (label) {
-        TRACE(fprintf(stderr, "%s: ", label));
-    }
-    Pair p = MSG(e);
-    Pair ab = p->h;
-    Pair cd = p->t;
-    TRACE(fprintf(stderr, "(%p, %p) = ", ab, cd));
-    TRACE(fprintf(stderr, "((%s, %s), (%s, %s))\n", ab->h, ab->t, cd->h, cd->t));
+    Pair p = (Pair)MSG(e);
+    Pair ab = (Pair)p->h;
+    Pair cd = (Pair)p->t;
+    TRACE(fprintf(stderr, "dump_pair: (%p, %p) = ", ab, cd));
+    TRACE(fprintf(stderr, "((\"%s\", \"%s\"), (\"%s\", \"%s\"))\n", ab->h, ab->t, cd->h, cd->t));
 }
 /**
 CREATE once WITH oneshot_beh(sink)
@@ -249,17 +241,17 @@ test_action()
         ;
 
     // fork-join example
-    char * s_zero = "zero";
+    Actor s_zero = (Actor)"zero";  // [FIXME: THIS IS NOT AN ACTOR!]
     TRACE(fprintf(stderr, "s_zero = %p \"%s\"\n", s_zero, s_zero));
     Actor a_zero = value_new(val_prefix, s_zero);
-    char * s_one = "one";
+    Actor s_one = (Actor)"one";  // [FIXME: THIS IS NOT AN ACTOR!]
     TRACE(fprintf(stderr, "s_one = %p \"%s\"\n", s_one, s_one));
     Actor a_one = value_new(val_prefix, s_one);
-    char * s_123 = "123";
+    Actor s_123 = (Actor)"123";  // [FIXME: THIS IS NOT AN ACTOR!]
     TRACE(fprintf(stderr, "s_123 = %p \"%s\"\n", s_123, s_123));
-    char * s_456 = "456";
+    Actor s_456 = (Actor)"456";  // [FIXME: THIS IS NOT AN ACTOR!]
     TRACE(fprintf(stderr, "s_456 = %p \"%s\"\n", s_456, s_456));
-    Actor a_dump = value_new(val_dump_pair_of_pairs, "fork-join");
+    Actor a_dump = actor_new(act_dump_pair_of_pairs);
     Actor beh = value_new(act_fork, PR(a_dump, PR(a_zero, a_one)));
     config_send(cfg, value_new(act_serial, beh), PR(s_123, s_456));
     config_send(cfg, value_new(act_serial, beh), PR(s_456, s_123));

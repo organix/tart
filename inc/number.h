@@ -47,7 +47,7 @@ struct integer {
 };
 
 extern Actor    integer_new(int i);
-extern Boolean  number_match_method(Actor this, Actor that);
+extern Actor    number_match_method(Actor this, Actor that);
 extern Actor    number_diff_method(Actor this, Actor that);
 extern Actor    number_plus_method(Actor this, Actor that);
 extern Actor    number_times_method(Actor this, Actor that);

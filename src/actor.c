@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
 inline Actor
-pair_new(Any h, Any t)
+pair_new(Actor h, Actor t)
 {
     Pair p = NEW(PAIR);
     BEH(p) = beh_pair;
@@ -46,7 +46,7 @@ list_new()
 {
     return a_empty_list;
 }
-inline Boolean
+inline Actor
 list_empty_p(Actor list)
 {
     return ((list == a_empty_list) ? a_true : a_false);
@@ -58,7 +58,7 @@ list_pop(Actor list)  // returns: (first, rest)
     return (Pair)list;
 }
 inline Actor
-list_push(Actor list, Any item)
+list_push(Actor list, Actor item)
 {
     if (beh_pair != BEH(list)) { halt("list_push: pair required"); }
     return PR(item, list);
@@ -71,7 +71,7 @@ deque_new()
     BEH(a) = beh_deque;  // override pair behavior with deque behavior
     return a;
 }
-inline Boolean
+inline Actor
 deque_empty_p(Actor queue)
 {
     if (beh_deque != BEH(queue)) { halt("deque_empty_p: deque required"); }
@@ -79,7 +79,7 @@ deque_empty_p(Actor queue)
     return ((q->h == NIL) ? a_true : a_false);
 }
 inline void
-deque_give(Actor queue, Any item)
+deque_give(Actor queue, Actor item)
 {
     if (beh_deque != BEH(queue)) { halt("deque_give: deque required"); }
     Pair q = (Pair)queue;
@@ -87,25 +87,25 @@ deque_give(Actor queue, Any item)
     if (q->h == NIL) {
         q->h = p;
     } else {
-        Pair t = q->t;
+        Pair t = (Pair)(q->t);
         t->t = p;
     }
     q->t = p;
 }
-inline Any
+inline Actor
 deque_take(Actor queue)
 {
     if (deque_empty_p(queue) != a_false) { halt("deque_take from empty!"); }
 //    if (beh_deque != BEH(queue)) { halt("deque_take: deque required"); }
     Pair q = (Pair)queue;
-    Pair p = q->h;
-    Any item = p->h;
+    Pair p = (Pair)(q->h);
+    Actor item = p->h;
     q->h = p->t;
     p = FREE(p);
     return item;
 }
 inline void
-deque_return(Actor queue, Any item)
+deque_return(Actor queue, Actor item)
 {
     if (beh_deque != BEH(queue)) { halt("deque_return: deque required"); }
     Pair q = (Pair)queue;
@@ -115,7 +115,7 @@ deque_return(Actor queue, Any item)
     }
     q->h = p;
 }
-inline Any
+inline Actor
 deque_lookup(Actor queue, Actor index)
 {
     int i;
@@ -124,19 +124,20 @@ deque_lookup(Actor queue, Actor index)
     i = ((Integer)index)->i;
     if (beh_deque != BEH(queue)) { halt("deque_lookup: deque required"); }
     Pair q = (Pair)queue;
-    Pair p = q->h;
-    while (p != NIL) {
-        if (beh_pair != BEH(p)) { halt("deque_lookup: non-pair in chain"); }
+    Actor a = q->h;
+    while (a != NIL) {
+        if (beh_pair != BEH(a)) { halt("deque_lookup: non-pair in chain"); }
+        Pair p = (Pair)a;
         if (i <= 0) {
             return p->h;
         }
         --i;
-        p = p->t;
+        a = p->t;
     }
-    return NULL;  // not found
+    return NULL;  // not found -- [FIXME] THIS SHOULD BE A UNIQUE STATIC ACTOR REFEFRENCE
 }
 inline void
-deque_bind(Actor queue, Actor index, Any item)
+deque_bind(Actor queue, Actor index, Actor item)
 {
     int i;
 
@@ -144,14 +145,16 @@ deque_bind(Actor queue, Actor index, Any item)
     i = ((Integer)index)->i;
     if (beh_deque != BEH(queue)) { halt("deque_bind: deque required"); }
     Pair q = (Pair)queue;
-    Pair p = q->h;
-    while (p != NIL) {
-        if (beh_pair != BEH(p)) { halt("deque_bind: non-pair in chain"); }
+    Actor a = q->h;
+    while (a != NIL) {
+        if (beh_pair != BEH(a)) { halt("deque_bind: non-pair in chain"); }
+        Pair p = (Pair)a;
         if (i <= 0) {
             p->h = item;
+            break;
         }
         --i;
-        p = p->t;
+        a = p->t;
     }
     // not found
 }
@@ -162,18 +165,20 @@ dict_new()
 {
     return a_empty_dict;
 }
-inline Boolean
+inline Actor
 dict_empty_p(Actor dict)
 {
     return ((dict == a_empty_dict) ? a_true : a_false);
 }
-inline Any
-dict_lookup(Actor dict, Any key)
+inline Actor
+dict_lookup(Actor dict, Actor key)
 {
     while (dict_empty_p(dict) == a_false) {
         if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
         Pair p = (Pair)dict;
-        Pair q = p->h;
+        Actor a = p->h;
+        if (beh_pair != BEH(a)) { halt("dict_lookup: non-pair entry"); }
+        Pair q = (Pair)a;
         if (q->h == key) {
             return q->t;  // value
         }
@@ -182,7 +187,7 @@ dict_lookup(Actor dict, Any key)
     return NULL;  // NOT FOUND
 }
 inline Actor
-dict_bind(Actor dict, Any key, Any value)
+dict_bind(Actor dict, Actor key, Actor value)
 {
     Actor a = PR(PR(key, value), dict);
     BEH(a) = expr_env;  // override pair behavior with env behavior
@@ -233,16 +238,16 @@ beh_event(Event e)
     TRACE(fprintf(stderr, "beh_event{event=%p}\n", e));
     expr_value(e);
 }
-inline Event
-event_new(Config cfg, Actor a, Any msg)
+inline Actor
+event_new(Config cfg, Actor a, Actor m)
 {
     if (beh_config != BEH(cfg)) { halt("event_new: config actor required"); }
     Event e = NEW(EVENT);
     BEH(e) = beh_event;
     e->sponsor = cfg;
-    e->actor = a;
-    e->message = msg;
-    return e;
+    e->target = a;
+    e->message = m;
+    return (Actor)e;
 }
 
 void
@@ -261,7 +266,7 @@ config_new()
     return cfg;
 }
 inline void
-config_enqueue(Config cfg, Event e)
+config_enqueue(Config cfg, Actor e)
 {
     if (beh_event != BEH(e)) { halt("config_enqueue: event actor required"); }
     deque_give(cfg->events, e);
@@ -272,13 +277,13 @@ config_enlist(Config cfg, Actor a)
     cfg->actors = list_push(cfg->actors, a);
 }
 inline void
-config_send(Config cfg, Actor target, Any msg)
+config_send(Config cfg, Actor target, Actor msg)
 {
     if (beh_config != BEH(cfg)) { halt("config_send: config actor required"); }
     TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
-Boolean
+Actor
 config_dispatch(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
@@ -286,9 +291,11 @@ config_dispatch(Config cfg)
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
         return a_false;
     }
-    Event e = deque_take(cfg->events);
+    Actor a = deque_take(cfg->events);
+    if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
+    Event e = (Event)a;
     TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
-    (CODE(SELF(e)))(e);  // INVOKE BEHAVIOR
+    (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
     return a_true;
 }
 
@@ -312,7 +319,7 @@ beh_pair_0(Event e)
     ReqMatch rm = (ReqMatch)r->req;
     Actor tail = rm->env;  // extract hijacked target
     rm->env = (Actor)MSG(e);  // replace with extended environment
-    config_send(SPONSOR(e), tail, r);
+    config_send(SPONSOR(e), tail, (Actor)r);
 }
 /**
 LET pair_beh(head, tail) = \msg.[
@@ -354,19 +361,19 @@ beh_pair(Event e)
             config_send(SPONSOR(e), p->h, req_match_new(ok, r->fail, q->h, rm->env));
         } else {
             TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, e);
+            config_send(SPONSOR(e), r->fail, (Actor)e);
         }
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
         TRACE(fprintf(stderr, "beh_pair: (#read) -> (%p, %p)\n", p->h, p->t));
-        config_send(SPONSOR(e), r->ok, list_pop(SELF(e)));
+        config_send(SPONSOR(e), r->ok, (Actor)list_pop(SELF(e)));
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_pair: (#write, %p)\n", rw->value));
         config_send(SPONSOR(e), r->ok, list_push(SELF(e), rw->value));
     } else {
         TRACE(fprintf(stderr, "beh_pair: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, e);
+        config_send(SPONSOR(e), r->fail, (Actor)e);
     }
 }
 
@@ -402,7 +409,7 @@ beh_deque(Event e)
             config_send(SPONSOR(e), r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "beh_deque: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, e);
+            config_send(SPONSOR(e), r->fail, (Actor)e);
         }
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
@@ -415,7 +422,7 @@ beh_deque(Event e)
         config_send(SPONSOR(e), r->ok, SELF(e));
     } else {
         TRACE(fprintf(stderr, "beh_deque: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, e);
+        config_send(SPONSOR(e), r->fail, (Actor)e);
     }
 }
 
@@ -446,7 +453,7 @@ comb_true(Event e)
             config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
         } else {
             TRACE(fprintf(stderr, "comb_true: opnd must be a Pair\n"));
-            config_send(SPONSOR(e), r->fail, e);
+            config_send(SPONSOR(e), r->fail, (Actor)e);
         }
     } else {
         expr_value(e);  // delegate
@@ -455,7 +462,7 @@ comb_true(Event e)
 /**
 CREATE true_oper WITH oper_true_beh
 **/
-BOOLEAN the_true_actor = { comb_true };
+ACTOR the_true_actor = { comb_true };
 
 /**
 LET oper_false_beh = \msg.[
@@ -484,7 +491,7 @@ comb_false(Event e)
             config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
         } else {
             TRACE(fprintf(stderr, "comb_false: opnd must be a Pair\n"));
-            config_send(SPONSOR(e), r->fail, e);
+            config_send(SPONSOR(e), r->fail, (Actor)e);
         }
     } else {
         expr_value(e);  // delegate
@@ -493,7 +500,7 @@ comb_false(Event e)
 /**
 CREATE false_oper WITH oper_false_beh
 **/
-BOOLEAN the_false_actor = { comb_false };
+ACTOR the_false_actor = { comb_false };
 
 static void
 beh_ignore(Event e)

@@ -429,7 +429,7 @@ integer_new(int i)
     return (Actor)n;
 }
 
-inline Boolean
+inline Actor
 number_match_method(Actor this, Actor that)
 {
     if (this == that) {

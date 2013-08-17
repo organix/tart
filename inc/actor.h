@@ -54,7 +54,7 @@ Pair   [*|*|*]
      beh_pair
 **/
 
-typedef struct actor ACTOR, *Actor, BOOLEAN, *Boolean;
+typedef struct actor ACTOR, *Actor;
 typedef struct pair PAIR, *Pair;
 typedef struct value VALUE, *Value;
 typedef struct serial SERIAL, *Serial;
@@ -63,13 +63,13 @@ typedef struct config CONFIG, *Config;
 
 typedef void (*Action)(Event e);
 
-#define NIL (&the_nil_pair_actor)
+#define NIL ((Actor)(&the_nil_pair_actor))
 #define PR(h,t) pair_new((h),(t))
 #define NOTHING (a_halt)
 
 #define BEH(a)      (((Actor)(a))->beh)
 #define SPONSOR(e)  (((Event)(e))->sponsor)
-#define SELF(e)     (((Event)(e))->actor)
+#define SELF(e)     (((Event)(e))->target)
 #define MSG(e)      (((Event)(e))->message)
 #define CODE(v)     BEH(v)
 #define DATA(v)     (((Value)(v))->data)
@@ -79,8 +79,8 @@ typedef void (*Action)(Event e);
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
 #define a_empty_dict ((Actor)(&the_empty_dict_actor))
-#define a_true ((Boolean)(&the_true_actor))
-#define a_false ((Boolean)(&the_false_actor))
+#define a_true ((Actor)(&the_true_actor))
+#define a_false ((Actor)(&the_false_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
 #define a_halt ((Actor)(&the_halt_actor))
 
@@ -90,8 +90,8 @@ struct actor {
 
 struct pair {
     ACTOR       _act;
-    Any         h;
-    Any         t;
+    Actor       h;
+    Actor       t;
 };
 
 struct value {
@@ -107,8 +107,8 @@ struct serial {
 struct event {
     ACTOR       _act;
     Config      sponsor;    // sponsor configuration
-    Actor       actor;      // target actor
-    Any         message;    // message to deliver
+    Actor       target;     // target actor
+    Actor       message;    // message to deliver
 };
 
 struct config {
@@ -117,25 +117,25 @@ struct config {
     Actor       actors;     // list of actors created
 };
 
-extern Actor    pair_new(Any h, Any t);
+extern Actor    pair_new(Actor h, Actor t);
 
 extern Actor    list_new();
-extern Boolean  list_empty_p(Actor list);
+extern Actor    list_empty_p(Actor list);
 extern Pair     list_pop(Actor list);  // returns: (first, rest)
-extern Actor    list_push(Actor list, Any item);
+extern Actor    list_push(Actor list, Actor item);
 
 extern Actor    deque_new();
-extern Boolean  deque_empty_p(Actor queue);
-extern void     deque_give(Actor queue, Any item);
-extern Any      deque_take(Actor queue);
-extern void     deque_return(Actor queue, Any item);
-extern Any      deque_lookup(Actor queue, Actor index);
-extern void     deque_bind(Actor queue, Actor index, Any item);
+extern Actor    deque_empty_p(Actor queue);
+extern void     deque_give(Actor queue, Actor item);
+extern Actor    deque_take(Actor queue);
+extern void     deque_return(Actor queue, Actor item);
+extern Actor    deque_lookup(Actor queue, Actor index);
+extern void     deque_bind(Actor queue, Actor index, Actor item);
 
 extern Actor    dict_new();
-extern Boolean  dict_empty_p(Actor dict);
-extern Any      dict_lookup(Actor dict, Any key);
-extern Actor    dict_bind(Actor dict, Any key, Any value);
+extern Actor    dict_empty_p(Actor dict);
+extern Actor    dict_lookup(Actor dict, Actor key);
+extern Actor    dict_bind(Actor dict, Actor key, Actor value);
 
 extern Actor    actor_new(Action beh);
 extern Actor    value_new(Action beh, Any data);
@@ -143,13 +143,13 @@ extern Actor    serial_new(Action beh, Any data);
 extern Actor    serial_with_value(Actor v);
 extern void     actor_become(Actor s, Actor v);
 
-extern Event    event_new(Config cfg, Actor a, Any msg);
+extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
 extern Config   config_new();
-extern void     config_enqueue(Config cfg, Event e);
+extern void     config_enqueue(Config cfg, Actor e);
 extern void     config_enlist(Config cfg, Actor a);
-extern void     config_send(Config cfg, Actor target, Any msg);
-extern Boolean  config_dispatch(Config cfg);
+extern void     config_send(Config cfg, Actor target, Actor msg);
+extern Actor    config_dispatch(Config cfg);
 
 extern void     beh_pair(Event e);
 extern void     beh_deque(Event e);
@@ -160,8 +160,8 @@ extern void     beh_halt(Event e);
 
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
-extern BOOLEAN the_true_actor;
-extern BOOLEAN the_false_actor;
+extern ACTOR the_true_actor;
+extern ACTOR the_false_actor;
 extern ACTOR the_ignore_actor;
 extern VALUE the_halt_actor;
 

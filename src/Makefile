@@ -10,16 +10,15 @@ INCS=	$(INC)/tart.h \
 		$(INC)/actor.h \
 		$(INC)/expr.h \
 		$(INC)/number.h \
-		$(INC)/effect.h \
 		$(INC)/action.h \
 		$(INC)/universe.h
 OBJS=	actor.o \
 		expr.o \
 		number.o \
-		effect.o \
 		action.o \
 		universe.o
-PROGS=	tart tart_fx
+#PROGS=	tart tart_fx
+PROGS=	tart
 
 CFLAGS=	-I$(INC)
 #CFLAGS=	-ansi -pedantic -Wall -Wextra -ffreestanding -fno-stack-protector -I$(INC)

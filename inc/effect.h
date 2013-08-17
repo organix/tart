@@ -28,6 +28,8 @@ THE SOFTWARE.
 #ifndef _EFFECT_H_
 #define _EFFECT_H_
 
+#error UNSUPPORTED!
+
 #include "tart.h"
 #include "actor.h"
 
