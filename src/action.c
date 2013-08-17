@@ -215,7 +215,7 @@ act_dump_pair_of_pairs(Event e)
     Pair ab = (Pair)p->h;
     Pair cd = (Pair)p->t;
     TRACE(fprintf(stderr, "dump_pair: (%p, %p) = ", ab, cd));
-    TRACE(fprintf(stderr, "((\"%s\", \"%s\"), (\"%s\", \"%s\"))\n", ab->h, ab->t, cd->h, cd->t));
+    TRACE(fprintf(stderr, "((\"%s\", \"%s\"), (\"%s\", \"%s\"))\n", (char *)ab->h, (char *)ab->t, (char *)cd->h, (char *)cd->t));
 }
 /**
 CREATE once WITH oneshot_beh(sink)
@@ -242,15 +242,15 @@ test_action()
 
     // fork-join example
     Actor s_zero = (Actor)"zero";  // [FIXME: THIS IS NOT AN ACTOR!]
-    TRACE(fprintf(stderr, "s_zero = %p \"%s\"\n", s_zero, s_zero));
+    TRACE(fprintf(stderr, "s_zero = %p \"%s\"\n", s_zero, (char *)s_zero));
     Actor a_zero = value_new(val_prefix, s_zero);
     Actor s_one = (Actor)"one";  // [FIXME: THIS IS NOT AN ACTOR!]
-    TRACE(fprintf(stderr, "s_one = %p \"%s\"\n", s_one, s_one));
+    TRACE(fprintf(stderr, "s_one = %p \"%s\"\n", s_one, (char *)s_one));
     Actor a_one = value_new(val_prefix, s_one);
     Actor s_123 = (Actor)"123";  // [FIXME: THIS IS NOT AN ACTOR!]
-    TRACE(fprintf(stderr, "s_123 = %p \"%s\"\n", s_123, s_123));
+    TRACE(fprintf(stderr, "s_123 = %p \"%s\"\n", s_123, (char *)s_123));
     Actor s_456 = (Actor)"456";  // [FIXME: THIS IS NOT AN ACTOR!]
-    TRACE(fprintf(stderr, "s_456 = %p \"%s\"\n", s_456, s_456));
+    TRACE(fprintf(stderr, "s_456 = %p \"%s\"\n", s_456, (char *)s_456));
     Actor a_dump = actor_new(act_dump_pair_of_pairs);
     Actor beh = value_new(act_fork, PR(a_dump, PR(a_zero, a_one)));
     config_send(cfg, value_new(act_serial, beh), PR(s_123, s_456));
