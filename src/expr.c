@@ -275,11 +275,11 @@ expr_env(Event e)
         TRACE(fprintf(stderr, "expr_env: (#lookup, _)\n"));
         Actor value = dict_lookup(SELF(e), rl->key);
         TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
-        if (value != NULL) {
-            config_send(SPONSOR(e), r->ok, value);
-        } else {
+        if (value == NOTHING) {
             TRACE(fprintf(stderr, "expr_env: FAIL!\n"));
             config_send(SPONSOR(e), r->fail, (Actor)e);
+        } else {
+            config_send(SPONSOR(e), r->ok, value);
         }
     } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
@@ -398,8 +398,8 @@ static inline void
 val_expect(Event e)
 {
     TRACE(fprintf(stderr, "val_expect{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    Any expect = DATA(SELF(e));
-    Any actual = MSG(e);
+    Actor expect = DATA(SELF(e));
+    Actor actual = MSG(e);
     if (expect != actual) {
         TRACE(fprintf(stderr, "val_expect: %p != %p\n", expect, actual));
         halt("unexpected");

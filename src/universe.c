@@ -138,9 +138,9 @@ ser_scope(Event e)  // SERIALIZED
     p = (Pair)p->t;
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
-        Any value = dict_lookup(dict, name);
+        Actor value = dict_lookup(dict, name);
         TRACE(fprintf(stderr, "ser_scope: (#lookup, %p) -> %p\n", name, value));
-        if (value == NULL) {
+        if (value == NOTHING) {
             config_send(SPONSOR(e), parent, MSG(e));
         } else {
             config_send(SPONSOR(e), ok, value);
@@ -148,7 +148,7 @@ ser_scope(Event e)  // SERIALIZED
     } else if (s_bind == p->h) {  // (#bind, name, value)
         p = (Pair)p->t;
         Actor name = p->h;
-        Any value = p->t;
+        Actor value = p->t;
         TRACE(fprintf(stderr, "ser_scope: (#bind, %p, %p)\n", name, value));
         dict = dict_bind(dict, name, value);
 //        actor_become(SELF(e), value_new(ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
@@ -1156,7 +1156,7 @@ static Actor
 symbol_intern(char * name)
 {
     Actor a_symbol = dict_lookup(symbol_table, (Actor)name);  // [FIXME: 'name' IS NOT AN ACTOR!]
-    if (a_symbol == NULL) {
+    if (a_symbol == NOTHING) {
         a_symbol = actor_new(beh_name);
         symbol_table = dict_bind(symbol_table, (Actor)name, a_symbol);
     }

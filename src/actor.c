@@ -134,7 +134,7 @@ deque_lookup(Actor queue, Actor index)
         --i;
         a = p->t;
     }
-    return NULL;  // not found -- [FIXME] THIS SHOULD BE A UNIQUE STATIC ACTOR REFEFRENCE
+    return NOTHING;  // not found
 }
 inline void
 deque_bind(Actor queue, Actor index, Actor item)
@@ -184,7 +184,7 @@ dict_lookup(Actor dict, Actor key)
         }
         dict = p->t;  // next
     }
-    return NULL;  // NOT FOUND
+    return NOTHING;  // not found
 }
 inline Actor
 dict_bind(Actor dict, Actor key, Actor value)
