@@ -429,7 +429,7 @@ test_expr()
     TRACE(fprintf(stderr, "cust = %p\n", cust));
     config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
     /* dispatch until empty */
-    while (config_dispatch(cfg) == a_true)
+    while (config_dispatch(cfg) != NOTHING)
         ;
 
     /* name binding can be resolved */
@@ -441,7 +441,7 @@ test_expr()
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     config_send(cfg, a_empty_dict, req_bind_new(expr, a_halt, s_x, (Actor)cfg));
     /* dispatch until empty */
-    while (config_dispatch(cfg) == a_true)
+    while (config_dispatch(cfg) != NOTHING)
         ;
 
     /* pair values can be matched */
@@ -455,6 +455,6 @@ test_expr()
     config_send(cfg, p, req_match_new(cust, a_halt, p, a_empty_env));  // match p to itself
     config_send(cfg, q, req_match_new(cust, a_halt, p, a_empty_env));  // match p to q
     /* dispatch until empty */
-    while (config_dispatch(cfg) == a_true)
+    while (config_dispatch(cfg) != NOTHING)
         ;
 }

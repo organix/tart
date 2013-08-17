@@ -1248,7 +1248,7 @@ test_universe()
     test = value_new(val_expect, b_true);
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
-    while (config_dispatch(cfg) == a_true)
+    while (config_dispatch(cfg) != NOTHING)
         ;
 
     // (\(x,y).seq(y,x))(#t,#f) -> #t
@@ -1275,7 +1275,7 @@ test_universe()
     test = value_new(val_expect, b_true);
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
-    while (config_dispatch(cfg) == a_true)
+    while (config_dispatch(cfg) != NOTHING)
         ;
 
     // (#t #f . #t) -> #f
@@ -1290,6 +1290,6 @@ test_universe()
     test = value_new(val_expect, b_false);
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
-    while (config_dispatch(cfg) == a_true)
+    while (config_dispatch(cfg) != NOTHING)
         ;
 }

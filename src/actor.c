@@ -289,14 +289,14 @@ config_dispatch(Config cfg)
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
     if (deque_empty_p(cfg->events) != a_false) {
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
-        return a_false;
+        return NOTHING;
     }
     Actor a = deque_take(cfg->events);
     if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
     Event e = (Event)a;
     TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
     (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
-    return a_true;
+    return a;
 }
 
 void
