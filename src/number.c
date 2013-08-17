@@ -449,7 +449,7 @@ number_match_method(Actor this, Actor that)
 inline Actor
 number_diff_method(Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { halt("number_match_method: number required"); }
+    if (beh_integer != BEH(this)) { halt("number_diff_method: number required"); }
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
@@ -461,7 +461,7 @@ number_diff_method(Actor this, Actor that)
 inline Actor
 number_plus_method(Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { halt("number_match_method: number required"); }
+    if (beh_integer != BEH(this)) { halt("number_plus_method: number required"); }
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
@@ -473,7 +473,7 @@ number_plus_method(Actor this, Actor that)
 inline Actor
 number_times_method(Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { halt("number_match_method: number required"); }
+    if (beh_integer != BEH(this)) { halt("number_times_method: number required"); }
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;

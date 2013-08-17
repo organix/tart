@@ -1,6 +1,6 @@
 /*
 
-tart.c -- Tiny Actor Run-Time
+string.h -- Tiny Actor Run-Time
 
 "MIT License"
 
@@ -25,50 +25,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 */
+#ifndef _STRING_H_
+#define _STRING_H_
 
 #include "tart.h"
 #include "actor.h"
-#include "expr.h"
 #include "number.h"
-#include "string.h"
-#include "action.h"
-#include "universe.h"
 
-void
-halt(char * msg)
-{
-    TRACE(fprintf(stderr, "%s **** HALTED ****\n", msg));
-    assert(0);
-    for (;;)    // loop forever
-        ;
-}
+typedef struct string STRING, *String;
 
-/*
- *  Unit tests
- */
+#define a_empty_string ((Actor)(&the_empty_string_actor))
 
-void
-run_tests()
-{
-    TRACE(fprintf(stderr, "---- tart unit tests ----\n"));
-    TRACE(fprintf(stderr, "NIL = %p\n", NIL));
-    TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
-    TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
-    TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
-    test_action();
-    test_universe();
-    test_expr();
-    test_number();
-    test_string();
-}
+struct string {
+    ACTOR       _act;
+    char *      p;
+    int         n;
+};
 
-/*
- *  Main entry-point
- */
+extern Actor    cstring_new(char * p);
+extern Actor    pstring_new(char * p, int n);
+extern Actor    string_length_method(Actor this);
+extern Actor    string_match_method(Actor this, Actor that);
 
-int
-main()
-{
-    run_tests();
-    return 0;
-}
+extern void     beh_string(Event e);
+
+extern void     test_string();  // unit-test method
+
+extern STRING the_empty_string_actor;
+
+#endif /* _STRING_H_ */

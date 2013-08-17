@@ -10,11 +10,13 @@ INCS=	$(INC)/tart.h \
 		$(INC)/actor.h \
 		$(INC)/expr.h \
 		$(INC)/number.h \
+		$(INC)/string.h \
 		$(INC)/action.h \
 		$(INC)/universe.h
 OBJS=	actor.o \
 		expr.o \
 		number.o \
+		string.o \
 		action.o \
 		universe.o
 #PROGS=	tart tart_fx
