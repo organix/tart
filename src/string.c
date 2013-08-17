@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include "string.h"
 
-STRING the_empty_string_actor = { { beh_string }, "", 0 };
+STRING the_empty_string_actor = { { beh_string }, "", a_zero };
 
 inline Actor
 cstring_new(char * p)
@@ -36,7 +36,7 @@ cstring_new(char * p)
     String s = NEW(STRING);
     BEH(s) = beh_string;
     s->p = p;  // must have '\0' terminator
-    s->n = -1;  // unknown length
+    s->n = a_minus_one;  // unknown length
     return (Actor)s;
 }
 
@@ -46,7 +46,7 @@ pstring_new(char * p, int n)
     String s = NEW(STRING);
     BEH(s) = beh_string;
     s->p = p;  // may, or may not, have '\0' terminator
-    s->n = n;  // pre-defined length
+    s->n = integer_new(n);  // pre-defined length
     return (Actor)s;
 }
 
@@ -55,15 +55,15 @@ string_length_method(Actor this)
 {
     if (beh_string != BEH(this)) { halt("string_length_method: string required"); }
     String s = (String)this;
-    if (s->n < 0) {  // unknown length
+    if (s->n == a_minus_one) {  // unknown length
         int n = 0;
         char *p = s->p;
         while (*p++) {
             ++n;
         }
-        s->n = n;
+        s->n = integer_new(n);
     }
-    return integer_new(s->n);
+    return s->n;
 }
 
 inline Actor
@@ -119,18 +119,22 @@ test_string()
     n = (Integer)a;
     if (n->i != 0) { halt("expected n->i == 0"); }
     s = (String)a_empty_string;
-    TRACE(fprintf(stderr, "s->n = %d\n", s->n));
-    TRACE(fprintf(stderr, "s->p = \"%*s\"\n", s->n, s->p));
+    n = (Integer)s->n;
+    TRACE(fprintf(stderr, "s->n = %d\n", n->i));
+    TRACE(fprintf(stderr, "s->p = \"%*s\"\n", n->i, s->p));
 /*
 */
     char* p = "foobarfoo";
     char* q = p + 6;
     a = pstring_new(p, 3);
     s = (String)a;
-    TRACE(fprintf(stderr, "s = %d\"%*s\"\n", s->n, s->n, s->p));
+    n = (Integer)s->n;
+    TRACE(fprintf(stderr, "s = %d\"%.*s\" of \"%s\"\n", n->i, n->i, s->p, s->p));
     b = cstring_new(q);
     t = (String)b;
-    TRACE(fprintf(stderr, "t = %d\"%*s\"\n", t->n, t->n, t->p));
+    m = (Integer)t->n;
+    TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
     if (string_match_method(a, b) != a_true) { halt("expected string_match_method(a, b) == a_true"); }
-    TRACE(fprintf(stderr, "t = %d\"%*s\"\n", t->n, t->n, t->p));
+    m = (Integer)t->n;
+    TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
 }

@@ -38,8 +38,8 @@ typedef struct string STRING, *String;
 
 struct string {
     ACTOR       _act;
-    char *      p;
-    int         n;
+    char *      p;  // character data
+    Actor       n;  // length (-1 = unknown)
 };
 
 extern Actor    cstring_new(char * p);

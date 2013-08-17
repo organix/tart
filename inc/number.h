@@ -34,12 +34,13 @@ THE SOFTWARE.
 
 typedef struct integer INTEGER, *Integer;
 
-#define a_minus_one ((Actor)(the_integer_zero - 1))
-#define a_zero ((Actor)(the_integer_zero))
-#define a_one ((Actor)(the_integer_zero + 1))
-#define a_two ((Actor)(the_integer_zero + 2))
+#define N_SMALL (128)
+#define a_minus_one ((Actor)(&small_integers[N_SMALL - 1]))
+#define a_zero ((Actor)(&small_integers[N_SMALL]))
+#define a_one ((Actor)(&small_integers[N_SMALL + 1]))
+#define a_two ((Actor)(&small_integers[N_SMALL + 2]))
 
-extern Integer the_integer_zero;
+extern INTEGER small_integers[2*N_SMALL + N_SMALL];
 
 struct integer {
     ACTOR       _act;
