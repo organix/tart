@@ -44,6 +44,7 @@ struct string {
 
 extern Actor    cstring_new(char * p);
 extern Actor    pstring_new(char * p, int n);
+extern Actor    string_intern_method(Actor this);
 extern Actor    string_length_method(Actor this);
 extern Actor    string_match_method(Actor this, Actor that);
 extern Actor    string_diff_method(Actor this, Actor that);

@@ -28,6 +28,69 @@ THE SOFTWARE.
 
 #include "string.h"
 
+struct cache {
+    int         n;  // number of entries in use
+    int         m;  // number of entries allocated
+    Actor       (*cmp)(Actor entry, Actor value);  // comparison function
+    Actor *     base;  // pointer to continguous block of Actor references
+};
+static Actor
+cache_intern(struct cache * cache, Actor value)
+{
+    register int a, b, c, d;
+    Actor p;
+    
+    int n = cache->n;
+    a = 0;
+    b = n - 1;
+    while (a <= b) {
+        c = (a + b) >> 1;  // == ((a + b) / 2)
+        p = cache->base[c];
+        d = ((Integer)((cache->cmp)(p, value)))->i;
+        if (d > 0) {
+            b = c - 1;
+        } else if (d < 0) {
+            a = c + 1;
+        } else {
+            return p;  // FOUND!
+        }
+    }
+    // NOT FOUND (a == insertion point)
+    p = value;
+    int m = cache->m;
+    if (n < m) {  // space available for entry
+        DEBUG(fprintf(stderr, "cache_intern: space available, n=%d, m=%d\n", n, m));
+        for (b = n; a < b; --b) {
+            cache->base[b] = cache->base[b - 1];
+        }
+        cache->base[a] = p;
+        cache->n = n + 1;
+    } else if (cache->base) {  // need to allocate more space
+        Actor * bp = cache->base;
+        m = m << 1;  // == (m * 2)
+        DEBUG(fprintf(stderr, "cache_intern: expanded allocation, n=%d, m=%d\n", n, m));
+        cache->m = m;
+        cache->base = NEWxN(Actor, m);
+        for (b = n; a < b; --b) {
+            cache->base[b] = bp[b - 1];
+        }
+        cache->base[a] = p;
+        for (b = 0; b < a; ++b) {
+            cache->base[b] = bp[b];
+        }
+        cache->n = n + 1;
+    } else {  // initial space allocation
+        m = 21;
+        DEBUG(fprintf(stderr, "cache_intern: initial allocation, m=%d\n", m));
+        cache->m = m;
+        cache->base = NEWxN(Actor, m);
+        cache->base[0] = p;
+        cache->n = 1;
+    }
+    return p;
+}
+static struct cache string_cache = { 0, 0, string_diff_method, NULL };
+
 STRING the_empty_string_actor = { { beh_string }, "", a_zero };
 
 inline Actor
@@ -48,6 +111,12 @@ pstring_new(char * p, int n)
     s->p = p;  // may, or may not, have '\0' terminator
     s->n = integer_new(n);  // pre-defined length
     return (Actor)s;
+}
+
+inline Actor
+string_intern_method(Actor this)  // return the canonical String instance with this value
+{
+    return cache_intern(&string_cache, this);
 }
 
 inline Actor
