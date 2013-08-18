@@ -40,12 +40,12 @@ typedef struct integer INTEGER, *Integer;
 #define a_one ((Actor)(&small_integers[N_SMALL + 1]))
 #define a_two ((Actor)(&small_integers[N_SMALL + 2]))
 
-extern INTEGER small_integers[2*N_SMALL + N_SMALL];
-
 struct integer {
     ACTOR       _act;
     int         i;
 };
+
+extern INTEGER small_integers[2*N_SMALL + N_SMALL];
 
 extern Actor    integer_new(int i);
 extern Actor    number_match_method(Actor this, Actor that);
