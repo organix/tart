@@ -97,6 +97,37 @@ string_match_method(Actor this, Actor that)
     return a_false;
 }
 
+Actor
+string_diff_method(Actor this, Actor that)
+// (this < that) -> <0, (this == that) -> 0, (this > that) -> >0.
+{
+    if (beh_string != BEH(this)) { halt("string_match_method: string required"); }
+    String s = (String)this;
+    Actor n = string_length_method(this);
+    int i = ((Integer)(n))->i;
+    if (beh_string != BEH(that)) { halt("string_match_method: string required"); }
+    String t = (String)that;
+    Actor m = string_length_method(that);
+    int j = ((Integer)(m))->i;
+    char* p = s->p;
+    char* q = t->p;
+    while ((i > 0) && (j > 0)) {
+        int d = (*p - *q);
+        if (d != 0) {
+            return integer_new(d);
+        }
+        ++p; ++q;
+        --i; --j;
+    }
+    if (i > j) {
+        return a_one;
+    }
+    if (i < j) {
+        return a_minus_one;
+    }
+    return a_zero;
+}
+
 void
 beh_string(Event e)
 {
@@ -107,7 +138,7 @@ beh_string(Event e)
 void
 test_string()
 {
-    Actor a, b;
+    Actor a, b, c;
     Integer n, m;
     String s, t;
 
@@ -137,4 +168,23 @@ test_string()
     if (string_match_method(a, b) != a_true) { halt("expected string_match_method(a, b) == a_true"); }
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
+/*
+*/
+    a = cstring_new("foo");
+    b = cstring_new("bar");
+    c = string_diff_method(a, a);
+    if (c != a_zero) { halt("expected \"foo\" == \"foo\""); }
+    n = (Integer)string_diff_method(a, b);
+    TRACE(fprintf(stderr, "(\"foo\" - \"bar\") -> %d\n", n->i));
+    if (n->i <= 0) { halt("expected \"foo\" > \"bar\""); }
+    m = (Integer)string_diff_method(b, a);
+    TRACE(fprintf(stderr, "(\"bar\" - \"foo\") -> %d\n", m->i));
+    if (m->i >= 0) { halt("expected \"bar\" < \"foo\""); }
+    b = cstring_new("foobar");
+    n = (Integer)string_diff_method(a, b);
+    TRACE(fprintf(stderr, "(\"foo\" - \"foobar\") -> %d\n", n->i));
+    if (n->i >= 0) { halt("expected \"foo\" < \"foobar\""); }
+    m = (Integer)string_diff_method(b, a);
+    TRACE(fprintf(stderr, "(\"foobar\" - \"foo\") -> %d\n", m->i));
+    if (m->i <= 0) { halt("expected \"foobar\" > \"foo\""); }    
 }
