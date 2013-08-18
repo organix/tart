@@ -23,6 +23,8 @@ OBJS=	actor.o \
 PROGS=	tart
 
 CFLAGS=	-I$(INC)
+#CFLAGS=	-Wall -I$(INC)
+#CFLAGS=	-ansi -pedantic -Wall -Wextra -I$(INC)
 #CFLAGS=	-ansi -pedantic -Wall -Wextra -ffreestanding -fno-stack-protector -I$(INC)
 
 all: $(LIBTART) $(PROGS)

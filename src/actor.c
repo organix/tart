@@ -101,7 +101,7 @@ deque_take(Actor queue)
     Pair p = (Pair)(q->h);
     Actor item = p->h;
     q->h = p->t;
-    p = FREE(p);
+    FREE(p);
     return item;
 }
 inline void
