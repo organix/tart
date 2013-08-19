@@ -27,6 +27,8 @@ THE SOFTWARE.
 */
 
 #include "string.h"
+#include "number.h"
+#include "expr.h"
 
 struct cache {
     int         n;  // number of entries in use
@@ -96,6 +98,7 @@ STRING the_empty_string_actor = { { beh_string }, "", a_zero };
 inline Actor
 cstring_new(char * p)
 {
+    if (*p == '\0') { return a_empty_string; }
     String s = NEW(STRING);
     BEH(s) = beh_string;
     s->p = p;  // must have '\0' terminator
@@ -106,17 +109,12 @@ cstring_new(char * p)
 inline Actor
 pstring_new(char * p, int n)
 {
+    if (n <= 0) { return a_empty_string; }
     String s = NEW(STRING);
     BEH(s) = beh_string;
     s->p = p;  // may, or may not, have '\0' terminator
     s->n = integer_new(n);  // pre-defined length
     return (Actor)s;
-}
-
-inline Actor
-string_intern_method(Actor this)  // return the canonical String instance with this value
-{
-    return cache_intern(&string_cache, this);
 }
 
 inline Actor
@@ -133,6 +131,13 @@ string_length_method(Actor this)
         s->n = integer_new(n);
     }
     return s->n;
+}
+
+inline Actor
+string_intern_method(Actor this)  // return the canonical String instance with this value
+{
+    string_length_method(this);  // ensure that string length is cached
+    return cache_intern(&string_cache, this);
 }
 
 inline Actor
@@ -197,11 +202,59 @@ string_diff_method(Actor this, Actor that)
     return a_zero;
 }
 
+/**
+LET string_beh(p, n) = \msg.[
+    LET ((ok, fail), req) = $msg IN
+    CASE req OF
+    (#eval, _) : [ SEND SELF TO ok ]
+    (#match, value, env) : [
+        CASE string_match_method(SELF, value) OF
+        TRUE : [ SEND env TO ok ]
+        _ : [ SEND (SELF, msg) TO fail ]
+        END
+    ]
+    (#read) : [ SEND string_pop(SELF) TO ok ]
+    _ : [ SEND (SELF, msg) TO fail ]
+    END
+]
+**/
 void
 beh_string(Event e)
 {
-    TRACE(fprintf(stderr, "beh_string{event=%p}\n", e));
-    halt("HALT!");
+    TRACE(fprintf(stderr, "beh_string{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (val_request != BEH(MSG(e))) { halt("beh_string: request msg required"); }
+    Request r = (Request)MSG(e);
+    TRACE(fprintf(stderr, "beh_string: ok=%p, fail=%p\n", r->ok, r->fail));
+    if (val_req_eval == BEH(r->req)) {  // (#eval, _)
+        TRACE(fprintf(stderr, "beh_string: (#eval, _)\n"));
+        config_send(SPONSOR(e), r->ok, SELF(e));
+    } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
+        ReqMatch rm = (ReqMatch)r->req;
+        TRACE(fprintf(stderr, "beh_string: (#match, %p, %p)\n", rm->value, rm->env));
+        if (string_match_method(SELF(e), rm->value) == a_true) {
+            config_send(SPONSOR(e), r->ok, rm->env);
+        } else {
+            TRACE(fprintf(stderr, "beh_string: MISMATCH!\n"));
+            config_send(SPONSOR(e), r->fail, (Actor)e);
+        }
+    } else if (val_req_read == BEH(r->req)) {  // (#read)
+        String s = (String)SELF(e);
+        if (s->n == a_minus_one) {  // indeterminate length
+            char *p = s->p;
+            Actor c = integer_new((int)*p++);
+            TRACE(fprintf(stderr, "beh_string: (#read) -> (%d, @%p)\n", ((Integer)c)->i, p));
+            config_send(SPONSOR(e), r->ok, PR(c, cstring_new(p)));
+        } else {
+            char *p = s->p;
+            Actor c = integer_new((int)*p++);
+            int n = ((Integer)(s->n))->i - 1;
+            TRACE(fprintf(stderr, "beh_string: (#read) -> (%d, %d@%p)\n", ((Integer)c)->i, n, p));
+            config_send(SPONSOR(e), r->ok, PR(c, pstring_new(p, n)));
+        }
+    } else {
+        TRACE(fprintf(stderr, "beh_string: FAIL!\n"));
+        config_send(SPONSOR(e), r->fail, (Actor)e);
+    }
 }
 
 void
