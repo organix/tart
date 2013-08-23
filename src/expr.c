@@ -36,7 +36,7 @@ val_request(Event e)
     TRACE(fprintf(stderr, "val_request: ok=%p, fail=%p, req=%p\n", r->ok, r->fail, r->req));
     expr_value(e);
 }
-static Actor
+Actor
 request_new(Actor ok, Actor fail, Actor req)
 {
     Request r = NEW(REQUEST);

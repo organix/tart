@@ -61,6 +61,7 @@ struct request {
     Actor       req;        // request parameters
 };
 extern void     val_request(Event e);
+extern Actor    request_new(Actor ok, Actor fail, Actor req);
 
 struct req_eval {
     ACTOR       _act;
