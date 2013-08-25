@@ -57,6 +57,7 @@ extern uint16_t u16_load(uint8_t* p);
 extern void     u16_store(uint8_t* p, uint16_t n);
 extern uint32_t u32_load(uint8_t* p);
 extern void     u32_store(uint8_t* p, uint32_t n);
+extern uint32_t u32_getbits(uint8_t* p, int n, int m);
 
 extern void     beh_integer(Event e);
 
