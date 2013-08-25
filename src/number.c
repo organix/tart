@@ -508,11 +508,52 @@ u32_store(uint8_t* p, uint32_t n)
     p[3] = (uint8_t)(n);
 }
 
+inline uint32_t
+u32_getbits(uint8_t* p, int n, int m)
+{
+    p += (n >> 3);  // position p at first byte in this bit range
+    int lb = n & 0x7;  // number of bits in the left part
+    int rb = (8 - lb);  // number of bits in the right part
+    int rm = 0xFF >> lb;  // mask for right bits
+    int lm = ~rm & 0xFF;  // mask for left bits
+    uint32_t b = *p++;
+    b &= rm;
+    if (m <= rb) {
+        b >>= (rb - m);
+        return b;  // all bits present in first byte
+    }
+    m -= rb;
+    while (m >= 8) {
+        b <<= 8;
+        b |= *p++;
+        m -= 8;
+    }
+    lb = (8 - m);  // left-over bits
+    b <<= m;
+    b |= (*p >> lb);
+    return b;
+}
+
 void
 beh_integer(Event e)
 {
     TRACE(fprintf(stderr, "beh_integer{event=%p}\n", e));
     halt("HALT!");
+}
+
+void
+test_getbits(int n, int m, uint32_t expect)
+{
+    uint8_t buf[] = { 0, 0, 0, 0, 0, 0 };
+    uint8_t b = (0x80 >> (n & 0x7));
+    buf[n >> 3] |= b;
+    int x = n + m - 1;  // last bit position
+    b = (0x80 >> (x & 0x7));
+    buf[x >> 3] |= b;
+    uint32_t actual = u32_getbits(buf, n, m);
+    TRACE(fprintf(stderr, "test_getbits{n=%d, m=%d, buf=%02x%02x%02x%02x%02x%02x, expect=%08x, actual=%08x}\n",
+        n, m, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], expect, actual));
+    if (expect != actual) { halt("test_getbits() failed"); }
 }
 
 void
@@ -569,4 +610,63 @@ test_number()
             halt("expected n->i == i");
         }
     }
+/*
+*/
+    test_getbits(0, 1, 0x00000001);
+    test_getbits(0, 2, 0x00000003);
+    test_getbits(0, 3, 0x00000005);
+    test_getbits(0, 4, 0x00000009);
+    test_getbits(0, 5, 0x00000011);
+    test_getbits(0, 6, 0x00000021);
+    test_getbits(0, 7, 0x00000041);
+    test_getbits(0, 8, 0x00000081);
+    test_getbits(1, 7, 0x00000041);
+    test_getbits(2, 6, 0x00000021);
+    test_getbits(3, 5, 0x00000011);
+    test_getbits(4, 4, 0x00000009);
+    test_getbits(5, 3, 0x00000005);
+    test_getbits(6, 2, 0x00000003);
+    test_getbits(7, 1, 0x00000001);
+
+    test_getbits(8, 1, 0x00000001);
+    test_getbits(8, 2, 0x00000003);
+    test_getbits(8, 3, 0x00000005);
+    test_getbits(8, 4, 0x00000009);
+    test_getbits(8, 5, 0x00000011);
+    test_getbits(8, 6, 0x00000021);
+    test_getbits(8, 7, 0x00000041);
+    test_getbits(8, 8, 0x00000081);
+    test_getbits(8, 9, 0x00000101);
+    test_getbits(8, 10, 0x00000201);
+    test_getbits(8, 11, 0x00000401);
+    test_getbits(8, 12, 0x00000801);
+    test_getbits(8, 13, 0x00001001);
+    test_getbits(8, 14, 0x00002001);
+    test_getbits(8, 15, 0x00004001);
+    test_getbits(8, 16, 0x00008001);
+    test_getbits(8, 17, 0x00010001);
+    test_getbits(8, 18, 0x00020001);
+    test_getbits(8, 19, 0x00040001);
+    test_getbits(8, 20, 0x00080001);
+    test_getbits(8, 21, 0x00100001);
+    test_getbits(8, 22, 0x00200001);
+    test_getbits(8, 23, 0x00400001);
+    test_getbits(8, 24, 0x00800001);
+    test_getbits(8, 25, 0x01000001);
+    test_getbits(8, 26, 0x02000001);
+    test_getbits(8, 27, 0x04000001);
+    test_getbits(8, 28, 0x08000001);
+    test_getbits(8, 29, 0x10000001);
+    test_getbits(8, 30, 0x20000001);
+    test_getbits(8, 31, 0x40000001);
+
+    test_getbits(8, 32, 0x80000001);
+    test_getbits(9, 32, 0x80000001);
+    test_getbits(10, 32, 0x80000001);
+    test_getbits(11, 32, 0x80000001);
+    test_getbits(12, 32, 0x80000001);
+    test_getbits(13, 32, 0x80000001);
+    test_getbits(14, 32, 0x80000001);
+    test_getbits(15, 32, 0x80000001);
+    test_getbits(16, 32, 0x80000001);
 }
