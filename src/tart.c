@@ -50,13 +50,13 @@ halt(char * msg)
 void
 val_seed(Event e)
 {
-    TRACE(fprintf(stderr, "val_seed{sponsor=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
+    TRACE(fprintf(stderr, "val_seed{        config=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
 }
 
 void
 val_nest(Event e)
 {
-    TRACE(fprintf(stderr, "val_nest{sponsor=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
+    TRACE(fprintf(stderr, "val_nest{        config=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
     Actor a_seed = value_new(val_seed, NOTHING);
     Actor a_create_config = value_new(val_create_config, PR(a_seed, a_true));
     TRACE(fprintf(stderr, "val_nest: a_seed=%p, a_create_config=%p\n", a_seed, a_create_config));

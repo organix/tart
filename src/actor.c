@@ -257,7 +257,7 @@ beh_config(Event e)
         Config guest = (Config)SELF(e);
         if (deque_empty_p(guest->events) != a_false) {
             TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: config=%p, <EMPTY>\n", guest));  
-            // do not reschedule, configuration is complete
+            // configuration execution is complete, do not schedule for dispatch
             return;
         }
         Actor event = deque_take(guest->events);
@@ -265,14 +265,13 @@ beh_config(Event e)
         config_enqueue(SPONSOR(e), event);
         config_send(SPONSOR(e), (Actor)guest, actor_new(val_dispatch)); // schedule guest configuration dispatch
     } else if (val_create_config == BEH(MSG(e))) {
-        Config host = (Config)SELF(e);
         Pair pair = (Pair)DATA(MSG(e));
         Actor seed = pair->h;
         Actor initial_msg = pair->t;        
         Config guest = config_new();
         TRACE(fprintf(stderr, "beh_config{msg=val_create_config}: config=%p, guest=%p, seed=%p, initial_msg=%p\n", SPONSOR(e), guest, seed, initial_msg));
         config_send(guest, seed, initial_msg); // send initial message to seed
-        config_send(host, (Actor)guest, actor_new(val_dispatch)); // schedule guest configuration dispatch
+        config_send(SPONSOR(e), (Actor)guest, actor_new(val_dispatch)); // schedule guest configuration dispatch
     } else {
         expr_value(e);
     }
@@ -315,6 +314,11 @@ config_dispatch(Config cfg)
     Actor a = deque_take(cfg->events);
     if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
     Event e = (Event)a;
+    // event capability checks
+    if (val_create_config == BEH(MSG(e))) {
+        // creating new configuration is always done at the host configuration level
+        SPONSOR(e) = cfg;
+    }
     TRACE(fprintf(stderr, "config_dispatch: config=%p, actor=%p, msg=%p, event=%p\n", SPONSOR(e), SELF(e), MSG(e), e));
     // TODO: reset wait timer watchdog
     (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
