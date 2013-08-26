@@ -315,7 +315,9 @@ config_dispatch(Config cfg)
     if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
     Event e = (Event)a;
     // event capability checks
-    if (val_create_config == BEH(MSG(e))) {
+    if (val_dispatch == BEH(MSG(e)) && SPONSOR(e) != cfg) {
+        halt("config_dispatch: val_dispatch sponsor must be host configuration");
+    } else if (val_create_config == BEH(MSG(e))) {
         // creating new configuration is always done at the host configuration level
         SPONSOR(e) = cfg;
     }
