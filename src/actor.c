@@ -253,15 +253,14 @@ event_new(Config cfg, Actor a, Actor m)
 void
 beh_config(Event e)
 {
-    TRACE(fprintf(stderr, "beh_config{event=%p}\n", e));
+    TRACE(fprintf(stderr, "beh_config{config=%p, event=%p}\n", SELF(e), e));
     // a dispatch message is dispatched using the dispatching sponsor...
     // other messages, the config assumes the sponsorship of the event..
     if (val_dispatch == BEH(MSG(e))) {
         Config guest = DATA(MSG(e));
-        TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: guest=%p\n", guest));
         // TODO: Is there potential here for infinite recursion?
         Actor result = config_dispatch(guest);
-        TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: result=%p\n", result));
+        TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: guest=%p, result=%p\n", guest, result));
         if (result == NOTHING) {
             // notify terminus
             // host is sponsor, target is terminus, message is guest config
@@ -270,6 +269,9 @@ beh_config(Event e)
             config_send(SPONSOR(e), (Actor)SPONSOR(e), value_new(val_dispatch, guest));
         }
     } else if (val_create_config == BEH(MSG(e))) {
+        // configurations are not allowed to be nested, if I am not the host
+        // configuration then I pass request to host configuration
+        // I pass the request to to
         // message format is (terminus, (seed, initial_message))
         Pair pair = (Pair)DATA(MSG(e));
         Actor terminus = pair->h;
@@ -288,6 +290,7 @@ beh_config(Event e)
             // remove from list of configs and stop dispatching
             // TODO: abusing lists here due to lack of Set as a datastructure
             Config host = SPONSOR(e);
+            TRACE(fprintf(stderr, "beh_config{msg=val_destroy_config}: host=%p, guest=%p\n", host, guest));
             Pair pair = list_pop(host->configs);
             Actor config = pair->h;
             Pair previous = (Pair)0; // to facilitate element removal
@@ -336,7 +339,7 @@ inline void
 config_send(Config cfg, Actor target, Actor msg)
 {
     if (beh_config != BEH(cfg)) { halt("config_send: config actor required"); }
-    TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
+    TRACE(fprintf(stderr, "config_send: config=%p, actor=%p, msg=%p\n", cfg, target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
 Actor

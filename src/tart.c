@@ -62,6 +62,17 @@ val_terminus(Event e)
 }
 
 void
+val_nest(Event e)
+{
+    TRACE(fprintf(stderr, "val_nest{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    Actor a_terminus = value_new(val_terminus, NOTHING);
+    Actor a_seed = value_new(val_seed, NOTHING);
+    Actor a_create_config = value_new(val_create_config, PR(a_terminus, PR(a_seed, a_true)));
+    TRACE(fprintf(stderr, "val_nest: a_terminus=%p, a_seed=%p, a_create_config=%p\n", a_terminus, a_seed, a_create_config));
+    config_send(SPONSOR(e), (Actor)SPONSOR(e), a_create_config);
+}
+
+void
 run_tests()
 {
     TRACE(fprintf(stderr, "---- tart unit tests ----\n"));
@@ -77,6 +88,17 @@ run_tests()
     TRACE(fprintf(stderr, "host config = %p\n", cfg));
     TRACE(fprintf(stderr, "a_terminus = %p\n", a_terminus));
     TRACE(fprintf(stderr, "a_seed = %p\n", a_seed));
+    TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
+    config_send(cfg, (Actor)cfg, a_create_config);
+    while (config_dispatch(cfg) != NOTHING)
+        ;
+
+    TRACE(fprintf(stderr, "---- configuration nesting ----\n"));
+    a_terminus = value_new(val_terminus, NOTHING);
+    Actor a_nesting_seed = value_new(val_nest, NOTHING);
+    a_create_config = value_new(val_create_config, PR(a_terminus, PR(a_nesting_seed, a_true)));
+    TRACE(fprintf(stderr, "a_terminus = %p\n", a_terminus));
+    TRACE(fprintf(stderr, "a_nesting_seed = %p\n", a_nesting_seed));
     TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
     config_send(cfg, (Actor)cfg, a_create_config);
     while (config_dispatch(cfg) != NOTHING)
