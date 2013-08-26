@@ -45,7 +45,7 @@ struct integer {
     int         i;
 };
 
-extern INTEGER small_integers[2*N_SMALL + N_SMALL];
+extern INTEGER small_integers[2*N_SMALL + N_SMALL + 1];
 
 extern Actor    integer_new(int i);
 extern Actor    number_match_method(Actor this, Actor that);

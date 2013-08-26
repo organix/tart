@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include "number.h"
 
-INTEGER small_integers[2*N_SMALL + N_SMALL] = {
+INTEGER small_integers[2*N_SMALL + N_SMALL + 1] = {
     { { beh_integer }, -128 },
     { { beh_integer }, -127 },
     { { beh_integer }, -126 },
@@ -412,13 +412,14 @@ INTEGER small_integers[2*N_SMALL + N_SMALL] = {
     { { beh_integer }, 252 },
     { { beh_integer }, 253 },
     { { beh_integer }, 254 },
-    { { beh_integer }, 255 }
+    { { beh_integer }, 255 },
+    { { beh_integer }, 256 }
 };
 
 inline Actor
 integer_new(int i)
 {
-    if ((i < 2*N_SMALL) && (i >= -N_SMALL)) {  // check for cached objects
+    if ((i <= 2*N_SMALL) && (i >= -N_SMALL)) {  // check for cached objects
         return ((Actor)(&small_integers[N_SMALL + i]));
     }
     Integer n = NEW(INTEGER);
@@ -592,17 +593,21 @@ test_number()
 */
     a = integer_new(N_SMALL);
     b = number_times_method(a, a_minus_one);
-    a = number_times_method(a, a_two);
-    a = number_plus_method(a, a_minus_one);
     n = (Integer)b;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
+    if (b != integer_new(-N_SMALL)) { halt("expected b == integer_new(-N_SMALL)"); }
+    a = number_times_method(a, a_two);
+    a = number_plus_method(a, a_minus_one);
     m = (Integer)a;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (a != integer_new(2*N_SMALL - 1)) { halt("expected a == integer_new(2*N_SMALL - 1)"); }
-    if (b != integer_new(-N_SMALL)) { halt("expected b == integer_new(-N_SMALL)"); }
+    a = number_plus_method(a, a_one);
+    m = (Integer)a;
+    TRACE(fprintf(stderr, "m->i = %d\n", m->i));
+    if (a != integer_new(2*N_SMALL)) { halt("expected a == integer_new(2*N_SMALL)"); }
 /*
 */
-    for (i = -N_SMALL; i < 2*N_SMALL; ++i) {
+    for (i = -N_SMALL; i <= 2*N_SMALL; ++i) {
         a = integer_new(i);
         n = (Integer)a;
         if (n->i != i) {
