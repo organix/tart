@@ -31,11 +31,18 @@ THE SOFTWARE.
 #include "expr.h"
 
 struct cache {
+    ACTOR       _act;
     int         n;  // number of entries in use
     int         m;  // number of entries allocated
     Actor       (*cmp)(Actor entry, Actor value);  // comparison function
     Actor *     base;  // pointer to continguous block of Actor references
 };
+static void
+beh_cache(Event e)
+{
+    TRACE(fprintf(stderr, "beh_cache{event=%p}\n", e));
+    halt("HALT!");
+}
 static Actor
 cache_intern(struct cache * cache, Actor value)
 {
@@ -91,7 +98,7 @@ cache_intern(struct cache * cache, Actor value)
     }
     return p;
 }
-static struct cache string_cache = { 0, 0, string_diff_method, NULL };
+static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, NULL };
 
 STRING the_empty_string_actor = { { beh_string }, "", a_zero };
 
