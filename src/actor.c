@@ -257,9 +257,55 @@ beh_config(Event e)
     // a dispatch message is dispatched using the dispatching sponsor...
     // other messages, the config assumes the sponsorship of the event..
     if (val_dispatch == BEH(MSG(e))) {
-
+        Config guest = DATA(MSG(e));
+        TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: guest=%p\n", guest));
+        // TODO: Is there potential here for infinite recursion?
+        Actor result = config_dispatch(guest);
+        TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: result=%p\n", result));
+        if (result == NOTHING) {
+            // notify terminus
+            // parent is sponsor, target is terminus, message is guest config
+            config_send(SPONSOR(e), VALUE(guest), (Actor)guest);
+        } else {
+            config_send(SPONSOR(e), (Actor)SPONSOR(e), value_new(val_dispatch, guest));
+        }
     } else if (val_create_config == BEH(MSG(e))) {
-
+        // message format is (terminus, (seed, initial_message))
+        Pair pair = (Pair)DATA(MSG(e));
+        Actor terminus = pair->h;
+        pair = (Pair)pair->t;
+        Actor seed = pair->h;
+        Actor initial_message = pair->t;
+        TRACE(fprintf(stderr, "beh_config{msg=val_create_config}: terminus=%p, seed=%p, initial_message=%p\n", terminus, seed, initial_message));
+        Config guest = config_new(terminus);
+        Config host = (Config)SELF(e);
+        host->configs = list_push(host->configs, (Actor)guest);
+        config_send(guest, seed, initial_message); // initial message to seed
+        config_send(host, (Actor)host, value_new(val_dispatch, guest)); // dispatch guest config
+    } else if (val_destroy_config == BEH(MSG(e))) {
+        Config guest = DATA(MSG(e));
+        if (guest != SPONSOR(e)) { // destroy guest configuration
+            // remove from list of configs and stop dispatching
+            // TODO: abusing lists here due to lack of Set as a datastructure
+            Config host = SPONSOR(e);
+            Pair pair = list_pop(host->configs);
+            Actor config = pair->h;
+            Pair previous = (Pair)0; // to facilitate element removal
+            while (config != a_empty_list) {
+                if (config == (Actor)guest) {
+                    if (previous) {
+                        previous->t = pair->t;
+                    } else {
+                        host->configs = pair->t;
+                    }
+                    break;
+                }
+                previous = pair;
+                config = (Actor)pair->t;
+            }
+        } else { // destroy self
+            TRACE(fprintf(stderr, "beh_config{msg=val_destroy_config}: attempt to destroy self ignored\n"));
+        }
     } else {
         expr_value(e);
     }
@@ -270,6 +316,7 @@ config_new(Actor terminus)
     Config cfg = NEW(CONFIG);
     BEH(cfg) = beh_config;
     VALUE(cfg) = terminus;
+    cfg->configs = list_new();
     cfg->events = deque_new();
     cfg->actors = list_new();
     return cfg;
@@ -297,13 +344,13 @@ config_dispatch(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
     if (deque_empty_p(cfg->events) != a_false) {
-        TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
+        TRACE(fprintf(stderr, "config_dispatch: config=%p, <EMPTY>\n", cfg));
         return NOTHING;
     }
     Actor a = deque_take(cfg->events);
     if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
     Event e = (Event)a;
-    TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
+    TRACE(fprintf(stderr, "config_dispatch: config=%p, event=%p, actor=%p, msg=%p\n", SPONSOR(e), e, SELF(e), MSG(e)));
     (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
     return a;
 }
@@ -529,11 +576,17 @@ VALUE the_halt_actor = { { beh_halt }, NOTHING };  // qualifies as both VALUE an
 void
 val_create_config(Event e)
 {
+    expr_value(e);
+}
 
+void
+val_destroy_config(Event e)
+{
+    expr_value(e);
 }
 
 void
 val_dispatch(Event e)
 {
-    
+    expr_value(e);
 }

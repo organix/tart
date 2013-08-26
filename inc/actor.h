@@ -53,9 +53,10 @@ Pair   [*|*|*]
         V
      beh_pair
 
-Config [*|*|*|*]
-        | | | +--> actors
-        | | +--> events
+Config [*|*|*|*|*]
+        | | | | +--> actors
+        | | | +--> events
+        | | +--> configs
         | +--> [*|*]
         V       | +--> STATE
    beh_config   V
@@ -128,6 +129,7 @@ struct event {
 
 struct config {
     SERIAL      terminus;
+    Actor       configs;    // "guest" configurations
     Actor       events;     // queue of messages in-transit
     Actor       actors;     // list of actors created
 };
@@ -177,6 +179,7 @@ extern void     val_dispatch(Event e);
 extern Actor    dispatch_new(Actor cust, Actor config);
 
 extern void     val_create_config(Event e);
+extern void     val_destroy_config(Event e);
 
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;

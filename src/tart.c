@@ -47,13 +47,18 @@ halt(char * msg)
  *  Unit tests
  */
 
+void
+val_seed(Event e)
+{
+    TRACE(fprintf(stderr, "val_seed{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+}
+
 void 
 val_terminus(Event e)
 {
     TRACE(fprintf(stderr, "val_terminus{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (NOTHING == MSG(e)) {
-        DATA(SELF(e)) = a_true;
-    }
+    Config cfg = (Config)MSG(e);
+    config_send(SPONSOR(e), (Actor)SPONSOR(e), value_new(val_destroy_config, cfg));
 }
 
 void
@@ -64,9 +69,15 @@ run_tests()
     TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
     TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
+
     Config cfg = config_new(NOTHING);
     Actor a_terminus = value_new(val_terminus, NOTHING);
-    Actor a_create_config = value_new(val_create_config, a_terminus);
+    Actor a_seed = value_new(val_seed, NOTHING);
+    Actor a_create_config = value_new(val_create_config, PR(a_terminus, PR(a_seed, a_true)));
+    TRACE(fprintf(stderr, "host config = %p\n", cfg));
+    TRACE(fprintf(stderr, "a_terminus = %p\n", a_terminus));
+    TRACE(fprintf(stderr, "a_seed = %p\n", a_seed));
+    TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
     config_send(cfg, (Actor)cfg, a_create_config);
     while (config_dispatch(cfg) != NOTHING)
         ;
