@@ -47,6 +47,15 @@ halt(char * msg)
  *  Unit tests
  */
 
+void 
+val_terminus(Event e)
+{
+    TRACE(fprintf(stderr, "val_terminus{self=%p, msg=%p}\n", SELF(e), MSG(e)));
+    if (NOTHING == MSG(e)) {
+        DATA(SELF(e)) = a_true;
+    }
+}
+
 void
 run_tests()
 {
@@ -55,6 +64,13 @@ run_tests()
     TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
     TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
+    Config cfg = config_new(NOTHING);
+    Actor a_terminus = value_new(val_terminus, NOTHING);
+    Actor a_create_config = value_new(val_create_config, a_terminus);
+    config_send(cfg, (Actor)cfg, a_create_config);
+    while (config_dispatch(cfg) != NOTHING)
+        ;
+
     test_action();
     test_universe();
     test_expr();

@@ -256,7 +256,13 @@ beh_config(Event e)
     TRACE(fprintf(stderr, "beh_config{event=%p}\n", e));
     // a dispatch message is dispatched using the dispatching sponsor...
     // other messages, the config assumes the sponsorship of the event..
-    expr_value(e);
+    if (val_dispatch == BEH(MSG(e))) {
+
+    } else if (val_create_config == BEH(MSG(e))) {
+
+    } else {
+        expr_value(e);
+    }
 }
 inline Config
 config_new(Actor terminus)
@@ -519,3 +525,15 @@ beh_halt(Event e)
     halt("HALT!");
 }
 VALUE the_halt_actor = { { beh_halt }, NOTHING };  // qualifies as both VALUE and SERIAL
+
+void
+val_create_config(Event e)
+{
+
+}
+
+void
+val_dispatch(Event e)
+{
+    
+}

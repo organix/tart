@@ -177,7 +177,6 @@ extern void     val_dispatch(Event e);
 extern Actor    dispatch_new(Actor cust, Actor config);
 
 extern void     val_create_config(Event e);
-extern Actor    create_config_new(Actor cust);
 
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
