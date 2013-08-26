@@ -92,6 +92,7 @@ typedef void (*Action)(Event e);
 #define VALUE(s)    (((Serial)(s))->value)
 #define STRATEGY(s) CODE(VALUE(s))
 #define STATE(s)    DATA(VALUE(s))
+#define TERMINUS(c) VALUE(c)
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
 #define a_empty_dict ((Actor)(&the_empty_dict_actor))

@@ -264,8 +264,8 @@ beh_config(Event e)
         TRACE(fprintf(stderr, "beh_config{msg=val_dispatch}: result=%p\n", result));
         if (result == NOTHING) {
             // notify terminus
-            // parent is sponsor, target is terminus, message is guest config
-            config_send(SPONSOR(e), VALUE(guest), (Actor)guest);
+            // host is sponsor, target is terminus, message is guest config
+            config_send(SPONSOR(e), TERMINUS(guest), (Actor)guest);
         } else {
             config_send(SPONSOR(e), (Actor)SPONSOR(e), value_new(val_dispatch, guest));
         }
@@ -315,7 +315,7 @@ config_new(Actor terminus)
 {
     Config cfg = NEW(CONFIG);
     BEH(cfg) = beh_config;
-    VALUE(cfg) = terminus;
+    TERMINUS(cfg) = terminus;
     cfg->configs = list_new();
     cfg->events = deque_new();
     cfg->actors = list_new();
