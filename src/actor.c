@@ -254,13 +254,16 @@ void
 beh_config(Event e)
 {
     TRACE(fprintf(stderr, "beh_config{event=%p}\n", e));
+    // a dispatch message is dispatched using the dispatching sponsor...
+    // other messages, the config assumes the sponsorship of the event..
     expr_value(e);
 }
 inline Config
-config_new()
+config_new(Actor terminus)
 {
     Config cfg = NEW(CONFIG);
     BEH(cfg) = beh_config;
+    VALUE(cfg) = terminus;
     cfg->events = deque_new();
     cfg->actors = list_new();
     return cfg;

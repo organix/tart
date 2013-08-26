@@ -52,6 +52,21 @@ Pair   [*|*|*]
         | +--> head
         V
      beh_pair
+
+Config [*|*|*|*]
+        | | | +--> actors
+        | | +--> events
+        | +--> [*|*]
+        V       | +--> STATE
+   beh_config   V
+               STRATEGY
+
+Event [*|*|*|*]
+       | | | +--> message
+       | | +--> target
+       | +--> sponsor (Config)
+       V
+    beh_event
 **/
 
 typedef struct actor ACTOR, *Actor;
@@ -112,7 +127,7 @@ struct event {
 };
 
 struct config {
-    ACTOR       _act;
+    SERIAL      terminus;
     Actor       events;     // queue of messages in-transit
     Actor       actors;     // list of actors created
 };
@@ -145,7 +160,7 @@ extern void     actor_become(Actor s, Actor v);
 
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
-extern Config   config_new();
+extern Config   config_new(Actor terminus);
 extern void     config_enqueue(Config cfg, Actor e);
 extern void     config_enlist(Config cfg, Actor a);
 extern void     config_send(Config cfg, Actor target, Actor msg);
@@ -157,6 +172,12 @@ extern void     beh_event(Event e);
 extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 extern void     beh_halt(Event e);
+
+extern void     val_dispatch(Event e);
+extern Actor    dispatch_new(Actor cust, Actor config);
+
+extern void     val_create_config(Event e);
+extern Actor    create_config_new(Actor cust);
 
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
