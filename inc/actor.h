@@ -158,6 +158,9 @@ extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior
 extern void     beh_halt(Event e);
 
+extern void     val_create_config(Event e);
+extern void     val_dispatch(Event e);
+
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
 extern ACTOR the_true_actor;

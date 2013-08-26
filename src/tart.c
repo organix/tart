@@ -48,13 +48,50 @@ halt(char * msg)
  */
 
 void
+val_seed(Event e)
+{
+    TRACE(fprintf(stderr, "val_seed{sponsor=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
+}
+
+void
+val_nest(Event e)
+{
+    TRACE(fprintf(stderr, "val_nest{sponsor=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
+    Actor a_seed = value_new(val_seed, NOTHING);
+    Actor a_create_config = value_new(val_create_config, PR(a_seed, a_true));
+    TRACE(fprintf(stderr, "val_nest: a_seed=%p, a_create_config=%p\n", a_seed, a_create_config));
+    config_send(SPONSOR(e), (Actor)SPONSOR(e), a_create_config);
+}
+
+void
 run_tests()
 {
     TRACE(fprintf(stderr, "---- tart unit tests ----\n"));
-    TRACE(fprintf(stderr, "NIL = %p\n", NIL));
-    TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
-    TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
+    TRACE(fprintf(stderr, "NIL      = %p\n", NIL));
+    TRACE(fprintf(stderr, "NOTHING  = %p\n", NOTHING));
+    TRACE(fprintf(stderr, "a_halt   = %p\n", a_halt));
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
+
+    TRACE(fprintf(stderr, "---- configuration creation ----\n"));
+    Config cfg = config_new();
+    Actor a_seed = value_new(val_seed, NOTHING);
+    Actor a_create_config = value_new(val_create_config, PR(a_seed, a_true));
+    TRACE(fprintf(stderr, "config          = %p\n", cfg));
+    TRACE(fprintf(stderr, "a_seed          = %p\n", a_seed));
+    TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
+    config_send(cfg, (Actor)cfg, a_create_config);
+    while (config_dispatch(cfg) != NOTHING)
+        ;
+
+    TRACE(fprintf(stderr, "---- configuration nesting ----\n"));
+    Actor a_nesting_seed = value_new(val_nest, NOTHING);
+    a_create_config = value_new(val_create_config, PR(a_nesting_seed, a_true));
+    TRACE(fprintf(stderr, "a_nesting_seed  = %p\n", a_nesting_seed));
+    TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
+    config_send(cfg, (Actor)cfg, a_create_config);
+    while (config_dispatch(cfg) != NOTHING)
+        ;
+
     test_action();
     test_universe();
     test_expr();
