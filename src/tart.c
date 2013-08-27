@@ -48,11 +48,19 @@ halt(char * msg)
  */
 
 void
+val_in_config(Event e)
+{
+    TRACE(fprintf(stderr, "val_in_config{   config=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
+    config_send(SPONSOR(e), a_ignore, a_true);
+}
+
+void
 val_seed(Event e)
 {
     TRACE(fprintf(stderr, "val_seed{        config=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
     Actor config = MSG(e);
-    config_send((Config)config, a_ignore, a_true); // send message to new config
+    Actor a_in_config = value_new(val_in_config, NOTHING);
+    config_send((Config)config, a_in_config, a_true); // send message to new config
     config_send(SPONSOR(e), config, actor_new(val_dispatch)); // schedule guest configuration for dispatch
 }
 
@@ -65,7 +73,7 @@ val_nest(Event e)
     Actor a_cust = value_new(val_seed, NOTHING);
     Actor a_create_config = value_new(val_create_config, a_cust);
     TRACE(fprintf(stderr, "val_nest: a_cust=%p, a_create_config=%p\n", a_cust, a_create_config));
-    config_send(SPONSOR(e), (Actor)SPONSOR(e), a_create_config);
+    config_send((Config)config, config, a_create_config);
 }
 
 void
