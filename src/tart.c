@@ -51,15 +51,20 @@ void
 val_seed(Event e)
 {
     TRACE(fprintf(stderr, "val_seed{        config=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
+    Actor config = MSG(e);
+    config_send((Config)config, a_ignore, a_true); // send message to new config
+    config_send(SPONSOR(e), config, actor_new(val_dispatch)); // schedule guest configuration for dispatch
 }
 
 void
 val_nest(Event e)
 {
     TRACE(fprintf(stderr, "val_nest{        config=%p, self=%p, msg=%p}\n", SPONSOR(e), SELF(e), MSG(e)));
-    Actor a_seed = value_new(val_seed, NOTHING);
-    Actor a_create_config = value_new(val_create_config, PR(a_seed, a_true));
-    TRACE(fprintf(stderr, "val_nest: a_seed=%p, a_create_config=%p\n", a_seed, a_create_config));
+    Actor config = MSG(e);
+    config_send(SPONSOR(e), config, actor_new(val_dispatch)); // schedule guest configuration for dispatch
+    Actor a_cust = value_new(val_seed, NOTHING);
+    Actor a_create_config = value_new(val_create_config, a_cust);
+    TRACE(fprintf(stderr, "val_nest: a_cust=%p, a_create_config=%p\n", a_cust, a_create_config));
     config_send(SPONSOR(e), (Actor)SPONSOR(e), a_create_config);
 }
 
@@ -74,19 +79,19 @@ run_tests()
 
     TRACE(fprintf(stderr, "---- configuration creation ----\n"));
     Config cfg = config_new();
-    Actor a_seed = value_new(val_seed, NOTHING);
-    Actor a_create_config = value_new(val_create_config, PR(a_seed, a_true));
+    Actor a_cust = value_new(val_seed, NOTHING);
+    Actor a_create_config = value_new(val_create_config, a_cust);
     TRACE(fprintf(stderr, "config          = %p\n", cfg));
-    TRACE(fprintf(stderr, "a_seed          = %p\n", a_seed));
+    TRACE(fprintf(stderr, "a_cust          = %p\n", a_cust));
     TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
     config_send(cfg, (Actor)cfg, a_create_config);
     while (config_dispatch(cfg) != NOTHING)
         ;
 
     TRACE(fprintf(stderr, "---- configuration nesting ----\n"));
-    Actor a_nesting_seed = value_new(val_nest, NOTHING);
-    a_create_config = value_new(val_create_config, PR(a_nesting_seed, a_true));
-    TRACE(fprintf(stderr, "a_nesting_seed  = %p\n", a_nesting_seed));
+    Actor a_nesting_cust = value_new(val_nest, NOTHING);
+    a_create_config = value_new(val_create_config, a_nesting_cust);
+    TRACE(fprintf(stderr, "a_nesting_cust  = %p\n", a_nesting_cust));
     TRACE(fprintf(stderr, "a_create_config = %p\n", a_create_config));
     config_send(cfg, (Actor)cfg, a_create_config);
     while (config_dispatch(cfg) != NOTHING)

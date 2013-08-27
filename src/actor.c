@@ -265,13 +265,10 @@ beh_config(Event e)
         config_enqueue(SPONSOR(e), event);
         config_send(SPONSOR(e), (Actor)guest, actor_new(val_dispatch)); // schedule guest configuration dispatch
     } else if (val_create_config == BEH(MSG(e))) {
-        Pair pair = (Pair)DATA(MSG(e));
-        Actor seed = pair->h;
-        Actor initial_msg = pair->t;        
+        Actor cust = DATA(MSG(e));
         Config guest = config_new();
-        TRACE(fprintf(stderr, "beh_config{msg=val_create_config}: config=%p, guest=%p, seed=%p, initial_msg=%p\n", SPONSOR(e), guest, seed, initial_msg));
-        config_send(guest, seed, initial_msg); // send initial message to seed
-        config_send(SPONSOR(e), (Actor)guest, actor_new(val_dispatch)); // schedule guest configuration dispatch
+        TRACE(fprintf(stderr, "beh_config{msg=val_create_config}: config=%p, guest=%p, cust=%p\n", SPONSOR(e), guest, cust));
+        config_send(SPONSOR(e), cust, (Actor)guest);
     } else {
         expr_value(e);
     }
