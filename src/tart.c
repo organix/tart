@@ -78,7 +78,7 @@ run_tests()
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
 
     TRACE(fprintf(stderr, "---- configuration creation ----\n"));
-    Config cfg = config_new();
+    Config cfg = host_new();
     Actor a_cust = value_new(val_seed, NOTHING);
     Actor a_create_config = value_new(val_create_config, a_cust);
     TRACE(fprintf(stderr, "config          = %p\n", cfg));

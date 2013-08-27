@@ -227,7 +227,7 @@ void
 test_action()
 {
     TRACE(fprintf(stderr, "---- test_action ----\n"));
-    Config cfg = config_new();
+    Config cfg = host_new();
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
 
     // forwarding example

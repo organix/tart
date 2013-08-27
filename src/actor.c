@@ -241,13 +241,19 @@ beh_event(Event e)
 inline Actor
 event_new(Config cfg, Actor a, Actor m)
 {
-    if (beh_config != BEH(cfg)) { halt("event_new: config actor required"); }
+    // if (beh_config != BEH(cfg)) { halt("event_new: config actor required"); }
     Event e = NEW(EVENT);
     BEH(e) = beh_event;
     e->sponsor = cfg;
     e->target = a;
     e->message = m;
     return (Actor)e;
+}
+
+void
+beh_host(Event e)
+{
+    beh_config(e);
 }
 
 void
@@ -274,6 +280,13 @@ beh_config(Event e)
     }
 }
 inline Config
+host_new()
+{
+    Config cfg = config_new();
+    BEH(cfg) = beh_host;
+    return cfg;
+}
+inline Config
 config_new()
 {
     Config cfg = NEW(CONFIG);
@@ -296,14 +309,14 @@ config_enlist(Config cfg, Actor a)
 inline void
 config_send(Config cfg, Actor target, Actor msg)
 {
-    if (beh_config != BEH(cfg)) { halt("config_send: config actor required"); }
+    // if (beh_config != BEH(cfg)) { halt("config_send: config actor required"); }
     TRACE(fprintf(stderr, "config_send:     config=%p, actor=%p, msg=%p\n", cfg, target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
 Actor
 config_dispatch(Config cfg)
 {
-    if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
+    if (beh_host != BEH(cfg)) { halt("config_dispatch: host configuration actor required"); }
     if (deque_empty_p(cfg->events) != a_false) {
         TRACE(fprintf(stderr, "config_dispatch: config=%p, <EMPTY>\n", cfg));
         return NOTHING;
@@ -312,9 +325,7 @@ config_dispatch(Config cfg)
     if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
     Event e = (Event)a;
     // event capability checks
-    if (val_dispatch == BEH(MSG(e)) && SPONSOR(e) != cfg) {
-        halt("config_dispatch: val_dispatch sponsor must be host configuration");
-    } else if (val_create_config == BEH(MSG(e))) {
+    if (val_create_config == BEH(MSG(e))) {
         // creating new configuration is always done at the host configuration level
         SPONSOR(e) = cfg;
     }

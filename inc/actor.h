@@ -145,6 +145,7 @@ extern void     actor_become(Actor s, Actor v);
 
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
+extern Config   host_new();
 extern Config   config_new();
 extern void     config_enqueue(Config cfg, Actor e);
 extern void     config_enlist(Config cfg, Actor a);
