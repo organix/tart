@@ -324,7 +324,6 @@ config_dispatch(Config cfg)
     Actor a = deque_take(cfg->events);
     if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
     Event e = (Event)a;
-    // event capability checks
     TRACE(fprintf(stderr, "config_dispatch: config=%p, actor=%p, msg=%p, event=%p\n", SPONSOR(e), SELF(e), MSG(e), e));
     (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
     // TODO: reset watchdog timer
