@@ -322,8 +322,8 @@ config_dispatch(Config cfg)
         SPONSOR(e) = cfg;
     }
     TRACE(fprintf(stderr, "config_dispatch: config=%p, actor=%p, msg=%p, event=%p\n", SPONSOR(e), SELF(e), MSG(e), e));
-    // TODO: reset wait timer watchdog
     (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
+    // TODO: reset watchdog timer
     return a;
 }
 
