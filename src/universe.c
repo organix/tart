@@ -151,7 +151,7 @@ ser_scope(Event e)  // SERIALIZED
         Actor value = p->t;
         TRACE(fprintf(stderr, "ser_scope: (#bind, %p, %p)\n", name, value));
         dict = dict_bind(SPONSOR(e), dict, name, value);
-//        actor_become(SELF(e), value_new(ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
+//        actor_become(SELF(e), value_new(SPONSOR(e), ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
         p = (Pair)STATE(SELF(e));  // (dict, parent)
         p->h = dict;  // WARNING! this directly manipulates the data in this behavior
         config_send(SPONSOR(e), ok, SELF(e));
@@ -309,7 +309,7 @@ val_comb(Event e)
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_comb: (#eval, %p)\n", env));
-        Actor comb_0 = value_new(val_comb_0, PR((Actor)cust, PR(opnd, env)));
+        Actor comb_0 = value_new(SPONSOR(e), val_comb_0, PR((Actor)cust, PR(opnd, env)));
         config_send(SPONSOR(e), oper, PR(PR(comb_0, fail), PR(s_eval, env)));
     } else {
         TRACE(fprintf(stderr, "val_comb: FAIL!\n"));
@@ -367,7 +367,7 @@ val_appl(Event e)
         p = (Pair)p->t;
         Actor opnd = p->h;
         Actor env = p->t;
-        Actor appl_0 = value_new(val_appl_0, PR((Actor)cust, PR(comb, env)));
+        Actor appl_0 = value_new(SPONSOR(e), val_appl_0, PR((Actor)cust, PR(comb, env)));
         TRACE(fprintf(stderr, "val_appl: ok=%p, fail=%p, appl_0=%p, comb=%p, opnd=%p, env=%p\n", ok, fail, appl_0, comb, opnd, env));
         config_send(SPONSOR(e), opnd, PR(PR(appl_0, fail), PR(s_eval, env)));
     } else {
@@ -464,15 +464,15 @@ val_oper(Event e)
         p = (Pair)p->t;
         Actor opnd = p->h;
         Actor env_d = p->t;
-        Actor scope = serial_new(ser_scope, PR(dict_new(SPONSOR(e)), env_s));
+        Actor scope = serial_new(SPONSOR(e), ser_scope, PR(dict_new(SPONSOR(e)), env_s));
         TRACE(fprintf(stderr, "val_oper: opnd=%p, env_d=%p, scope=%p\n", opnd, env_d, scope));
         if (a_skip_ptrn == evar) {  // optimize "lambda" case
-            Actor oper_1 = value_new(val_oper_1, PR((Actor)cust, body));
+            Actor oper_1 = value_new(SPONSOR(e), val_oper_1, PR((Actor)cust, body));
             TRACE(fprintf(stderr, "val_oper: ok=%p, fail=%p, oper_1=%p\n", ok, fail, oper_1));
             config_send(SPONSOR(e), form, PR(PR(oper_1, fail), PR(s_match, PR(opnd, scope))));
         } else {
-            Actor oper_1 = value_new(val_oper_1, PR((Actor)cust, body));
-            Actor oper_0 = value_new(val_oper_0, PR(PR(oper_1, fail), PR(evar, env_d)));
+            Actor oper_1 = value_new(SPONSOR(e), val_oper_1, PR((Actor)cust, body));
+            Actor oper_0 = value_new(SPONSOR(e), val_oper_0, PR(PR(oper_1, fail), PR(evar, env_d)));
             TRACE(fprintf(stderr, "val_oper: ok=%p, fail=%p, oper_0=%p, oper_1=%p\n", ok, fail, oper_0, oper_1));
             config_send(SPONSOR(e), form, PR(PR(oper_0, fail), PR(s_match, PR(opnd, scope))));
         }
@@ -509,7 +509,7 @@ val_vau(Event e)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_vau: (#eval, %p)\n", env));
         p = (Pair)DATA(SELF(e));  // (form, evar, body)
-        Actor oper = value_new(val_oper, PR(env, (Actor)p));
+        Actor oper = value_new(SPONSOR(e), val_oper, PR(env, (Actor)p));
         config_send(SPONSOR(e), ok, oper);
     } else {
         TRACE(fprintf(stderr, "val_vau: FAIL!\n"));
@@ -548,8 +548,8 @@ val_lambda(Event e)
         p = (Pair)DATA(SELF(e));  // (form, body)
         Actor form = p->h;
         Actor body = p->t;
-        Actor oper = value_new(val_oper, PR(env, PR(form, PR(a_skip_ptrn, body))));
-        Actor appl = value_new(val_appl, oper);
+        Actor oper = value_new(SPONSOR(e), val_oper, PR(env, PR(form, PR(a_skip_ptrn, body))));
+        Actor appl = value_new(SPONSOR(e), val_appl, oper);
         config_send(SPONSOR(e), ok, appl);
     } else {
         TRACE(fprintf(stderr, "val_lambda: FAIL!\n"));
@@ -687,7 +687,7 @@ val_choice_ptrn_0(Event e)
     p = (Pair)p->t;
     Actor env = p->h;
     Actor ptrn = p->t;
-    Actor scope = serial_new(ser_scope, PR(dict_new(SPONSOR(e)), env));
+    Actor scope = serial_new(SPONSOR(e), ser_scope, PR(dict_new(SPONSOR(e)), env));
     TRACE(fprintf(stderr, "val_choice_ptrn_0: ok=%p, fail=%p, value=%p, scope=%p, ptrn=%p\n", ok, fail, value, scope, ptrn));
     config_send(SPONSOR(e), ptrn, PR((Actor)cust, PR(s_match, PR(value, scope))));
 }
@@ -724,8 +724,8 @@ val_choice_ptrn(Event e)
         Actor value = p->h;
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_choice_ptrn: (#match, %p, %p)\n", value, env));
-        Actor t_choice = value_new(val_choice_ptrn_0, PR((Actor)cust, PR(value, PR(env, t_ptrn))));
-        Actor h_choice = value_new(val_choice_ptrn_0, PR(PR(ok, t_choice), PR(value, PR(env, h_ptrn))));
+        Actor t_choice = value_new(SPONSOR(e), val_choice_ptrn_0, PR((Actor)cust, PR(value, PR(env, t_ptrn))));
+        Actor h_choice = value_new(SPONSOR(e), val_choice_ptrn_0, PR(PR(ok, t_choice), PR(value, PR(env, h_ptrn))));
         config_send(SPONSOR(e), h_choice, a_fail);
     } else {
         beh_value(e);  // delegate
@@ -795,7 +795,7 @@ val_pair(Event e)
         Actor t_ptrn = p->h;
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_pair: ($brand, %p, %p, %p)\n", h_ptrn, t_ptrn, env));
-        Actor pair_0 = value_new(val_pair_0, PR((Actor)cust, PR(t_ptrn, tail)));
+        Actor pair_0 = value_new(SPONSOR(e), val_pair_0, PR((Actor)cust, PR(t_ptrn, tail)));
         config_send(SPONSOR(e), h_ptrn, PR(PR(pair_0, fail), PR(s_match, PR(head, env))));
     } else {
         beh_value(e);  // delegate
@@ -891,7 +891,7 @@ val_seq_expr(Event e)
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_seq_expr: (#eval, %p)\n", env));
-        Actor seq_0 = value_new(val_seq_0, PR((Actor)cust, PR(tail_expr, env)));
+        Actor seq_0 = value_new(SPONSOR(e), val_seq_0, PR((Actor)cust, PR(tail_expr, env)));
         config_send(SPONSOR(e), head_expr, PR(PR(seq_0, fail), PR(s_eval, env)));
     } else {
         TRACE(fprintf(stderr, "val_seq_expr: FAIL!\n"));
@@ -923,7 +923,7 @@ act_both_0(Event e)
     p = (Pair)MSG(e);
     if (p->h == k_tail) {  // ($k_tail, tail)
         Actor tail = p->t;
-        Actor pair = value_new(val_pair, PR(head, tail));
+        Actor pair = value_new(SPONSOR(e), val_pair, PR(head, tail));
         config_send(SPONSOR(e), ok, pair);
     } else {
         TRACE(fprintf(stderr, "act_both_0: FAIL!\n"));
@@ -954,7 +954,7 @@ act_both_1(Event e)
     p = (Pair)MSG(e);
     if (p->h == k_head) {  // ($k_head, head)
         Actor head = p->t;
-        Actor pair = value_new(val_pair, PR(head, tail));
+        Actor pair = value_new(SPONSOR(e), val_pair, PR(head, tail));
         config_send(SPONSOR(e), ok, pair);
     } else {
         TRACE(fprintf(stderr, "act_both_1: FAIL!\n"));
@@ -990,10 +990,10 @@ act_both(Event e)  // SERIALIZED
     p = (Pair)MSG(e);
     if (p->h == k_head) {  // ($k_head, head)
         Actor head = p->t;
-        actor_become(SELF(e), value_new(act_both_0, PR((Actor)cust, PR(head, k_tail))));
+        actor_become(SELF(e), value_new(SPONSOR(e), act_both_0, PR((Actor)cust, PR(head, k_tail))));
     } else if (p->h == k_tail) {  // ($k_tail, tail)
         Actor tail = p->t;
-        actor_become(SELF(e), value_new(act_both_1, PR((Actor)cust, PR(k_head, tail))));
+        actor_become(SELF(e), value_new(SPONSOR(e), act_both_1, PR((Actor)cust, PR(k_head, tail))));
     } else {
         TRACE(fprintf(stderr, "act_both: FAIL!\n"));
         config_send(SPONSOR(e), fail, MSG(e));
@@ -1034,11 +1034,11 @@ act_par_0(Event e)  // SERIALIZED
     Actor head_expr = p->h;
     Actor tail_expr = p->t;
     Actor req = MSG(e);  // (#eval, env)
-    Actor k_head = value_new(val_tag, SELF(e));
-    Actor k_tail = value_new(val_tag, SELF(e));
+    Actor k_head = value_new(SPONSOR(e), val_tag, SELF(e));
+    Actor k_tail = value_new(SPONSOR(e), val_tag, SELF(e));
     config_send(SPONSOR(e), head_expr, PR(PR(k_head, fail), req));
     config_send(SPONSOR(e), tail_expr, PR(PR(k_tail, fail), req));
-    actor_become(SELF(e), value_new(act_both, PR((Actor)cust, PR(k_head, k_tail))));
+    actor_become(SELF(e), value_new(SPONSOR(e), act_both, PR((Actor)cust, PR(k_head, k_tail))));
 }
 /**
 LET par_expr_beh(head_expr, tail_expr) = \msg.[  # parallel evaluation
@@ -1068,7 +1068,7 @@ val_par_expr(Event e)
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_par_expr: (#eval, %p)\n", env));
-        Actor par_0 = serial_new(act_par_0, PR((Actor)cust, exprs));
+        Actor par_0 = serial_new(SPONSOR(e), act_par_0, PR((Actor)cust, exprs));
         config_send(SPONSOR(e), par_0, (Actor)p);
     } else {
         TRACE(fprintf(stderr, "val_par_expr: FAIL!\n"));
@@ -1188,7 +1188,7 @@ symbol_intern(Config cfg, char * name)
 {
     Actor a_symbol = dict_lookup(cfg, symbol_table, (Actor)name);  // [FIXME: 'name' IS NOT AN ACTOR!]
     if (a_symbol == NOTHING) {
-        a_symbol = actor_new(beh_name);
+        a_symbol = actor_new(cfg, beh_name);
         symbol_table = dict_bind(cfg, symbol_table, (Actor)name, a_symbol);
     }
     return a_symbol;
@@ -1197,8 +1197,8 @@ symbol_intern(Config cfg, char * name)
 void
 universe_init(Config cfg)
 {
-    b_true = actor_new(beh_oper_true);
-    b_false = actor_new(beh_oper_false);
+    b_true = actor_new(cfg, beh_oper_true);
+    b_false = actor_new(cfg, beh_oper_false);
     TRACE(fprintf(stderr, "b_true = %p\n", b_true));
     TRACE(fprintf(stderr, "b_false = %p\n", b_false));
     s_comb = symbol_intern(cfg, "comb");
@@ -1236,13 +1236,13 @@ test_universe()
     // (\x.x)(#t) -> #t
     Actor s_x = symbol_intern(cfg, "x");
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
-    form = value_new(val_bind_ptrn, s_x);
+    form = value_new(cfg, val_bind_ptrn, s_x);
     body = s_x;
-    Actor I = value_new(val_lambda, pair_new(cfg, form, body));
+    Actor I = value_new(cfg, val_lambda, pair_new(cfg, form, body));
     TRACE(fprintf(stderr, "I = %p\n", I));
-    comb = value_new(val_comb, pair_new(cfg, I, b_true));
+    comb = value_new(cfg, val_comb, pair_new(cfg, I, b_true));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
-    test = value_new(val_expect, b_true);
+    test = value_new(cfg, val_expect, b_true);
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)
@@ -1251,40 +1251,40 @@ test_universe()
     // (\(x,y).seq(y,x))(#t,#f) -> #t
     Actor s_y = symbol_intern(cfg, "y");
     TRACE(fprintf(stderr, "s_y = %p\n", s_y));
-    form = value_new(val_pair_ptrn, pair_new(cfg, 
-        value_new(val_bind_ptrn, s_x), //a_skip_ptrn,
-        value_new(val_bind_ptrn, s_y)));
+    form = value_new(cfg, val_pair_ptrn, pair_new(cfg, 
+        value_new(cfg, val_bind_ptrn, s_x), //a_skip_ptrn,
+        value_new(cfg, val_bind_ptrn, s_y)));
 //    body = s_y;
 //    body = s_x;
 //    body = b_true;
 //    body = b_false;
-//    body = value_new(val_seq_expr, pair_new(cfg, s_x, s_y));
-    body = value_new(val_seq_expr, pair_new(cfg, s_y, s_x));
-//    body = value_new(val_seq_expr, pair_new(cfg, b_true, b_false));
-//    body = value_new(val_seq_expr, pair_new(cfg, b_false, b_true));
-    expr = value_new(val_par_expr, pair_new(cfg, b_true, b_false));
+//    body = value_new(cfg, val_seq_expr, pair_new(cfg, s_x, s_y));
+    body = value_new(cfg, val_seq_expr, pair_new(cfg, s_y, s_x));
+//    body = value_new(cfg, val_seq_expr, pair_new(cfg, b_true, b_false));
+//    body = value_new(cfg, val_seq_expr, pair_new(cfg, b_false, b_true));
+    expr = value_new(cfg, val_par_expr, pair_new(cfg, b_true, b_false));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    comb = value_new(val_comb, pair_new(cfg, 
-        value_new(val_lambda, pair_new(cfg, form, body)), 
+    comb = value_new(cfg, val_comb, pair_new(cfg, 
+        value_new(cfg, val_lambda, pair_new(cfg, form, body)), 
         expr));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
-//    test = value_new(val_expect, b_false);
-    test = value_new(val_expect, b_true);
+//    test = value_new(cfg, val_expect, b_false);
+    test = value_new(cfg, val_expect, b_true);
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)
         ;
 
     // (#t #f . #t) -> #f
-    expr = value_new(val_pair, pair_new(cfg, b_false, b_true));
-//    expr = value_new(val_pair, pair_new(cfg, b_false, a_fail));
-//    expr = value_new(val_pair, pair_new(cfg, a_fail, b_true));
-//    expr = value_new(val_pair, pair_new(cfg, b_false, s_y));
-//    expr = value_new(val_pair, pair_new(cfg, s_x, b_true));
+    expr = value_new(cfg, val_pair, pair_new(cfg, b_false, b_true));
+//    expr = value_new(cfg, val_pair, pair_new(cfg, b_false, a_fail));
+//    expr = value_new(cfg, val_pair, pair_new(cfg, a_fail, b_true));
+//    expr = value_new(cfg, val_pair, pair_new(cfg, b_false, s_y));
+//    expr = value_new(cfg, val_pair, pair_new(cfg, s_x, b_true));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    comb = value_new(val_comb, pair_new(cfg, b_true, expr));
+    comb = value_new(cfg, val_comb, pair_new(cfg, b_true, expr));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
-    test = value_new(val_expect, b_false);
+    test = value_new(cfg, val_expect, b_false);
     TRACE(fprintf(stderr, "test = %p\n", test));
     config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)

@@ -43,11 +43,10 @@ pair_new(Config cfg, Actor h, Actor t)
 inline Actor
 deque_new(Config cfg)
 {
-    DEBUG(fprintf(stderr, "deque_new: cfg = %p\n", cfg));
-    Actor a = pair_new(cfg, NIL, NIL);
-    DEBUG(fprintf(stderr, "deque_new: a = %p\n", a));
-    BEH(a) = beh_deque;  // override pair behavior with deque behavior
-    return a;
+    Pair p = (Pair)config_create(cfg, sizeof(PAIR), beh_deque);
+    p->h = NIL;
+    p->t = NIL;
+    return (Actor)p;
 }
 inline Actor
 deque_empty_p(Config cfg, Actor queue)
@@ -85,16 +84,6 @@ deque_take(Config cfg, Actor queue)
 
 ACTOR the_empty_dict_actor = { expr_env_empty };
 inline Actor
-dict_new(Config cfg)
-{
-    return a_empty_dict;
-}
-inline Actor
-dict_empty_p(Config cfg, Actor dict)
-{
-    return ((dict == a_empty_dict) ? a_true : a_false);
-}
-inline Actor
 dict_lookup(Config cfg, Actor dict, Actor key)
 {
     while (dict_empty_p(cfg, dict) == a_false) {
@@ -113,44 +102,39 @@ dict_lookup(Config cfg, Actor dict, Actor key)
 inline Actor
 dict_bind(Config cfg, Actor dict, Actor key, Actor value)
 {
-    Actor a = pair_new(cfg, pair_new(cfg, key, value), dict);
-    BEH(a) = expr_env;  // override pair behavior with env behavior
-    return a;
+    Pair p = (Pair)config_create(cfg, sizeof(PAIR), expr_env);
+    p->h = pair_new(cfg, key, value);
+    p->t = dict;
+    return (Actor)p;
 }
 
 inline Actor
-actor_new(Action beh)  // create an actor with only a behavior procedure
+actor_new(Config cfg, Action beh)  // create an actor with only a behavior procedure
 {
-    Actor a = NEW(ACTOR);
-    BEH(a) = beh;
-    return a;
+    return config_create(cfg, sizeof(ACTOR), beh);
 }
 inline Actor
-value_new(Action beh, Any data)  // create a "unserialized" (value) actor
+value_new(Config cfg, Action beh, Any data)  // create a "unserialized" (value) actor
 {
-    Value v = NEW(VALUE);
-    CODE(v) = beh;
+    Value v = (Value)config_create(cfg, sizeof(VALUE), beh);
+//    CODE(v) = beh;  <-- already set by config_create()
     DATA(v) = data;
     return (Actor)v;
 }
 inline Actor
-serial_new(Action beh, Any data)  // create a "serialized" actor
+serial_with_value(Config cfg, Actor v)  // create a "serialized" actor with "behavior" value
 {
-    Serial s = NEW(SERIAL);
-    BEH(s) = act_serial;
-    VALUE(s) = value_new(beh, data);
-    return (Actor)s;
-}
-inline Actor
-serial_with_value(Actor v)  // create a "serialized" actor with "behavior" value
-{
-    Serial s = NEW(SERIAL);
-    BEH(s) = act_serial;
+    Serial s = (Serial)config_create(cfg, sizeof(SERIAL), act_serial);
     VALUE(s) = v;
     return (Actor)s;
 }
+inline Actor
+serial_new(Config cfg, Action beh, Any data)  // create a "serialized" actor
+{
+    return serial_with_value(cfg, value_new(cfg, beh, data));
+}
 inline void
-actor_become(Actor s, Actor v)
+actor_become(Actor s, Actor v)  // [FIXME] THIS SHOULD PROBABLY BE AN OPERATION ON THE SPONSOR/CONFIG
 {
     if (act_serial != BEH(s)) { halt("actor_become: serialized actor required"); }
     VALUE(s) = v;  // an "unserialzed" behavior actor
@@ -166,8 +150,7 @@ inline Actor
 event_new(Config cfg, Actor a, Actor m)
 {
     if (beh_config != BEH(cfg)) { halt("event_new: config actor required"); }
-    Event e = NEW(EVENT);
-    BEH(e) = beh_event;
+    Event e = (Event)config_create(cfg, sizeof(EVENT), beh_event);
     e->sponsor = cfg;
     e->target = a;
     e->message = m;
@@ -292,7 +275,7 @@ beh_pair(Event e)
         } else if (beh_pair == BEH(rm->value)) {
             Pair p = (Pair)SELF(e);
             Pair q = (Pair)rm->value;
-            Actor ok = value_new(beh_pair_0, req_match_new(r->ok, r->fail, q->t, p->t));
+            Actor ok = value_new(SPONSOR(e), beh_pair_0, req_match_new(r->ok, r->fail, q->t, p->t));
             config_send(SPONSOR(e), p->h, req_match_new(ok, r->fail, q->h, rm->env));
         } else {
             TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));

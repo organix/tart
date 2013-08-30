@@ -122,7 +122,7 @@ struct config {
 extern Actor    pair_new(Config cfg, Actor h, Actor t);
 
 #define         list_new(cfg)                   (a_empty_list)
-#define         list_empty_p(cfg, list)         (((list) == a_empty_list) ? a_true : a_false)
+#define         list_empty_p(cfg, list)         ((a_empty_list == (list)) ? a_true : a_false)
 #define         list_pop(cfg, list)             ((Pair)(list))      // returns: (first, rest)
 #define         list_push(cfg, list, item)      (pair_new((cfg),(item),(list)))
 
@@ -131,15 +131,15 @@ extern Actor    deque_empty_p(Config cfg, Actor queue);
 extern void     deque_give(Config cfg, Actor queue, Actor item);
 extern Actor    deque_take(Config cfg, Actor queue);
 
-extern Actor    dict_new(Config cfg);
-extern Actor    dict_empty_p(Config cfg, Actor dict);
+#define         dict_new(cfg)                   (a_empty_dict)
+#define         dict_empty_p(cfg, dict)         ((a_empty_dict == (dict)) ? a_true : a_false)
 extern Actor    dict_lookup(Config cfg, Actor dict, Actor key);
 extern Actor    dict_bind(Config cfg, Actor dict, Actor key, Actor value);
 
-extern Actor    actor_new(Action beh);
-extern Actor    value_new(Action beh, Any data);
-extern Actor    serial_new(Action beh, Any data);
-extern Actor    serial_with_value(Actor v);
+extern Actor    actor_new(Config cfg, Action beh);
+extern Actor    value_new(Config cfg, Action beh, Any data);
+extern Actor    serial_with_value(Config cfg, Actor v);
+extern Actor    serial_new(Config cfg, Action beh, Any data);
 extern void     actor_become(Actor s, Actor v);
 
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
@@ -147,7 +147,6 @@ extern Actor    event_new(Config cfg, Actor a, Actor msg);
 extern Config   config_new();
 #define         config_create(cfg, size, beh)   (((cfg)->create)((cfg), (size), (beh)))
 #define         config_enqueue(cfg, e)          (deque_give((cfg), (cfg)->events, (e)))
-//extern Actor    config_dequeue(Config cfg);
 #define         config_send(cfg, target, msg)   (((cfg)->send)((cfg), (target), (msg)))
 extern Actor    config_dispatch(Config cfg);
 

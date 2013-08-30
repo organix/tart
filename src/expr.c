@@ -419,13 +419,13 @@ test_expr()
     /* empty environment evaluates to itself */
     expr = a_empty_env;
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    cust = value_new(val_expect, a_empty_env);
+    cust = value_new(cfg, val_expect, a_empty_env);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
     config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
     /* the configuration evaluates to itself */
     expr = (Actor)cfg;
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    cust = value_new(val_expect, cfg);
+    cust = value_new(cfg, val_expect, cfg);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
     config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
     /* dispatch until empty */
@@ -433,11 +433,11 @@ test_expr()
         ;
 
     /* name binding can be resolved */
-    cust = value_new(val_expect, cfg);
+    cust = value_new(cfg, val_expect, cfg);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    Actor s_x = actor_new(expr_name);
+    Actor s_x = actor_new(cfg, expr_name);
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
-    expr = value_new(beh_eval_body, pair_new(cfg, pair_new(cfg, cust, a_halt), s_x));
+    expr = value_new(cfg, beh_eval_body, pair_new(cfg, pair_new(cfg, cust, a_halt), s_x));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     config_send(cfg, a_empty_dict, req_bind_new(expr, a_halt, s_x, (Actor)cfg));
     /* dispatch until empty */
@@ -445,7 +445,7 @@ test_expr()
         ;
 
     /* pair values can be matched */
-    cust = value_new(val_expect, a_empty_env);
+    cust = value_new(cfg, val_expect, a_empty_env);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
     Actor p = pair_new(cfg, a_true, a_false);
     TRACE(fprintf(stderr, "p = %p\n", p));
