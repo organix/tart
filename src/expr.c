@@ -37,7 +37,7 @@ val_request(Event e)
     expr_value(e);
 }
 static Actor
-request_new(Actor ok, Actor fail, Actor req)
+request_new(Config cfg, Actor ok, Actor fail, Actor req)
 {
     Request r = NEW(REQUEST);
     BEH(r) = val_request;
@@ -56,12 +56,12 @@ val_req_eval(Event e)
     expr_value(e);
 }
 Actor
-req_eval_new(Actor ok, Actor fail, Actor env)
+req_eval_new(Config cfg, Actor ok, Actor fail, Actor env)
 {
     ReqEval req = NEW(REQ_EVAL);
     BEH(req) = val_req_eval;
     req->env = env;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -73,13 +73,13 @@ val_req_match(Event e)
     expr_value(e);
 }
 Actor
-req_match_new(Actor ok, Actor fail, Actor value, Actor env)
+req_match_new(Config cfg, Actor ok, Actor fail, Actor value, Actor env)
 {
     ReqMatch req = NEW(REQ_MATCH);
     BEH(req) = val_req_match;
     req->value = value;
     req->env = env;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -91,13 +91,13 @@ val_req_bind(Event e)
     expr_value(e);
 }
 Actor
-req_bind_new(Actor ok, Actor fail, Actor key, Actor value)
+req_bind_new(Config cfg, Actor ok, Actor fail, Actor key, Actor value)
 {
     ReqBind req = NEW(REQ_BIND);
     BEH(req) = val_req_bind;
     req->key = key;
     req->value = value;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -109,12 +109,12 @@ val_req_lookup(Event e)
     expr_value(e);
 }
 Actor
-req_lookup_new(Actor ok, Actor fail, Actor key)
+req_lookup_new(Config cfg, Actor ok, Actor fail, Actor key)
 {
     ReqLookup req = NEW(REQ_LOOKUP);
     BEH(req) = val_req_lookup;
     req->key = key;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -126,13 +126,13 @@ val_req_combine(Event e)
     expr_value(e);
 }
 Actor
-req_combine_new(Actor ok, Actor fail, Actor opnd, Actor env)
+req_combine_new(Config cfg, Actor ok, Actor fail, Actor opnd, Actor env)
 {
     ReqCombine req = NEW(REQ_COMBINE);
     BEH(req) = val_req_combine;
     req->opnd = opnd;
     req->env = env;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -143,11 +143,11 @@ val_req_read(Event e)
     expr_value(e);
 }
 Actor
-req_read_new(Actor ok, Actor fail)
+req_read_new(Config cfg, Actor ok, Actor fail)
 {
     ReqRead req = NEW(REQ_READ);
     BEH(req) = val_req_read;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -159,12 +159,12 @@ val_req_write(Event e)
     expr_value(e);
 }
 Actor
-req_write_new(Actor ok, Actor fail, Actor value)
+req_write_new(Config cfg, Actor ok, Actor fail, Actor value)
 {
     ReqWrite req = NEW(REQ_WRITE);
     BEH(req) = val_req_write;
     req->value = value;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 void
@@ -176,13 +176,13 @@ val_req_call(Event e)
     expr_value(e);
 }
 Actor
-req_call_new(Actor ok, Actor fail, Actor selector, Actor parameter)
+req_call_new(Config cfg, Actor ok, Actor fail, Actor selector, Actor parameter)
 {
     ReqCall req = NEW(REQ_CALL);
     BEH(req) = val_req_call;
     req->selector = selector;
     req->parameter = parameter;
-    return request_new(ok, fail, (Actor)req);
+    return request_new(cfg, ok, fail, (Actor)req);
 }
 
 /**
@@ -340,7 +340,7 @@ ptrn_bind(Event e)
     if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "ptrn_bind: (#match, %p, %p)\n", rm->value, rm->env));
-        config_send(SPONSOR(e), rm->env, req_bind_new(r->ok, r->fail, name, rm->value));
+        config_send(SPONSOR(e), rm->env, req_bind_new(SPONSOR(e), r->ok, r->fail, name, rm->value));
     } else {
         expr_value(e);  // delegate
     }
@@ -365,7 +365,7 @@ expr_name(Event e)
     if (val_req_eval == BEH(r->req)) {  // (#eval, env)
         ReqEval re = (ReqEval)r->req;
         TRACE(fprintf(stderr, "expr_name: (#eval, %p)\n", re->env));
-        config_send(SPONSOR(e), re->env, req_lookup_new(r->ok, r->fail, SELF(e)));
+        config_send(SPONSOR(e), re->env, req_lookup_new(SPONSOR(e), r->ok, r->fail, SELF(e)));
     } else {
         TRACE(fprintf(stderr, "expr_name: FAIL!\n"));
         config_send(SPONSOR(e), r->fail, (Actor)e);
@@ -392,7 +392,7 @@ beh_eval_body(Event e)
     Actor fail = cust->t;
     Actor env = MSG(e);  // (env)
     TRACE(fprintf(stderr, "beh_eval_body: ok=%p, fail=%p, body=%p, env=%p\n", ok, fail, body, env));
-    config_send(SPONSOR(e), body, req_eval_new(ok, fail, env));
+    config_send(SPONSOR(e), body, req_eval_new(SPONSOR(e), ok, fail, env));
 }
 static inline void
 val_expect(Event e)
@@ -421,13 +421,13 @@ test_expr()
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     cust = value_new(cfg, val_expect, a_empty_env);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
+    config_send(cfg, expr, req_eval_new(cfg, cust, a_halt, a_empty_env));
     /* the configuration evaluates to itself */
     expr = (Actor)cfg;
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     cust = value_new(cfg, val_expect, cfg);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    config_send(cfg, expr, req_eval_new(cust, a_halt, a_empty_env));
+    config_send(cfg, expr, req_eval_new(cfg, cust, a_halt, a_empty_env));
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;
@@ -439,7 +439,7 @@ test_expr()
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
     expr = value_new(cfg, beh_eval_body, pair_new(cfg, pair_new(cfg, cust, a_halt), s_x));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    config_send(cfg, a_empty_dict, req_bind_new(expr, a_halt, s_x, (Actor)cfg));
+    config_send(cfg, a_empty_dict, req_bind_new(cfg, expr, a_halt, s_x, (Actor)cfg));
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;
@@ -452,8 +452,8 @@ test_expr()
     Actor q = pair_new(cfg, a_true, a_false);
     TRACE(fprintf(stderr, "q = %p\n", q));
     if (p == q) { halt("expected p != q"); }
-    config_send(cfg, p, req_match_new(cust, a_halt, p, a_empty_env));  // match p to itself
-    config_send(cfg, q, req_match_new(cust, a_halt, p, a_empty_env));  // match p to q
+    config_send(cfg, p, req_match_new(cfg, cust, a_halt, p, a_empty_env));  // match p to itself
+    config_send(cfg, q, req_match_new(cfg, cust, a_halt, p, a_empty_env));  // match p to q
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;

@@ -275,8 +275,8 @@ beh_pair(Event e)
         } else if (beh_pair == BEH(rm->value)) {
             Pair p = (Pair)SELF(e);
             Pair q = (Pair)rm->value;
-            Actor ok = value_new(SPONSOR(e), beh_pair_0, req_match_new(r->ok, r->fail, q->t, p->t));
-            config_send(SPONSOR(e), p->h, req_match_new(ok, r->fail, q->h, rm->env));
+            Actor ok = value_new(SPONSOR(e), beh_pair_0, req_match_new(SPONSOR(e), r->ok, r->fail, q->t, p->t));
+            config_send(SPONSOR(e), p->h, req_match_new(SPONSOR(e), ok, r->fail, q->h, rm->env));
         } else {
             TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));
             config_send(SPONSOR(e), r->fail, (Actor)e);
@@ -368,7 +368,7 @@ comb_true(Event e)
         if (beh_pair == BEH(rc->opnd)) {
             Pair p = (Pair)rc->opnd;
             Actor expr = p->h;
-            config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
+            config_send(SPONSOR(e), expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
         } else {
             TRACE(fprintf(stderr, "comb_true: opnd must be a Pair\n"));
             config_send(SPONSOR(e), r->fail, (Actor)e);
@@ -406,7 +406,7 @@ comb_false(Event e)
         if (beh_pair == BEH(rc->opnd)) {
             Pair p = (Pair)rc->opnd;
             Actor expr = p->t;
-            config_send(SPONSOR(e), expr, req_eval_new(r->ok, r->fail, rc->env));
+            config_send(SPONSOR(e), expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
         } else {
             TRACE(fprintf(stderr, "comb_false: opnd must be a Pair\n"));
             config_send(SPONSOR(e), r->fail, (Actor)e);

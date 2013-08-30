@@ -67,7 +67,7 @@ struct req_eval {
     Actor       env;        // evaluation environment
 };
 extern void     val_req_eval(Event e);
-extern Actor    req_eval_new(Actor ok, Actor fail, Actor env);
+extern Actor    req_eval_new(Config cfg, Actor ok, Actor fail, Actor env);
 
 struct req_match {
     ACTOR       _act;
@@ -75,7 +75,7 @@ struct req_match {
     Actor       env;        // binding environment
 };
 extern void     val_req_match(Event e);
-extern Actor    req_match_new(Actor ok, Actor fail, Actor value, Actor env);
+extern Actor    req_match_new(Config cfg, Actor ok, Actor fail, Actor value, Actor env);
 
 struct req_bind {
     ACTOR       _act;
@@ -83,14 +83,14 @@ struct req_bind {
     Actor       value;      // value bound to key
 };
 extern void     val_req_bind(Event e);
-extern Actor    req_bind_new(Actor ok, Actor fail, Actor key, Actor value);
+extern Actor    req_bind_new(Config cfg, Actor ok, Actor fail, Actor key, Actor value);
 
 struct req_lookup {
     ACTOR       _act;
     Actor       key;        // key used to lookup
 };
 extern void     val_req_lookup(Event e);
-extern Actor    req_lookup_new(Actor ok, Actor fail, Actor key);
+extern Actor    req_lookup_new(Config cfg, Actor ok, Actor fail, Actor key);
 
 struct req_combine {
     ACTOR       _act;
@@ -98,20 +98,20 @@ struct req_combine {
     Actor       env;        // dynamic environment
 };
 extern void     val_req_combine(Event e);
-extern Actor    req_combine_new(Actor ok, Actor fail, Actor opnd, Actor env);
+extern Actor    req_combine_new(Config cfg, Actor ok, Actor fail, Actor opnd, Actor env);
 
 struct req_read {
     ACTOR       _act;
 };
 extern void     val_req_read(Event e);
-extern Actor    req_read_new(Actor ok, Actor fail);
+extern Actor    req_read_new(Config cfg, Actor ok, Actor fail);
 
 struct req_write {
     ACTOR       _act;
     Actor       value;      // value to transmit
 };
 extern void     val_req_write(Event e);
-extern Actor    req_write_new(Actor ok, Actor fail, Actor value);
+extern Actor    req_write_new(Config cfg, Actor ok, Actor fail, Actor value);
 
 struct req_call {
     ACTOR       _act;
@@ -119,7 +119,7 @@ struct req_call {
     Actor       parameter;  // parameter data
 };
 extern void     val_req_call(Event e);
-extern Actor    req_call_new(Actor ok, Actor fail, Actor selector, Actor parameter);
+extern Actor    req_call_new(Config cfg, Actor ok, Actor fail, Actor selector, Actor parameter);
 
 extern void     expr_value(Event e);
 extern void     expr_env_empty(Event e);
