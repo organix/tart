@@ -64,8 +64,7 @@ typedef struct config CONFIG, *Config;
 typedef void (*Action)(Event e);
 
 #define NIL ((Actor)(&the_nil_pair_actor))
-#define PR(h,t) pair_new((h),(t))
-#define NOTHING (a_halt)
+#define NOTHING ((Actor)(&the_halt_actor))
 
 #define BEH(a)      (((Actor)(a))->beh)
 #define SPONSOR(e)  (((Event)(e))->sponsor)
@@ -83,6 +82,9 @@ typedef void (*Action)(Event e);
 #define a_false ((Actor)(&the_false_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
 #define a_halt ((Actor)(&the_halt_actor))
+
+#define CREATE(T,beh)   ((T*)(((cfg)->create)((cfg),sizeof(T),(beh))))
+#define PR(h,t)         (pair_new(SPONSOR(e),(h),(t)))
 
 struct actor {
     Action      beh;
@@ -120,29 +122,25 @@ struct config {
     Actor       actors;     // list of actors created
 };
 
-#define config_send(cfg, target, msg)   (((cfg)->send)((cfg),(target),(msg)))
-#define config_enlist(cfg, a)           ((cfg)->actors = list_push((cfg)->actors, (a)))
-#define config_enqueue(cfg, e)          (deque_give((cfg)->events, (e)))
+extern Actor    pair_new(Config cfg, Actor h, Actor t);
 
-extern Actor    pair_new(Actor h, Actor t);
+#define         list_new()                      (a_empty_list)
+#define         list_empty_p(list)              (((list) == a_empty_list) ? a_true : a_false)
+#define         list_pop(list)                  ((Pair)(list))      // returns: (first, rest)
+#define         list_push(list, item)           (PR((item),(list)))
 
-extern Actor    list_new();
-extern Actor    list_empty_p(Actor list);
-extern Pair     list_pop(Actor list);  // returns: (first, rest)
-extern Actor    list_push(Actor list, Actor item);
+extern Actor    deque_new(Config cfg);
+extern Actor    deque_empty_p(Config cfg, Actor queue);
+extern void     deque_give(Config cfg, Actor queue, Actor item);
+extern Actor    deque_take(Config cfg, Actor queue);
+extern void     deque_return(Config cfg, Actor queue, Actor item);
+extern Actor    deque_lookup(Config cfg, Actor queue, Actor index);
+extern void     deque_bind(Config cfg, Actor queue, Actor index, Actor item);
 
-extern Actor    deque_new();
-extern Actor    deque_empty_p(Actor queue);
-extern void     deque_give(Actor queue, Actor item);
-extern Actor    deque_take(Actor queue);
-extern void     deque_return(Actor queue, Actor item);
-extern Actor    deque_lookup(Actor queue, Actor index);
-extern void     deque_bind(Actor queue, Actor index, Actor item);
-
-extern Actor    dict_new();
-extern Actor    dict_empty_p(Actor dict);
-extern Actor    dict_lookup(Actor dict, Actor key);
-extern Actor    dict_bind(Actor dict, Actor key, Actor value);
+extern Actor    dict_new(Config cfg);
+extern Actor    dict_empty_p(Config cfg, Actor dict);
+extern Actor    dict_lookup(Config cfg, Actor dict, Actor key);
+extern Actor    dict_bind(Config cfg, Actor dict, Actor key, Actor value);
 
 extern Actor    actor_new(Action beh);
 extern Actor    value_new(Action beh, Any data);
@@ -153,10 +151,10 @@ extern void     actor_become(Actor s, Actor v);
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
 extern Config   config_new();
-//extern void     config_enlist(Config cfg, Actor a);  <-- converted to a macro (above)
-//extern void     config_enqueue(Config cfg, Actor e);  <-- converted to a macro (above)
+#define         config_enlist(cfg, a)           ((cfg)->actors = pair_new((cfg), (a), (cfg)->actors))
+#define         config_enqueue(cfg, e)          (deque_give((cfg), (cfg)->events, (e)))
 extern Actor    config_dequeue(Config cfg);
-//extern void     config_send(Config cfg, Actor target, Actor msg);  <-- converted to a macro (above)
+#define         config_send(cfg, target, msg)   (((cfg)->send)((cfg), (target), (msg)))
 extern Actor    config_dispatch(Config cfg);
 
 extern void     beh_pair(Event e);

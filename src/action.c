@@ -252,9 +252,9 @@ test_action()
     Actor s_456 = (Actor)"456";  // [FIXME: THIS IS NOT AN ACTOR!]
     TRACE(fprintf(stderr, "s_456 = %p \"%s\"\n", s_456, (char *)s_456));
     Actor a_dump = actor_new(act_dump_pair_of_pairs);
-    Actor beh = value_new(act_fork, PR(a_dump, PR(a_zero, a_one)));
-    config_send(cfg, value_new(act_serial, beh), PR(s_123, s_456));
-    config_send(cfg, value_new(act_serial, beh), PR(s_456, s_123));
+    Actor beh = value_new(act_fork, pair_new(cfg, a_dump, pair_new(cfg, a_zero, a_one)));
+    config_send(cfg, value_new(act_serial, beh), pair_new(cfg, s_123, s_456));
+    config_send(cfg, value_new(act_serial, beh), pair_new(cfg, s_456, s_123));
     while (config_dispatch(cfg) != NOTHING)
         ;
 }

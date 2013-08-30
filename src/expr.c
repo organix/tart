@@ -242,7 +242,7 @@ expr_env_empty(Event e)
     if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env_empty: (#bind, %p -> %p)\n", rb->key, rb->value));
-        Actor dict = dict_bind(SELF(e), rb->key, rb->value);
+        Actor dict = dict_bind(SPONSOR(e), SELF(e), rb->key, rb->value);
         config_send(SPONSOR(e), r->ok, dict);
     } else {
         expr_value(e);  // delegate
@@ -273,7 +273,7 @@ expr_env(Event e)
     if (val_req_lookup == BEH(r->req)) {  // (#lookup, _)
         ReqLookup rl = (ReqLookup)r->req;
         TRACE(fprintf(stderr, "expr_env: (#lookup, _)\n"));
-        Actor value = dict_lookup(SELF(e), rl->key);
+        Actor value = dict_lookup(SPONSOR(e), SELF(e), rl->key);
         TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
         if (value == NOTHING) {
             TRACE(fprintf(stderr, "expr_env: FAIL!\n"));
@@ -284,7 +284,7 @@ expr_env(Event e)
     } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env: (#bind, %p -> %p)\n", rb->key, rb->value));
-        Actor dict = dict_bind(SELF(e), rb->key, rb->value);
+        Actor dict = dict_bind(SPONSOR(e), SELF(e), rb->key, rb->value);
         config_send(SPONSOR(e), r->ok, dict);
     } else {
         expr_value(e);  // delegate
@@ -437,7 +437,7 @@ test_expr()
     TRACE(fprintf(stderr, "cust = %p\n", cust));
     Actor s_x = actor_new(expr_name);
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
-    expr = value_new(beh_eval_body, PR(PR(cust, a_halt), s_x));
+    expr = value_new(beh_eval_body, pair_new(cfg, pair_new(cfg, cust, a_halt), s_x));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     config_send(cfg, a_empty_dict, req_bind_new(expr, a_halt, s_x, (Actor)cfg));
     /* dispatch until empty */
@@ -447,9 +447,9 @@ test_expr()
     /* pair values can be matched */
     cust = value_new(val_expect, a_empty_env);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    Actor p = PR(a_true, a_false);
+    Actor p = pair_new(cfg, a_true, a_false);
     TRACE(fprintf(stderr, "p = %p\n", p));
-    Actor q = PR(a_true, a_false);
+    Actor q = pair_new(cfg, a_true, a_false);
     TRACE(fprintf(stderr, "q = %p\n", q));
     if (p == q) { halt("expected p != q"); }
     config_send(cfg, p, req_match_new(cust, a_halt, p, a_empty_env));  // match p to itself

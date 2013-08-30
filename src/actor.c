@@ -32,58 +32,36 @@ THE SOFTWARE.
 
 PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
 inline Actor
-pair_new(Actor h, Actor t)
+pair_new(Config cfg, Actor h, Actor t)
 {
-    Pair p = NEW(PAIR);
-    BEH(p) = beh_pair;
+    Pair p = CREATE(PAIR, beh_pair);
     p->h = h;
     p->t = t;
     return (Actor)p;
 }
 
 inline Actor
-list_new()
+deque_new(Config cfg)
 {
-    return a_empty_list;
-}
-inline Actor
-list_empty_p(Actor list)
-{
-    return ((list == a_empty_list) ? a_true : a_false);
-}
-inline Pair
-list_pop(Actor list)  // returns: (first, rest)
-{
-    if (beh_pair != BEH(list)) { halt("list_pop: pair required"); }
-    return (Pair)list;
-}
-inline Actor
-list_push(Actor list, Actor item)
-{
-    if (beh_pair != BEH(list)) { halt("list_push: pair required"); }
-    return PR(item, list);
-}
-
-inline Actor
-deque_new()
-{
-    Actor a = PR(NIL, NIL);
+    TRACE(fprintf(stderr, "deque_new: cfg = %p\n", cfg));
+    Actor a = pair_new(cfg, NIL, NIL);
+    TRACE(fprintf(stderr, "deque_new: a = %p\n", a));
     BEH(a) = beh_deque;  // override pair behavior with deque behavior
     return a;
 }
 inline Actor
-deque_empty_p(Actor queue)
+deque_empty_p(Config cfg, Actor queue)
 {
     if (beh_deque != BEH(queue)) { halt("deque_empty_p: deque required"); }
     Pair q = (Pair)queue;
     return ((q->h == NIL) ? a_true : a_false);
 }
 inline void
-deque_give(Actor queue, Actor item)
+deque_give(Config cfg, Actor queue, Actor item)
 {
     if (beh_deque != BEH(queue)) { halt("deque_give: deque required"); }
     Pair q = (Pair)queue;
-    Actor p = PR(item, NIL);
+    Actor p = pair_new(cfg, item, NIL);
     if (q->h == NIL) {
         q->h = p;
     } else {
@@ -93,30 +71,30 @@ deque_give(Actor queue, Actor item)
     q->t = p;
 }
 inline Actor
-deque_take(Actor queue)
+deque_take(Config cfg, Actor queue)
 {
-    if (deque_empty_p(queue) != a_false) { halt("deque_take from empty!"); }
+    if (deque_empty_p(cfg, queue) != a_false) { halt("deque_take from empty!"); }
 //    if (beh_deque != BEH(queue)) { halt("deque_take: deque required"); }
     Pair q = (Pair)queue;
     Pair p = (Pair)(q->h);
     Actor item = p->h;
     q->h = p->t;
-    FREE(p);
+    FREE(p);  // [FIXME] de-allocation should also be done through the sponsor/config, or we count on garbage-collection
     return item;
 }
 inline void
-deque_return(Actor queue, Actor item)
+deque_return(Config cfg, Actor queue, Actor item)
 {
     if (beh_deque != BEH(queue)) { halt("deque_return: deque required"); }
     Pair q = (Pair)queue;
-    Actor p = PR(item, q->h);
+    Actor p = pair_new(cfg, item, q->h);
     if (q->h == NIL) {
         q->t = p;
     }
     q->h = p;
 }
 inline Actor
-deque_lookup(Actor queue, Actor index)
+deque_lookup(Config cfg, Actor queue, Actor index)
 {
     int i;
 
@@ -137,7 +115,7 @@ deque_lookup(Actor queue, Actor index)
     return NOTHING;  // not found
 }
 inline void
-deque_bind(Actor queue, Actor index, Actor item)
+deque_bind(Config cfg, Actor queue, Actor index, Actor item)
 {
     int i;
 
@@ -161,19 +139,19 @@ deque_bind(Actor queue, Actor index, Actor item)
 
 ACTOR the_empty_dict_actor = { expr_env_empty };
 inline Actor
-dict_new()
+dict_new(Config cfg)
 {
     return a_empty_dict;
 }
 inline Actor
-dict_empty_p(Actor dict)
+dict_empty_p(Config cfg, Actor dict)
 {
     return ((dict == a_empty_dict) ? a_true : a_false);
 }
 inline Actor
-dict_lookup(Actor dict, Actor key)
+dict_lookup(Config cfg, Actor dict, Actor key)
 {
-    while (dict_empty_p(dict) == a_false) {
+    while (dict_empty_p(cfg, dict) == a_false) {
         if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
         Pair p = (Pair)dict;
         Actor a = p->h;
@@ -187,9 +165,9 @@ dict_lookup(Actor dict, Actor key)
     return NOTHING;  // not found
 }
 inline Actor
-dict_bind(Actor dict, Actor key, Actor value)
+dict_bind(Config cfg, Actor dict, Actor key, Actor value)
 {
-    Actor a = PR(PR(key, value), dict);
+    Actor a = pair_new(cfg, pair_new(cfg, key, value), dict);
     BEH(a) = expr_env;  // override pair behavior with env behavior
     return a;
 }
@@ -267,7 +245,7 @@ root_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     Actor a = ALLOC(n_bytes);
     BEH(a) = beh;
-    config_enlist(cfg, a);
+//    config_enlist(cfg, a);  <-- [FIXME] --- INFINITE RECURSION WHEN "CREATE"ING THE PAIR TO HOLD THE NEW ACTOR!!!
     return a;
 }
 inline static void
@@ -280,11 +258,12 @@ inline Config
 config_new()
 {
     Config cfg = NEW(CONFIG);
+    TRACE(fprintf(stderr, "config_new: cfg = %p\n", cfg));
     BEH(cfg) = beh_config;
     cfg->fail = root_config_fail;  // error reporting procedure
     cfg->create = root_config_create;  // actor creation procedure
     cfg->send = root_config_send;  // event creation procedure
-    cfg->events = deque_new();
+    cfg->events = deque_new(cfg);
     cfg->actors = list_new();
     return cfg;
 }
@@ -292,11 +271,11 @@ Actor
 config_dequeue(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
-    if (deque_empty_p(cfg->events) != a_false) {
+    if (deque_empty_p(cfg, cfg->events) != a_false) {
         TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
         return NOTHING;
     }
-    Actor a = deque_take(cfg->events);
+    Actor a = deque_take(cfg, cfg->events);
     return a;
 }
 Actor
@@ -426,11 +405,11 @@ beh_deque(Event e)
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
         TRACE(fprintf(stderr, "beh_deque: (#read) -> (%p, %p)\n", p->h, p->t));
-        config_send(SPONSOR(e), r->ok, PR(deque_take(SELF(e)), SELF(e)));
+        config_send(SPONSOR(e), r->ok, PR(deque_take(SPONSOR(e), SELF(e)), SELF(e)));
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_deque: (#write, %p)\n", rw->value));
-        deque_give(SELF(e), rw->value);
+        deque_give(SPONSOR(e), SELF(e), rw->value);
         config_send(SPONSOR(e), r->ok, SELF(e));
     } else {
         TRACE(fprintf(stderr, "beh_deque: FAIL!\n"));

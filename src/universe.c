@@ -138,7 +138,7 @@ ser_scope(Event e)  // SERIALIZED
     p = (Pair)p->t;
     if (s_lookup == p->h) {  // (#lookup, name)
         Actor name = p->t;
-        Actor value = dict_lookup(dict, name);
+        Actor value = dict_lookup(SPONSOR(e), dict, name);
         TRACE(fprintf(stderr, "ser_scope: (#lookup, %p) -> %p\n", name, value));
         if (value == NOTHING) {
             config_send(SPONSOR(e), parent, MSG(e));
@@ -150,7 +150,7 @@ ser_scope(Event e)  // SERIALIZED
         Actor name = p->h;
         Actor value = p->t;
         TRACE(fprintf(stderr, "ser_scope: (#bind, %p, %p)\n", name, value));
-        dict = dict_bind(dict, name, value);
+        dict = dict_bind(SPONSOR(e), dict, name, value);
 //        actor_become(SELF(e), value_new(ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
         p = (Pair)STATE(SELF(e));  // (dict, parent)
         p->h = dict;  // WARNING! this directly manipulates the data in this behavior
@@ -456,7 +456,7 @@ val_oper(Event e)
         p = (Pair)p->t;
         Actor opnd = p->h;
         Actor env_d = p->t;
-        Actor scope = serial_new(ser_scope, PR(dict_new(), env_s));
+        Actor scope = serial_new(ser_scope, PR(dict_new(SPONSOR(e)), env_s));
         TRACE(fprintf(stderr, "val_oper: opnd=%p, env_d=%p, scope=%p\n", opnd, env_d, scope));
         if (a_skip_ptrn == evar) {  // optimize "lambda" case
             Actor oper_1 = value_new(val_oper_1, PR((Actor)cust, body));
@@ -674,7 +674,7 @@ val_choice_ptrn_0(Event e)
     p = (Pair)p->t;
     Actor env = p->h;
     Actor ptrn = p->t;
-    Actor scope = serial_new(ser_scope, PR(dict_new(), env));
+    Actor scope = serial_new(ser_scope, PR(dict_new(SPONSOR(e)), env));
     TRACE(fprintf(stderr, "val_choice_ptrn_0: ok=%p, fail=%p, value=%p, scope=%p, ptrn=%p\n", cust->h, cust->t, value, scope, ptrn));
     config_send(SPONSOR(e), ptrn, PR((Actor)cust, PR(s_match, PR(value, scope))));
 }
@@ -1153,12 +1153,12 @@ Actor s_bind;
 Actor s_comb;
 
 static Actor
-symbol_intern(char * name)
+symbol_intern(Config cfg, char * name)
 {
-    Actor a_symbol = dict_lookup(symbol_table, (Actor)name);  // [FIXME: 'name' IS NOT AN ACTOR!]
+    Actor a_symbol = dict_lookup(cfg, symbol_table, (Actor)name);  // [FIXME: 'name' IS NOT AN ACTOR!]
     if (a_symbol == NOTHING) {
         a_symbol = actor_new(beh_name);
-        symbol_table = dict_bind(symbol_table, (Actor)name, a_symbol);
+        symbol_table = dict_bind(cfg, symbol_table, (Actor)name, a_symbol);
     }
     return a_symbol;
 }
@@ -1176,24 +1176,24 @@ false = \(a, b).b
 ($define! #f ($vau (#ignore . x) e (eval x . e)))  ; usage: ((#f cnsq . altn) ==> altn
 */
 static void
-boolean_init()
+boolean_init(Config cfg)
 {
-    Actor s_e = actor_new(beh_name); //symbol_intern("e");
-    Actor s_x = actor_new(beh_name); //symbol_intern("x");
-    Actor T_form = value_new(val_pair_ptrn, PR(
+    Actor s_e = actor_new(beh_name); //symbol_intern(cfg, "e");
+    Actor s_x = actor_new(beh_name); //symbol_intern(cfg, "x");
+    Actor T_form = value_new(val_pair_ptrn, pair_new(cfg, 
         value_new(val_bind_ptrn, s_x),
         a_skip_ptrn));
     Actor evar = value_new(val_bind_ptrn, s_e);
-    Actor body = value_new(val_comb, PR(
+    Actor body = value_new(val_comb, pair_new(cfg, 
         a_appl_eval, 
-        value_new(val_par_expr, PR(s_x, s_e))));
+        value_new(val_par_expr, pair_new(cfg, s_x, s_e))));
     b_true = value_new(val_oper, 
-        PR(a_empty_env, PR(T_form, PR(evar, body))));
-    Actor F_form = value_new(val_pair_ptrn, PR(
+        pair_new(cfg, a_empty_env, pair_new(cfg, T_form, pair_new(cfg, evar, body))));
+    Actor F_form = value_new(val_pair_ptrn, pair_new(cfg, 
         a_skip_ptrn,
         value_new(val_bind_ptrn, s_x)));
     b_false = value_new(val_oper, 
-        PR(a_empty_env, PR(F_form, PR(evar, body))));
+        pair_new(cfg, a_empty_env, pair_new(cfg, F_form, pair_new(cfg, evar, body))));
 }
 
 void
@@ -1201,14 +1201,14 @@ universe_init(Config cfg)
 {
     b_true = actor_new(beh_oper_true);
     b_false = actor_new(beh_oper_false);
-//    boolean_init();
+//    boolean_init(cfg);
     TRACE(fprintf(stderr, "b_true = %p\n", b_true));
     TRACE(fprintf(stderr, "b_false = %p\n", b_false));
-    s_comb = symbol_intern("comb");
-    s_bind = symbol_intern("bind");
-    s_lookup = symbol_intern("lookup");
-    s_match = symbol_intern("match");
-    s_eval = symbol_intern("eval");
+    s_comb = symbol_intern(cfg, "comb");
+    s_bind = symbol_intern(cfg, "bind");
+    s_lookup = symbol_intern(cfg, "lookup");
+    s_match = symbol_intern(cfg, "match");
+    s_eval = symbol_intern(cfg, "eval");
 }
 
 static inline void
@@ -1237,59 +1237,59 @@ test_universe()
     universe_init(cfg);
 
     // (\x.x)(#t) -> #t
-    Actor s_x = symbol_intern("x");
+    Actor s_x = symbol_intern(cfg, "x");
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
     form = value_new(val_bind_ptrn, s_x);
     body = s_x;
-    Actor I = value_new(val_lambda, PR(form, body));
+    Actor I = value_new(val_lambda, pair_new(cfg, form, body));
     TRACE(fprintf(stderr, "I = %p\n", I));
-    comb = value_new(val_comb, PR(I, b_true));
+    comb = value_new(val_comb, pair_new(cfg, I, b_true));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
     test = value_new(val_expect, b_true);
     TRACE(fprintf(stderr, "test = %p\n", test));
-    config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
+    config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)
         ;
 
     // (\(x,y).seq(y,x))(#t,#f) -> #t
-    Actor s_y = symbol_intern("y");
+    Actor s_y = symbol_intern(cfg, "y");
     TRACE(fprintf(stderr, "s_y = %p\n", s_y));
-    form = value_new(val_pair_ptrn, PR(
+    form = value_new(val_pair_ptrn, pair_new(cfg, 
         value_new(val_bind_ptrn, s_x), //a_skip_ptrn,
         value_new(val_bind_ptrn, s_y)));
 //    body = s_y;
 //    body = s_x;
 //    body = b_true;
 //    body = b_false;
-//    body = value_new(val_seq_expr, PR(s_x, s_y));
-    body = value_new(val_seq_expr, PR(s_y, s_x));
-//    body = value_new(val_seq_expr, PR(b_true, b_false));
-//    body = value_new(val_seq_expr, PR(b_false, b_true));
-    expr = value_new(val_par_expr, PR(b_true, b_false));
+//    body = value_new(val_seq_expr, pair_new(cfg, s_x, s_y));
+    body = value_new(val_seq_expr, pair_new(cfg, s_y, s_x));
+//    body = value_new(val_seq_expr, pair_new(cfg, b_true, b_false));
+//    body = value_new(val_seq_expr, pair_new(cfg, b_false, b_true));
+    expr = value_new(val_par_expr, pair_new(cfg, b_true, b_false));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    comb = value_new(val_comb, PR(
-        value_new(val_lambda, PR(form, body)), 
+    comb = value_new(val_comb, pair_new(cfg, 
+        value_new(val_lambda, pair_new(cfg, form, body)), 
         expr));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
 //    test = value_new(val_expect, b_false);
     test = value_new(val_expect, b_true);
     TRACE(fprintf(stderr, "test = %p\n", test));
-    config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
+    config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)
         ;
 
     // (#t #f . #t) -> #f
-    expr = value_new(val_pair, PR(b_false, b_true));
-//    expr = value_new(val_pair, PR(b_false, a_fail));
-//    expr = value_new(val_pair, PR(a_fail, b_true));
-//    expr = value_new(val_pair, PR(b_false, s_y));
-//    expr = value_new(val_pair, PR(s_x, b_true));
+    expr = value_new(val_pair, pair_new(cfg, b_false, b_true));
+//    expr = value_new(val_pair, pair_new(cfg, b_false, a_fail));
+//    expr = value_new(val_pair, pair_new(cfg, a_fail, b_true));
+//    expr = value_new(val_pair, pair_new(cfg, b_false, s_y));
+//    expr = value_new(val_pair, pair_new(cfg, s_x, b_true));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    comb = value_new(val_comb, PR(b_true, expr));
+    comb = value_new(val_comb, pair_new(cfg, b_true, expr));
     TRACE(fprintf(stderr, "comb = %p\n", comb));
     test = value_new(val_expect, b_false);
     TRACE(fprintf(stderr, "test = %p\n", test));
-    config_send(cfg, comb, PR(PR(test, a_fail), PR(s_eval, a_empty_env)));
+    config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)
         ;
 }
