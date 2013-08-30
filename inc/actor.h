@@ -113,9 +113,16 @@ struct event {
 
 struct config {
     ACTOR       _act;
+    void        (*fail)(Config cfg, Actor reason);  // error reporting procedure
+    Actor       (*create)(Config cfg, size_t n_bytes, Action beh);  // actor creation procedure
+    void        (*send)(Config cfg, Actor target, Actor msg);  // event creation procedure
     Actor       events;     // queue of messages in-transit
     Actor       actors;     // list of actors created
 };
+
+#define config_send(cfg, target, msg)   (((cfg)->send)((cfg),(target),(msg)))
+#define config_enlist(cfg, a)           ((cfg)->actors = list_push((cfg)->actors, (a)))
+#define config_enqueue(cfg, e)          (deque_give((cfg)->events, (e)))
 
 extern Actor    pair_new(Actor h, Actor t);
 
@@ -146,9 +153,10 @@ extern void     actor_become(Actor s, Actor v);
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
 extern Config   config_new();
-extern void     config_enqueue(Config cfg, Actor e);
-extern void     config_enlist(Config cfg, Actor a);
-extern void     config_send(Config cfg, Actor target, Actor msg);
+//extern void     config_enlist(Config cfg, Actor a);  <-- converted to a macro (above)
+//extern void     config_enqueue(Config cfg, Actor e);  <-- converted to a macro (above)
+extern Actor    config_dequeue(Config cfg);
+//extern void     config_send(Config cfg, Actor target, Actor msg);  <-- converted to a macro (above)
 extern Actor    config_dispatch(Config cfg);
 
 extern void     beh_pair(Event e);

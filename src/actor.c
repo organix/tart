@@ -256,35 +256,40 @@ beh_config(Event e)
     TRACE(fprintf(stderr, "beh_config{event=%p}\n", e));
     expr_value(e);
 }
+inline static void
+root_config_fail(Config cfg, Actor reason)
+{
+    TRACE(fprintf(stderr, "root_config_fail: cfg=%p, reason=%p\n", cfg, reason));
+    halt("root_config_fail!");
+}
+inline static Actor
+root_config_create(Config cfg, size_t n_bytes, Action beh)
+{
+    Actor a = ALLOC(n_bytes);
+    BEH(a) = beh;
+    config_enlist(cfg, a);
+    return a;
+}
+inline static void
+root_config_send(Config cfg, Actor target, Actor msg)
+{
+    TRACE(fprintf(stderr, "root_config_send: actor=%p, msg=%p\n", target, msg));
+    config_enqueue(cfg, event_new(cfg, target, msg));
+}
 inline Config
 config_new()
 {
     Config cfg = NEW(CONFIG);
     BEH(cfg) = beh_config;
+    cfg->fail = root_config_fail;  // error reporting procedure
+    cfg->create = root_config_create;  // actor creation procedure
+    cfg->send = root_config_send;  // event creation procedure
     cfg->events = deque_new();
     cfg->actors = list_new();
     return cfg;
 }
-inline void
-config_enqueue(Config cfg, Actor e)
-{
-    if (beh_event != BEH(e)) { halt("config_enqueue: event actor required"); }
-    deque_give(cfg->events, e);
-}
-inline void
-config_enlist(Config cfg, Actor a)
-{
-    cfg->actors = list_push(cfg->actors, a);
-}
-inline void
-config_send(Config cfg, Actor target, Actor msg)
-{
-    if (beh_config != BEH(cfg)) { halt("config_send: config actor required"); }
-    TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
-    config_enqueue(cfg, event_new(cfg, target, msg));
-}
 Actor
-config_dispatch(Config cfg)
+config_dequeue(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
     if (deque_empty_p(cfg->events) != a_false) {
@@ -292,10 +297,17 @@ config_dispatch(Config cfg)
         return NOTHING;
     }
     Actor a = deque_take(cfg->events);
-    if (beh_event != BEH(a)) { halt("config_dispatch: event actor required"); }
-    Event e = (Event)a;
-    TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
-    (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
+    return a;
+}
+Actor
+config_dispatch(Config cfg)
+{
+    Actor a = config_dequeue(cfg);
+    if (beh_event == BEH(a)) {
+        Event e = (Event)a;
+        TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
+        (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
+    }
     return a;
 }
 
