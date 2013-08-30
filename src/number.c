@@ -516,7 +516,6 @@ u32_getbits(uint8_t* p, int n, int m)
     int lb = n & 0x7;  // number of bits in the left part
     int rb = (8 - lb);  // number of bits in the right part
     int rm = 0xFF >> lb;  // mask for right bits
-    int lm = ~rm & 0xFF;  // mask for left bits
     uint32_t b = *p++;
     b &= rm;
     if (m <= rb) {

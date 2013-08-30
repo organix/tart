@@ -31,7 +31,6 @@ THE SOFTWARE.
 #include "expr.h"
 #include "number.h"
 #include "string.h"
-#include "action.h"
 #include "universe.h"
 
 void
@@ -59,7 +58,6 @@ run_tests()
     test_string();
     test_expr();
     test_universe();
-    test_action();
 }
 
 /*

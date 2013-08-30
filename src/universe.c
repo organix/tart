@@ -305,6 +305,7 @@ val_comb(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_comb: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_comb: (#eval, %p)\n", env));
@@ -329,11 +330,13 @@ val_appl_0(Event e)
     TRACE(fprintf(stderr, "val_appl_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)DATA(SELF(e));  // ((ok, fail), comb, env)
     Pair cust = (Pair)p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = (Pair)p->t;
     Actor comb = p->h;
     Actor env = p->t;
     Actor args = MSG(e);  // (args)
-    TRACE(fprintf(stderr, "val_appl_0: ok=%p, fail=%p, comb=%p, args=%p, env=%p\n", cust->h, cust->t, comb, args, env));
+    TRACE(fprintf(stderr, "val_appl_0: ok=%p, fail=%p, comb=%p, args=%p, env=%p\n", ok, fail, comb, args, env));
     config_send(SPONSOR(e), comb, PR((Actor)cust, PR(s_comb, PR(args, env))));
 }
 /**
@@ -365,7 +368,7 @@ val_appl(Event e)
         Actor opnd = p->h;
         Actor env = p->t;
         Actor appl_0 = value_new(val_appl_0, PR((Actor)cust, PR(comb, env)));
-        TRACE(fprintf(stderr, "val_appl: ok=%p, fail=%p, appl_0=%p, comb=%p, opnd=%p, env=%p\n", cust->h, cust->t, appl_0, comb, opnd, env));
+        TRACE(fprintf(stderr, "val_appl: ok=%p, fail=%p, appl_0=%p, comb=%p, opnd=%p, env=%p\n", ok, fail, appl_0, comb, opnd, env));
         config_send(SPONSOR(e), opnd, PR(PR(appl_0, fail), PR(s_eval, env)));
     } else {
         beh_value(e);  // delegate
@@ -385,11 +388,13 @@ val_oper_0(Event e)
     TRACE(fprintf(stderr, "val_oper_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)DATA(SELF(e));  // ((ok, fail), evar, env_d)
     Pair cust = (Pair)p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = (Pair)p->t;
     Actor evar = p->h;
     Actor env_d = p->t;
     Actor env_p = MSG(e);  // (env_p)
-    TRACE(fprintf(stderr, "val_oper_0: ok=%p, fail=%p, evar=%p, env_p=%p, env_d=%p\n", cust->h, cust->t, evar, env_p, env_d));
+    TRACE(fprintf(stderr, "val_oper_0: ok=%p, fail=%p, evar=%p, env_p=%p, env_d=%p\n", ok, fail, evar, env_p, env_d));
     config_send(SPONSOR(e), evar, PR((Actor)cust, PR(s_match, PR(env_d, env_p))));
 }
 /**
@@ -405,9 +410,11 @@ val_oper_1(Event e)
     TRACE(fprintf(stderr, "val_oper_1{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)DATA(SELF(e));  // ((ok, fail), body)
     Pair cust = (Pair)p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     Actor body = p->t;
     Actor env_e = MSG(e);  // (env_e)
-    TRACE(fprintf(stderr, "val_oper_1: ok=%p, fail=%p, body=%p, env_e=%p\n", cust->h, cust->t, body, env_e));
+    TRACE(fprintf(stderr, "val_oper_1: ok=%p, fail=%p, body=%p, env_e=%p\n", ok, fail, body, env_e));
     config_send(SPONSOR(e), body, PR((Actor)cust, PR(s_eval, env_e)));
 }
 /**
@@ -452,6 +459,7 @@ val_oper(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_oper: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_comb == p->h) {  // (#comb, opnd, env_d)
         p = (Pair)p->t;
         Actor opnd = p->h;
@@ -496,6 +504,7 @@ val_vau(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_vau: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_vau: (#eval, %p)\n", env));
@@ -532,6 +541,7 @@ val_lambda(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_lambda: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_lambda: (#eval, %p)\n", env));
@@ -584,6 +594,7 @@ beh_oper_eval(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "beh_oper_eval: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_comb == p->h) {  // (#comb, opnd, _)
         p = (Pair)p->t;
         Actor opnd = p->h;
@@ -592,7 +603,7 @@ beh_oper_eval(Event e)
             p = (Pair)DATA(opnd);  // (head, tail)
             Actor expr = p->h;
             Actor env = p->t;
-            TRACE(fprintf(stderr, "beh_oper_eval: ok=%p, fail=%p, expr=%p, env=%p\n", ok, fail, expr, env));
+            TRACE(fprintf(stderr, "beh_oper_eval: expr=%p, env=%p\n", expr, env));
             config_send(SPONSOR(e), expr, PR((Actor)cust, PR(s_eval, env)));
         } else {
             TRACE(fprintf(stderr, "beh_oper_eval: FAIL! (non-pair arg)\n"));
@@ -634,8 +645,8 @@ val_eq_ptrn(Event e)
     Pair cust = (Pair)p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
-    TRACE(fprintf(stderr, "val_eq_ptrn: ok=%p, fail=%p\n", ok, fail));
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_eq_ptrn: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_match == p->h) {  // (#match, ...)
         p = (Pair)p->t;
         if (value == p->h) {  // (#match, $value, env)
@@ -669,13 +680,15 @@ val_choice_ptrn_0(Event e)
     TRACE(fprintf(stderr, "val_choice_ptrn_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)DATA(SELF(e));  // ((ok, fail), value, env, ptrn)
     Pair cust = (Pair)p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = (Pair)p->t;
     Actor value = p->h;
     p = (Pair)p->t;
     Actor env = p->h;
     Actor ptrn = p->t;
     Actor scope = serial_new(ser_scope, PR(dict_new(SPONSOR(e)), env));
-    TRACE(fprintf(stderr, "val_choice_ptrn_0: ok=%p, fail=%p, value=%p, scope=%p, ptrn=%p\n", cust->h, cust->t, value, scope, ptrn));
+    TRACE(fprintf(stderr, "val_choice_ptrn_0: ok=%p, fail=%p, value=%p, scope=%p, ptrn=%p\n", ok, fail, value, scope, ptrn));
     config_send(SPONSOR(e), ptrn, PR((Actor)cust, PR(s_match, PR(value, scope))));
 }
 /**
@@ -704,8 +717,8 @@ val_choice_ptrn(Event e)
     Pair cust = (Pair)p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
-    TRACE(fprintf(stderr, "val_choice_ptrn: ok=%p, fail=%p\n", ok, fail));
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_choice_ptrn: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_match == p->h) {  // (#match, value, env)
         p = (Pair)p->t;
         Actor value = p->h;
@@ -737,11 +750,13 @@ val_pair_0(Event e)
     TRACE(fprintf(stderr, "val_pair_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)DATA(SELF(e));  // ((ok, fail), t_ptrn, tail)
     Pair cust = (Pair)p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = (Pair)p->t;
     Actor t_ptrn = p->h;
     Actor tail = p->t;
     Actor env_0 = MSG(e);  // (env_0)
-    TRACE(fprintf(stderr, "val_pair_0: ok=%p, fail=%p, tail=%p, env_0=%p, tail_ptrn=%p\n", cust->h, cust->t, tail, env_0, t_ptrn));
+    TRACE(fprintf(stderr, "val_pair_0: ok=%p, fail=%p, tail=%p, env_0=%p, tail_ptrn=%p\n", ok, fail, tail, env_0, t_ptrn));
     config_send(SPONSOR(e), t_ptrn, PR((Actor)cust, PR(s_match, PR(tail, env_0))));
 }
 /**
@@ -771,8 +786,8 @@ val_pair(Event e)
     Pair cust = (Pair)p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
-    TRACE(fprintf(stderr, "val_pair: ok=%p, fail=%p\n", ok, fail));
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_pair: ok=%p, fail=%p, brand=%p\n", ok, fail, p->h));
     if (&pair_brand_actor == p->h) {  // ($brand, h_ptrn, t_ptrn, env)
         p = (Pair)p->t;
         Actor h_ptrn = p->h;
@@ -812,8 +827,8 @@ val_pair_ptrn(Event e)
     Pair cust = (Pair)p->h;
     Actor ok = cust->h;
     Actor fail = cust->t;
-    TRACE(fprintf(stderr, "val_pair_ptrn: ok=%p, fail=%p\n", ok, fail));
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_pair_ptrn: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_match == p->h) {  // (#match, value, env)
         p = (Pair)p->t;
         Actor value = p->h;
@@ -838,10 +853,12 @@ val_seq_0(Event e)
     TRACE(fprintf(stderr, "val_seq_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)DATA(SELF(e));  // ((ok, fail), tail_expr, env)
     Pair cust = (Pair)p->h;
+    Actor ok = cust->h;
+    Actor fail = cust->t;
     p = (Pair)p->t;
     Actor tail_expr = p->h;
     Actor env = p->t;
-    TRACE(fprintf(stderr, "val_seq_0: ok=%p, fail=%p, tail_expr=%p, env=%p\n", cust->h, cust->t, tail_expr, env));
+    TRACE(fprintf(stderr, "val_seq_0: ok=%p, fail=%p, tail_expr=%p, env=%p\n", ok, fail, tail_expr, env));
     config_send(SPONSOR(e), tail_expr, PR((Actor)cust, PR(s_eval, env)));
 }
 /**
@@ -870,6 +887,7 @@ val_seq_expr(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_seq_expr: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_seq_expr: (#eval, %p)\n", env));
@@ -964,7 +982,7 @@ act_both(Event e)  // SERIALIZED
     TRACE(fprintf(stderr, "act_both{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)STATE(SELF(e));  // ((ok, fail), k_head, k_tail)
     Pair cust = (Pair)p->h;
-    Actor ok = cust->h;
+//    Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
     Actor k_head = p->h;
@@ -1010,7 +1028,7 @@ act_par_0(Event e)  // SERIALIZED
     TRACE(fprintf(stderr, "act_par_0{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     p = (Pair)STATE(SELF(e));  // ((ok, fail), head_expr, tail_expr)
     Pair cust = (Pair)p->h;
-    Actor ok = cust->h;
+//    Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
     Actor head_expr = p->h;
@@ -1046,6 +1064,7 @@ val_par_expr(Event e)
     Actor ok = cust->h;
     Actor fail = cust->t;
     p = (Pair)p->t;
+    TRACE(fprintf(stderr, "val_par_expr: ok=%p, fail=%p, req=%p\n", ok, fail, p->h));
     if (s_eval == p->h) {  // (#eval, env)
         Actor env = p->t;
         TRACE(fprintf(stderr, "val_par_expr: (#eval, %p)\n", env));
@@ -1057,6 +1076,18 @@ val_par_expr(Event e)
     }
 }
 
+/*
+0 = \(f, x).x
+1 = \(f, x).f(x)
+true = \(a, b).a
+false = \(a, b).b
+
+($define! #t ($vau (x) #ignore ($vau (y) e (eval x e))))  ; usage: ((#t cnsq) altn) ==> cnsq
+($define! #f ($vau (x) #ignore ($vau (y) e (eval y e))))  ; usage: ((#f cnsq) altn) ==> altn
+
+($define! #t ($vau (x . #ignore) e (eval x . e)))  ; usage: ((#t cnsq . altn) ==> cnsq
+($define! #f ($vau (#ignore . x) e (eval x . e)))  ; usage: ((#f cnsq . altn) ==> altn
+*/
 /**
 LET oper_true_beh = \msg.[
     LET ((ok, fail), req) = $msg IN
@@ -1163,45 +1194,11 @@ symbol_intern(Config cfg, char * name)
     return a_symbol;
 }
 
-/*
-0 = \(f, x).x
-1 = \(f, x).f(x)
-true = \(a, b).a
-false = \(a, b).b
-
-($define! #t ($vau (x) #ignore ($vau (y) e (eval x e))))  ; usage: ((#t cnsq) altn) ==> cnsq
-($define! #f ($vau (x) #ignore ($vau (y) e (eval y e))))  ; usage: ((#f cnsq) altn) ==> altn
-
-($define! #t ($vau (x . #ignore) e (eval x . e)))  ; usage: ((#t cnsq . altn) ==> cnsq
-($define! #f ($vau (#ignore . x) e (eval x . e)))  ; usage: ((#f cnsq . altn) ==> altn
-*/
-static void
-boolean_init(Config cfg)
-{
-    Actor s_e = actor_new(beh_name); //symbol_intern(cfg, "e");
-    Actor s_x = actor_new(beh_name); //symbol_intern(cfg, "x");
-    Actor T_form = value_new(val_pair_ptrn, pair_new(cfg, 
-        value_new(val_bind_ptrn, s_x),
-        a_skip_ptrn));
-    Actor evar = value_new(val_bind_ptrn, s_e);
-    Actor body = value_new(val_comb, pair_new(cfg, 
-        a_appl_eval, 
-        value_new(val_par_expr, pair_new(cfg, s_x, s_e))));
-    b_true = value_new(val_oper, 
-        pair_new(cfg, a_empty_env, pair_new(cfg, T_form, pair_new(cfg, evar, body))));
-    Actor F_form = value_new(val_pair_ptrn, pair_new(cfg, 
-        a_skip_ptrn,
-        value_new(val_bind_ptrn, s_x)));
-    b_false = value_new(val_oper, 
-        pair_new(cfg, a_empty_env, pair_new(cfg, F_form, pair_new(cfg, evar, body))));
-}
-
 void
 universe_init(Config cfg)
 {
     b_true = actor_new(beh_oper_true);
     b_false = actor_new(beh_oper_false);
-//    boolean_init(cfg);
     TRACE(fprintf(stderr, "b_true = %p\n", b_true));
     TRACE(fprintf(stderr, "b_false = %p\n", b_false));
     s_comb = symbol_intern(cfg, "comb");

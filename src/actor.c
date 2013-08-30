@@ -34,7 +34,7 @@ PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
 inline Actor
 pair_new(Config cfg, Actor h, Actor t)
 {
-    Pair p = CREATE(PAIR, beh_pair);
+    Pair p = (Pair)config_create(cfg, sizeof(PAIR), beh_pair);
     p->h = h;
     p->t = t;
     return (Actor)p;
@@ -43,9 +43,9 @@ pair_new(Config cfg, Actor h, Actor t)
 inline Actor
 deque_new(Config cfg)
 {
-    TRACE(fprintf(stderr, "deque_new: cfg = %p\n", cfg));
+    DEBUG(fprintf(stderr, "deque_new: cfg = %p\n", cfg));
     Actor a = pair_new(cfg, NIL, NIL);
-    TRACE(fprintf(stderr, "deque_new: a = %p\n", a));
+    DEBUG(fprintf(stderr, "deque_new: a = %p\n", a));
     BEH(a) = beh_deque;  // override pair behavior with deque behavior
     return a;
 }
@@ -81,60 +81,6 @@ deque_take(Config cfg, Actor queue)
     q->h = p->t;
     FREE(p);  // [FIXME] de-allocation should also be done through the sponsor/config, or we count on garbage-collection
     return item;
-}
-inline void
-deque_return(Config cfg, Actor queue, Actor item)
-{
-    if (beh_deque != BEH(queue)) { halt("deque_return: deque required"); }
-    Pair q = (Pair)queue;
-    Actor p = pair_new(cfg, item, q->h);
-    if (q->h == NIL) {
-        q->t = p;
-    }
-    q->h = p;
-}
-inline Actor
-deque_lookup(Config cfg, Actor queue, Actor index)
-{
-    int i;
-
-    if (beh_integer != BEH(index)) { halt("deque_lookup: index must be an integer"); }
-    i = ((Integer)index)->i;
-    if (beh_deque != BEH(queue)) { halt("deque_lookup: deque required"); }
-    Pair q = (Pair)queue;
-    Actor a = q->h;
-    while (a != NIL) {
-        if (beh_pair != BEH(a)) { halt("deque_lookup: non-pair in chain"); }
-        Pair p = (Pair)a;
-        if (i <= 0) {
-            return p->h;
-        }
-        --i;
-        a = p->t;
-    }
-    return NOTHING;  // not found
-}
-inline void
-deque_bind(Config cfg, Actor queue, Actor index, Actor item)
-{
-    int i;
-
-    if (beh_integer != BEH(index)) { halt("deque_lookup: index must be an integer"); }
-    i = ((Integer)index)->i;
-    if (beh_deque != BEH(queue)) { halt("deque_bind: deque required"); }
-    Pair q = (Pair)queue;
-    Actor a = q->h;
-    while (a != NIL) {
-        if (beh_pair != BEH(a)) { halt("deque_bind: non-pair in chain"); }
-        Pair p = (Pair)a;
-        if (i <= 0) {
-            p->h = item;
-            break;
-        }
-        --i;
-        a = p->t;
-    }
-    // not found
 }
 
 ACTOR the_empty_dict_actor = { expr_env_empty };
@@ -245,7 +191,6 @@ root_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     Actor a = ALLOC(n_bytes);
     BEH(a) = beh;
-//    config_enlist(cfg, a);  <-- [FIXME] --- INFINITE RECURSION WHEN "CREATE"ING THE PAIR TO HOLD THE NEW ACTOR!!!
     return a;
 }
 inline static void
@@ -258,16 +203,15 @@ inline Config
 config_new()
 {
     Config cfg = NEW(CONFIG);
-    TRACE(fprintf(stderr, "config_new: cfg = %p\n", cfg));
+    DEBUG(fprintf(stderr, "config_new: cfg = %p\n", cfg));
     BEH(cfg) = beh_config;
     cfg->fail = root_config_fail;  // error reporting procedure
     cfg->create = root_config_create;  // actor creation procedure
     cfg->send = root_config_send;  // event creation procedure
     cfg->events = deque_new(cfg);
-    cfg->actors = list_new();
     return cfg;
 }
-Actor
+static inline Actor
 config_dequeue(Config cfg)
 {
     if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
@@ -357,11 +301,11 @@ beh_pair(Event e)
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
         TRACE(fprintf(stderr, "beh_pair: (#read) -> (%p, %p)\n", p->h, p->t));
-        config_send(SPONSOR(e), r->ok, (Actor)list_pop(SELF(e)));
+        config_send(SPONSOR(e), r->ok, (Actor)list_pop(SPONSOR(e), SELF(e)));
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_pair: (#write, %p)\n", rw->value));
-        config_send(SPONSOR(e), r->ok, list_push(SELF(e), rw->value));
+        config_send(SPONSOR(e), r->ok, list_push(SPONSOR(e), SELF(e), rw->value));
     } else {
         TRACE(fprintf(stderr, "beh_pair: FAIL!\n"));
         config_send(SPONSOR(e), r->fail, (Actor)e);
