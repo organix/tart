@@ -78,7 +78,7 @@ deque_take(Config cfg, Actor queue)
     Pair p = (Pair)(q->h);
     Actor item = p->h;
     q->h = p->t;
-    FREE(p);  // [FIXME] de-allocation should also be done through the sponsor/config, or we count on garbage-collection
+    config_destroy(cfg, (Actor)p);
     return item;
 }
 
@@ -186,6 +186,11 @@ root_config_create(Config cfg, size_t n_bytes, Action beh)
     return a;
 }
 inline static void
+root_config_destroy(Config cfg, Actor victim)
+{
+    FREE(victim);
+}
+inline static void
 root_config_send(Config cfg, Actor target, Actor msg)
 {
     TRACE(fprintf(stderr, "root_config_send: actor=%p, msg=%p\n", target, msg));
@@ -199,6 +204,7 @@ config_new()
     BEH(cfg) = beh_config;
     cfg->fail = root_config_fail;  // error reporting procedure
     cfg->create = root_config_create;  // actor creation procedure
+    cfg->destroy = root_config_destroy;  // reclaim actor resources
     cfg->send = root_config_send;  // event creation procedure
     cfg->events = deque_new(cfg);
     return cfg;
