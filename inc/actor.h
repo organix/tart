@@ -41,11 +41,12 @@ Value  [*|*]
         V
        CODE
 
-Serial [*|*]
-        | +--> [*|*]
-        V       | +--> STATE
-   act_serial   V
-               STRATEGY
+Serial [*|*|*]---+
+        | |      V
+        | +---> [*|*]
+        V        | +--> STATE
+   act_serial    V
+                STRATEGY
 
 Pair   [*|*|*]
         | | +--> tail
@@ -72,9 +73,8 @@ typedef void (*Action)(Event e);
 #define MSG(e)      (((Event)(e))->message)
 #define CODE(v)     BEH(v)
 #define DATA(v)     (((Value)(v))->data)
-#define VALUE(s)    (((Serial)(s))->value)
-#define STRATEGY(s) CODE(VALUE(s))
-#define STATE(s)    DATA(VALUE(s))
+#define STRATEGY(s) CODE(((Serial)(s))->beh_0)
+#define STATE(s)    DATA(((Serial)(s))->beh_0)
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
@@ -101,7 +101,8 @@ struct value {
 
 struct serial {
     ACTOR       _act;
-    Actor       value;
+    Actor       beh_0;      // current "behavior" actor
+    Actor       beh_1;      // "behavior" for next event
 };
 
 struct event {
