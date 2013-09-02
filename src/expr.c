@@ -39,8 +39,7 @@ val_request(Event e)
 static Actor
 request_new(Config cfg, Actor ok, Actor fail, Actor req)
 {
-    Request r = NEW(REQUEST);
-    BEH(r) = val_request;
+    Request r = (Request)config_create(cfg, sizeof(REQUEST), val_request);
     r->ok = ok;
     r->fail = fail;
     r->req = req;
@@ -58,8 +57,7 @@ val_req_eval(Event e)
 Actor
 req_eval_new(Config cfg, Actor ok, Actor fail, Actor env)
 {
-    ReqEval req = NEW(REQ_EVAL);
-    BEH(req) = val_req_eval;
+    ReqEval req = (ReqEval)config_create(cfg, sizeof(REQ_EVAL), val_req_eval);
     req->env = env;
     return request_new(cfg, ok, fail, (Actor)req);
 }
@@ -75,8 +73,7 @@ val_req_match(Event e)
 Actor
 req_match_new(Config cfg, Actor ok, Actor fail, Actor value, Actor env)
 {
-    ReqMatch req = NEW(REQ_MATCH);
-    BEH(req) = val_req_match;
+    ReqMatch req = (ReqMatch)config_create(cfg, sizeof(REQ_MATCH), val_req_match);
     req->value = value;
     req->env = env;
     return request_new(cfg, ok, fail, (Actor)req);
@@ -93,8 +90,7 @@ val_req_bind(Event e)
 Actor
 req_bind_new(Config cfg, Actor ok, Actor fail, Actor key, Actor value)
 {
-    ReqBind req = NEW(REQ_BIND);
-    BEH(req) = val_req_bind;
+    ReqBind req = (ReqBind)config_create(cfg, sizeof(REQ_BIND), val_req_bind);
     req->key = key;
     req->value = value;
     return request_new(cfg, ok, fail, (Actor)req);
@@ -111,8 +107,7 @@ val_req_lookup(Event e)
 Actor
 req_lookup_new(Config cfg, Actor ok, Actor fail, Actor key)
 {
-    ReqLookup req = NEW(REQ_LOOKUP);
-    BEH(req) = val_req_lookup;
+    ReqLookup req = (ReqLookup)config_create(cfg, sizeof(REQ_LOOKUP), val_req_lookup);
     req->key = key;
     return request_new(cfg, ok, fail, (Actor)req);
 }
@@ -128,8 +123,7 @@ val_req_combine(Event e)
 Actor
 req_combine_new(Config cfg, Actor ok, Actor fail, Actor opnd, Actor env)
 {
-    ReqCombine req = NEW(REQ_COMBINE);
-    BEH(req) = val_req_combine;
+    ReqCombine req = (ReqCombine)config_create(cfg, sizeof(REQ_COMBINE), val_req_combine);
     req->opnd = opnd;
     req->env = env;
     return request_new(cfg, ok, fail, (Actor)req);
@@ -145,8 +139,7 @@ val_req_read(Event e)
 Actor
 req_read_new(Config cfg, Actor ok, Actor fail)
 {
-    ReqRead req = NEW(REQ_READ);
-    BEH(req) = val_req_read;
+    ReqRead req = (ReqRead)config_create(cfg, sizeof(REQ_READ), val_req_read);
     return request_new(cfg, ok, fail, (Actor)req);
 }
 
@@ -161,8 +154,7 @@ val_req_write(Event e)
 Actor
 req_write_new(Config cfg, Actor ok, Actor fail, Actor value)
 {
-    ReqWrite req = NEW(REQ_WRITE);
-    BEH(req) = val_req_write;
+    ReqWrite req = (ReqWrite)config_create(cfg, sizeof(REQ_WRITE), val_req_write);
     req->value = value;
     return request_new(cfg, ok, fail, (Actor)req);
 }
@@ -178,8 +170,7 @@ val_req_call(Event e)
 Actor
 req_call_new(Config cfg, Actor ok, Actor fail, Actor selector, Actor parameter)
 {
-    ReqCall req = NEW(REQ_CALL);
-    BEH(req) = val_req_call;
+    ReqCall req = (ReqCall)config_create(cfg, sizeof(REQ_CALL), val_req_call);
     req->selector = selector;
     req->parameter = parameter;
     return request_new(cfg, ok, fail, (Actor)req);
