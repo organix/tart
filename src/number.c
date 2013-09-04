@@ -417,19 +417,18 @@ INTEGER small_integers[2*N_SMALL + N_SMALL + 1] = {
 };
 
 inline Actor
-integer_new(int i)
+integer_new(Config cfg, int i)
 {
     if ((i <= 2*N_SMALL) && (i >= -N_SMALL)) {  // check for cached objects
         return ((Actor)(&small_integers[N_SMALL + i]));
     }
-    Integer n = NEW(INTEGER);
-    BEH(n) = beh_integer;
+    Integer n = (Integer)config_create(cfg, sizeof(INTEGER), beh_integer);
     n->i = i;
     return (Actor)n;
 }
 
 inline Actor
-number_match_method(Actor this, Actor that)
+number_match_method(Config cfg, Actor this, Actor that)
 {
     if (this == that) {
         return a_true;
@@ -446,37 +445,37 @@ number_match_method(Actor this, Actor that)
 }
 
 inline Actor
-number_diff_method(Actor this, Actor that)
+number_diff_method(Config cfg, Actor this, Actor that)
 {
     if (beh_integer != BEH(this)) { halt("number_diff_method: number required"); }
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
-        return integer_new(n->i - m->i);
+        return integer_new(cfg, n->i - m->i);
     }
     return this;
 }
 
 inline Actor
-number_plus_method(Actor this, Actor that)
+number_plus_method(Config cfg, Actor this, Actor that)
 {
     if (beh_integer != BEH(this)) { halt("number_plus_method: number required"); }
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
-        return integer_new(n->i + m->i);
+        return integer_new(cfg, n->i + m->i);
     }
     return this;
 }
 
 inline Actor
-number_times_method(Actor this, Actor that)
+number_times_method(Config cfg, Actor this, Actor that)
 {
     if (beh_integer != BEH(this)) { halt("number_times_method: number required"); }
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
-        return integer_new(n->i * m->i);
+        return integer_new(cfg, n->i * m->i);
     }
     return this;
 }
@@ -564,50 +563,52 @@ test_number()
     int i;
 
     TRACE(fprintf(stderr, "---- test_number ----\n"));
+    Config cfg = config_new();
+    TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
-    a = integer_new(0);
+    a = integer_new(cfg, 0);
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (number_match_method(a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
-    a = number_plus_method(a, a_one);
+    if (number_match_method(cfg, a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
+    a = number_plus_method(cfg, a, a_one);
     if (a_one != a) { halt("expected a_one == a"); }
-    a = number_diff_method(a, a_two);
+    a = number_diff_method(cfg, a, a_two);
     if (a_minus_one != a) { halt("expected a_minus_one == a"); }
 /*
 */
-    a = integer_new(100);
-    a = number_times_method(a, a);
+    a = integer_new(cfg, 100);
+    a = number_times_method(cfg, a, a);
     TRACE(fprintf(stderr, "a = %p\n", a));
     if (beh_integer != BEH(a)) { halt("expected beh_integer == BEH(a)"); }
     n = (Integer)a;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
-    b = integer_new(100 * 100);
+    b = integer_new(cfg, 100 * 100);
     TRACE(fprintf(stderr, "b = %p\n", b));
     if (a == b) { halt("expected a != b"); }
     if (beh_integer != BEH(b)) { halt("expected beh_integer == BEH(b)"); }
     m = (Integer)b;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (n->i != m->i) { halt("expected n->i == m->i"); }
-    if (number_match_method(a, b) != a_true) { halt("expected number_match_method(a, b) == a_true"); }
+    if (number_match_method(cfg, a, b) != a_true) { halt("expected number_match_method(a, b) == a_true"); }
 /*
 */
-    a = integer_new(N_SMALL);
-    b = number_times_method(a, a_minus_one);
+    a = integer_new(cfg, N_SMALL);
+    b = number_times_method(cfg, a, a_minus_one);
     n = (Integer)b;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
-    if (b != integer_new(-N_SMALL)) { halt("expected b == integer_new(-N_SMALL)"); }
-    a = number_times_method(a, a_two);
-    a = number_plus_method(a, a_minus_one);
+    if (b != integer_new(cfg, -N_SMALL)) { halt("expected b == integer_new(-N_SMALL)"); }
+    a = number_times_method(cfg, a, a_two);
+    a = number_plus_method(cfg, a, a_minus_one);
     m = (Integer)a;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
-    if (a != integer_new(2*N_SMALL - 1)) { halt("expected a == integer_new(2*N_SMALL - 1)"); }
-    a = number_plus_method(a, a_one);
+    if (a != integer_new(cfg, 2*N_SMALL - 1)) { halt("expected a == integer_new(2*N_SMALL - 1)"); }
+    a = number_plus_method(cfg, a, a_one);
     m = (Integer)a;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
-    if (a != integer_new(2*N_SMALL)) { halt("expected a == integer_new(2*N_SMALL)"); }
+    if (a != integer_new(cfg, 2*N_SMALL)) { halt("expected a == integer_new(2*N_SMALL)"); }
 /*
 */
     for (i = -N_SMALL; i <= 2*N_SMALL; ++i) {
-        a = integer_new(i);
+        a = integer_new(cfg, i);
         n = (Integer)a;
         if (n->i != i) {
             TRACE(fprintf(stderr, "expected:%d was:%d\n", n->i, i));

@@ -34,7 +34,7 @@ struct cache {
     ACTOR       _act;
     int         n;  // number of entries in use
     int         m;  // number of entries allocated
-    Actor       (*cmp)(Actor entry, Actor value);  // comparison function
+    Actor       (*cmp)(Config cfg, Actor entry, Actor value);  // comparison function
     Actor *     base;  // pointer to continguous block of Actor references
 };
 static void
@@ -44,7 +44,7 @@ beh_cache(Event e)
     halt("HALT!");
 }
 static Actor
-cache_intern(struct cache * cache, Actor value)
+cache_intern(Config cfg, struct cache * cache, Actor value)  // [FIXME] ENSURE THAT STORAGE FOR value WILL NOT BE RECLAIMED!
 {
     register int a, b, c, d;
     Actor p;
@@ -55,7 +55,7 @@ cache_intern(struct cache * cache, Actor value)
     while (a <= b) {
         c = (a + b) >> 1;  // == ((a + b) / 2)
         p = cache->base[c];
-        d = ((Integer)((cache->cmp)(p, value)))->i;
+        d = ((Integer)((cache->cmp)(cfg, p, value)))->i;
         if (d > 0) {
             b = c - 1;
         } else if (d < 0) {
@@ -103,29 +103,27 @@ static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, NU
 STRING the_empty_string_actor = { { beh_string }, "", a_zero };
 
 inline Actor
-cstring_new(char * p)
+cstring_new(Config cfg, char * p)
 {
     if (*p == '\0') { return a_empty_string; }
-    String s = NEW(STRING);
-    BEH(s) = beh_string;
+    String s = (String)config_create(cfg, sizeof(STRING), beh_string);
     s->p = p;  // must have '\0' terminator
     s->n = a_minus_one;  // unknown length
     return (Actor)s;
 }
 
 inline Actor
-pstring_new(char * p, int n)
+pstring_new(Config cfg, char * p, int n)
 {
     if (n <= 0) { return a_empty_string; }
-    String s = NEW(STRING);
-    BEH(s) = beh_string;
+    String s = (String)config_create(cfg, sizeof(STRING), beh_string);
     s->p = p;  // may, or may not, have '\0' terminator
-    s->n = integer_new(n);  // pre-defined length
+    s->n = integer_new(cfg, n);  // pre-defined length
     return (Actor)s;
 }
 
 inline Actor
-string_length_method(Actor this)
+string_length_method(Config cfg, Actor this)
 {
     if (beh_string != BEH(this)) { halt("string_length_method: string required"); }
     String s = (String)this;
@@ -135,20 +133,20 @@ string_length_method(Actor this)
         while (*p++) {
             ++n;
         }
-        s->n = integer_new(n);
+        s->n = integer_new(cfg, n);
     }
     return s->n;
 }
 
 inline Actor
-string_intern_method(Actor this)  // return the canonical String instance with this value
+string_intern_method(Config cfg, Actor this)  // return the canonical String instance with this value
 {
-    string_length_method(this);  // ensure that string length is cached
-    return cache_intern(&string_cache, this);
+    string_length_method(cfg, this);  // ensure that string length is cached
+    return cache_intern(cfg, &string_cache, this);
 }
 
 inline Actor
-string_match_method(Actor this, Actor that)
+string_match_method(Config cfg, Actor this, Actor that)
 {
     if (this == that) {
         return a_true;
@@ -160,9 +158,9 @@ string_match_method(Actor this, Actor that)
         if ((s->p == t->p) && (s->n == t->n)) {
             return a_true;
         }
-        Actor n = string_length_method(this);
-        Actor m = string_length_method(that);
-        if (number_match_method(n, m) != a_true) {
+        Actor n = string_length_method(cfg, this);
+        Actor m = string_length_method(cfg, that);
+        if (number_match_method(cfg, n, m) != a_true) {
             return a_false;
         }
         int i = ((Integer)(n))->i;
@@ -179,23 +177,23 @@ string_match_method(Actor this, Actor that)
 }
 
 Actor
-string_diff_method(Actor this, Actor that)
+string_diff_method(Config cfg, Actor this, Actor that)
 // (this < that) -> <0, (this == that) -> 0, (this > that) -> >0.
 {
     if (beh_string != BEH(this)) { halt("string_match_method: string required"); }
     String s = (String)this;
-    Actor n = string_length_method(this);
+    Actor n = string_length_method(cfg, this);
     int i = ((Integer)(n))->i;
     if (beh_string != BEH(that)) { halt("string_match_method: string required"); }
     String t = (String)that;
-    Actor m = string_length_method(that);
+    Actor m = string_length_method(cfg, that);
     int j = ((Integer)(m))->i;
     char* p = s->p;
     char* q = t->p;
     while ((i > 0) && (j > 0)) {
         int d = (*p - *q);
         if (d != 0) {
-            return integer_new(d);
+            return integer_new(cfg, d);
         }
         ++p; ++q;
         --i; --j;
@@ -238,7 +236,7 @@ beh_string(Event e)
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "beh_string: (#match, %p, %p)\n", rm->value, rm->env));
-        if (string_match_method(SELF(e), rm->value) == a_true) {
+        if (string_match_method(SPONSOR(e), SELF(e), rm->value) == a_true) {
             config_send(SPONSOR(e), r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "beh_string: MISMATCH!\n"));
@@ -248,15 +246,15 @@ beh_string(Event e)
         String s = (String)SELF(e);
         if (s->n == a_minus_one) {  // indeterminate length
             char *p = s->p;
-            Actor c = integer_new((int)*p++);
+            Actor c = integer_new(SPONSOR(e), (int)*p++);
             TRACE(fprintf(stderr, "beh_string: (#read) -> (%d, @%p)\n", ((Integer)c)->i, p));
-            config_send(SPONSOR(e), r->ok, PR(c, cstring_new(p)));
+            config_send(SPONSOR(e), r->ok, PR(c, cstring_new(SPONSOR(e), p)));
         } else {
             char *p = s->p;
-            Actor c = integer_new((int)*p++);
+            Actor c = integer_new(SPONSOR(e), (int)*p++);
             int n = ((Integer)(s->n))->i - 1;
             TRACE(fprintf(stderr, "beh_string: (#read) -> (%d, %d@%p)\n", ((Integer)c)->i, n, p));
-            config_send(SPONSOR(e), r->ok, PR(c, pstring_new(p, n)));
+            config_send(SPONSOR(e), r->ok, PR(c, pstring_new(SPONSOR(e), p, n)));
         }
     } else {
         TRACE(fprintf(stderr, "beh_string: FAIL!\n"));
@@ -272,10 +270,12 @@ test_string()
     String s, t;
 
     TRACE(fprintf(stderr, "---- test_string ----\n"));
+    Config cfg = config_new();
+    TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_empty_string = %p\n", a_empty_string));
-    a = string_length_method(a_empty_string);
+    a = string_length_method(cfg, a_empty_string);
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (number_match_method(a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
+    if (number_match_method(cfg, a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
     n = (Integer)a;
     if (n->i != 0) { halt("expected n->i == 0"); }
     s = (String)a_empty_string;
@@ -286,34 +286,34 @@ test_string()
 */
     char* p = "foobarfoo";
     char* q = p + 6;
-    a = pstring_new(p, 3);
+    a = pstring_new(cfg, p, 3);
     s = (String)a;
     n = (Integer)s->n;
     TRACE(fprintf(stderr, "s = %d\"%.*s\" of \"%s\"\n", n->i, n->i, s->p, s->p));
-    b = cstring_new(q);
+    b = cstring_new(cfg, q);
     t = (String)b;
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
-    if (string_match_method(a, b) != a_true) { halt("expected string_match_method(a, b) == a_true"); }
+    if (string_match_method(cfg, a, b) != a_true) { halt("expected string_match_method(a, b) == a_true"); }
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
 /*
 */
-    a = cstring_new("foo");
-    b = cstring_new("bar");
-    c = string_diff_method(a, a);
+    a = cstring_new(cfg, "foo");
+    b = cstring_new(cfg, "bar");
+    c = string_diff_method(cfg, a, a);
     if (c != a_zero) { halt("expected \"foo\" == \"foo\""); }
-    n = (Integer)string_diff_method(a, b);
+    n = (Integer)string_diff_method(cfg, a, b);
     TRACE(fprintf(stderr, "(\"foo\" - \"bar\") -> %d\n", n->i));
     if (n->i <= 0) { halt("expected \"foo\" > \"bar\""); }
-    m = (Integer)string_diff_method(b, a);
+    m = (Integer)string_diff_method(cfg, b, a);
     TRACE(fprintf(stderr, "(\"bar\" - \"foo\") -> %d\n", m->i));
     if (m->i >= 0) { halt("expected \"bar\" < \"foo\""); }
-    b = cstring_new("foobar");
-    n = (Integer)string_diff_method(a, b);
+    b = cstring_new(cfg, "foobar");
+    n = (Integer)string_diff_method(cfg, a, b);
     TRACE(fprintf(stderr, "(\"foo\" - \"foobar\") -> %d\n", n->i));
     if (n->i >= 0) { halt("expected \"foo\" < \"foobar\""); }
-    m = (Integer)string_diff_method(b, a);
+    m = (Integer)string_diff_method(cfg, b, a);
     TRACE(fprintf(stderr, "(\"foobar\" - \"foo\") -> %d\n", m->i));
     if (m->i <= 0) { halt("expected \"foobar\" > \"foo\""); }    
 }
