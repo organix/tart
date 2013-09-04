@@ -41,12 +41,12 @@ struct string {
     Actor       n;  // length (-1 = unknown)
 };
 
-extern Actor    cstring_new(char * p);
-extern Actor    pstring_new(char * p, int n);
-extern Actor    string_length_method(Actor this);
-extern Actor    string_intern_method(Actor this);
-extern Actor    string_match_method(Actor this, Actor that);
-extern Actor    string_diff_method(Actor this, Actor that);
+extern Actor    cstring_new(Config cfg, char * p);
+extern Actor    pstring_new(Config cfg, char * p, int n);
+extern Actor    string_length_method(Config cfg, Actor this);
+extern Actor    string_intern_method(Config cfg, Actor this);
+extern Actor    string_match_method(Config cfg, Actor this, Actor that);
+extern Actor    string_diff_method(Config cfg, Actor this, Actor that);
 
 extern void     beh_string(Event e);
 
