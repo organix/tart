@@ -79,6 +79,7 @@ typedef void (*Action)(Event e);
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
 #define a_empty_dict ((Actor)(&the_empty_dict_actor))
+#define a_root_config ((Actor)(&the_root_config))
 #define a_true ((Actor)(&the_true_actor))
 #define a_false ((Actor)(&the_false_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
@@ -162,6 +163,7 @@ extern void     beh_halt(Event e);
 
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
+extern CONFIG the_root_config;
 extern ACTOR the_true_actor;
 extern ACTOR the_false_actor;
 extern ACTOR the_ignore_actor;

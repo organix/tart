@@ -35,7 +35,7 @@ struct cache {
     int         n;  // number of entries in use
     int         m;  // number of entries allocated
     Actor       (*cmp)(Config cfg, Actor entry, Actor value);  // comparison function
-    Actor *     base;  // pointer to continguous block of Actor references
+    Actor *     base;  // pointer to contiguous block of Actor references
 };
 static void
 beh_cache(Event e)
@@ -270,7 +270,7 @@ test_string()
     String s, t;
 
     TRACE(fprintf(stderr, "---- test_string ----\n"));
-    Config cfg = config_new();
+    Config cfg = config_new(a_root_config);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_empty_string = %p\n", a_empty_string));
     a = string_length_method(cfg, a_empty_string);

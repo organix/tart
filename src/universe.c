@@ -1229,7 +1229,7 @@ test_universe()
     Actor test;
 
     TRACE(fprintf(stderr, "---- test_universe ----\n"));
-    Config cfg = config_new();
+    Config cfg = config_new(a_root_config);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     universe_init(cfg);
 

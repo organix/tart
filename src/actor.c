@@ -175,7 +175,7 @@ beh_config(Event e)
 inline static void
 root_config_fail(Config cfg, Actor reason)
 {
-    TRACE(fprintf(stderr, "root_config_fail: cfg=%p, reason=%p\n", cfg, reason));
+    TRACE(fprintf(stderr, "config_fail: cfg=%p, reason=%p\n", cfg, reason));
     halt("root_config_fail!");
 }
 inline static Actor
@@ -193,15 +193,14 @@ root_config_destroy(Config cfg, Actor victim)
 inline static void
 root_config_send(Config cfg, Actor target, Actor msg)
 {
-    TRACE(fprintf(stderr, "root_config_send: actor=%p, msg=%p\n", target, msg));
+    TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
 inline Config
-config_new()
+config_new(Config sponsor)
 {
-    Config cfg = NEW(CONFIG);
-    DEBUG(fprintf(stderr, "config_new: cfg = %p\n", cfg));
-    BEH(cfg) = beh_config;
+    Config cfg = (Config)config_create(sponsor, sizeof(CONFIG), beh_config);
+    DEBUG(fprintf(stderr, "config_new: sponsor=%p cfg=%p\n", sponsor, cfg));
     cfg->fail = root_config_fail;  // error reporting procedure
     cfg->create = root_config_create;  // actor creation procedure
     cfg->destroy = root_config_destroy;  // reclaim actor resources
@@ -212,9 +211,9 @@ config_new()
 static inline Actor
 config_dequeue(Config cfg)
 {
-    if (beh_config != BEH(cfg)) { halt("config_dispatch: config actor required"); }
+    if (beh_config != BEH(cfg)) { halt("config_dequeue: config actor required"); }
     if (deque_empty_p(cfg, cfg->events) != a_false) {
-        TRACE(fprintf(stderr, "config_dispatch: <EMPTY>\n"));
+        TRACE(fprintf(stderr, "config_dequeue: <EMPTY>\n"));
         return NOTHING;
     }
     Actor a = deque_take(cfg, cfg->events);
@@ -231,6 +230,15 @@ config_dispatch(Config cfg)
     }
     return a;
 }
+static PAIR the_root_event_q = { { beh_deque }, NIL, NIL };
+CONFIG the_root_config = {
+    { beh_config }, 
+    root_config_fail, 
+    root_config_create, 
+    root_config_destroy, 
+    root_config_send, 
+    ((Actor)&the_root_event_q)
+};
 
 /**
 LET pair_beh_0((ok, fail), t, tail) = \env'.[

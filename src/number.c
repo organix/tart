@@ -563,7 +563,7 @@ test_number()
     int i;
 
     TRACE(fprintf(stderr, "---- test_number ----\n"));
-    Config cfg = config_new();
+    Config cfg = config_new(a_root_config);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
     a = integer_new(cfg, 0);

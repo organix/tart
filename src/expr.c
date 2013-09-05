@@ -404,7 +404,7 @@ test_expr()
     Actor cust;
 
     TRACE(fprintf(stderr, "---- test_expr ----\n"));
-    Config cfg = config_new();
+    Config cfg = config_new(a_root_config);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_empty_env = %p\n", a_empty_env));
     /* empty environment evaluates to itself */
