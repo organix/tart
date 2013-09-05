@@ -27,6 +27,7 @@ THE SOFTWARE.
 */
 
 #include "universe.h"
+#include "string.h"
 
 /**
 CREATE fail WITH \msg.[
@@ -1186,10 +1187,11 @@ Actor s_comb;
 static Actor
 symbol_intern(Config cfg, char * name)
 {
-    Actor a_symbol = dict_lookup(cfg, symbol_table, (Actor)name);  // [FIXME: 'name' IS NOT AN ACTOR!]
+    Actor a_name = string_intern_method(cfg, cstring_new(cfg, name));
+    Actor a_symbol = dict_lookup(cfg, symbol_table, a_name);
     if (a_symbol == NOTHING) {
         a_symbol = actor_new(cfg, beh_name);
-        symbol_table = dict_bind(cfg, symbol_table, (Actor)name, a_symbol);
+        symbol_table = dict_bind(cfg, symbol_table, a_name, a_symbol);
     }
     return a_symbol;
 }

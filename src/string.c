@@ -35,8 +35,19 @@ struct cache {
     int         n;  // number of entries in use
     int         m;  // number of entries allocated
     Actor       (*cmp)(Config cfg, Actor entry, Actor value);  // comparison function
+    size_t      size;  // size of each managed value
     Actor *     base;  // pointer to contiguous block of Actor references
 };
+static char *
+memcpy(void * dst, const void * src, size_t len)  // defined here to avoid pulling in <string.h>
+{
+    register const char * p = src;
+    register char * q = dst;
+    while (len-- > 0) {
+        q[len] = p[len];
+    }
+    return (char *)src;
+}
 static void
 beh_cache(Event e)
 {
@@ -44,12 +55,13 @@ beh_cache(Event e)
     halt("HALT!");
 }
 static Actor
-cache_intern(Config cfg, struct cache * cache, Actor value)  // [FIXME] ENSURE THAT STORAGE FOR value WILL NOT BE RECLAIMED!
+cache_intern(Config cfg, struct cache * cache, Actor value)
 {
     register int a, b, c, d;
+    int n, m;
     Actor p;
     
-    int n = cache->n;
+    n = cache->n;
     a = 0;
     b = n - 1;
     while (a <= b) {
@@ -65,8 +77,10 @@ cache_intern(Config cfg, struct cache * cache, Actor value)  // [FIXME] ENSURE T
         }
     }
     // NOT FOUND (a == insertion point)
-    p = value;
-    int m = cache->m;
+    Config sponsor = (Config)a_root_config;  // the root config sponsors all cache allocation
+    p = config_create(sponsor, cache->size, BEH(value));  // allocate "permanent" storage
+    memcpy(p, value, cache->size);  // copy actor data
+    m = cache->m;
     if (n < m) {  // space available for entry
         DEBUG(fprintf(stderr, "cache_intern: space available, n=%d, m=%d\n", n, m));
         for (b = n; a < b; --b) {
@@ -79,7 +93,7 @@ cache_intern(Config cfg, struct cache * cache, Actor value)  // [FIXME] ENSURE T
         m = m << 1;  // == (m * 2)
         DEBUG(fprintf(stderr, "cache_intern: expanded allocation, n=%d, m=%d\n", n, m));
         cache->m = m;
-        cache->base = NEWxN(Actor, m);
+        cache->base = (Actor *)config_create(sponsor, sizeof(Actor) * m, beh_halt);
         for (b = n; a < b; --b) {
             cache->base[b] = bp[b - 1];
         }
@@ -92,13 +106,13 @@ cache_intern(Config cfg, struct cache * cache, Actor value)  // [FIXME] ENSURE T
         m = 21;
         DEBUG(fprintf(stderr, "cache_intern: initial allocation, m=%d\n", m));
         cache->m = m;
-        cache->base = NEWxN(Actor, m);
+        cache->base = (Actor *)config_create(sponsor, sizeof(Actor) * m, beh_halt);
         cache->base[0] = p;
         cache->n = 1;
     }
     return p;
 }
-static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, NULL };
+static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, sizeof(STRING), NULL };
 
 STRING the_empty_string_actor = { { beh_string }, "", a_zero };
 
