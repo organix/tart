@@ -32,12 +32,13 @@ THE SOFTWARE.
 #include "actor.h"
 
 /**
-Request [*|*|*|*]
-         | | | +------> [*|*|*] ReqCall
-         | | +-> fail    | | +--> parameter
-         | +-> ok        | +--> selector
-         V               V
-      val_request     val_req_call
+Request [*|*|*|*|*]
+         | | | | +------> [*|*|*|*] ReqCall
+         | | | +-> fail    | | | +--> parameter
+         | | +-> ok        | | +--> selector
+         | +-> match()     | +-> match()
+         V                 V
+      val_request       val_req_call
 **/
 
 typedef struct request REQUEST, *Request;

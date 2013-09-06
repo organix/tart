@@ -31,26 +31,29 @@ THE SOFTWARE.
 #include "tart.h"
 
 /**
-Actor  [*|...]
-        |
+Actor  [*|*|...]
+        | +--> match()
         V
        BEH
 
-Value  [*|*]
-        | +--> DATA
+Value  [*|*|*]
+        | | +--> DATA
+        | +--> match()
         V
        CODE
 
-Serial [*|*|*]---+
-        | |      V
-        | +---> [*|*]
-        V        | +--> STATE
-   act_serial    V
-                STRATEGY
+Serial [*|*|*|*]-------+
+        | | |          V
+        | | +-------> [*|*]
+        | +-> match()  |
+        V              | +--> STATE
+   act_serial          V
+                      STRATEGY
 
-Pair   [*|*|*]
-        | | +--> tail
-        | +--> head
+Pair   [*|*|*|*]
+        | | | +--> tail
+        | | +--> head
+        | +--> match()
         V
      beh_pair
 **/
