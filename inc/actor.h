@@ -73,8 +73,8 @@ typedef void (*Action)(Event e);
 #define MSG(e)      (((Event)(e))->message)
 #define CODE(v)     BEH(v)
 #define DATA(v)     (((Value)(v))->data)
-#define STRATEGY(s) CODE(((Serial)(s))->beh_0)
-#define STATE(s)    DATA(((Serial)(s))->beh_0)
+#define STRATEGY(s) CODE(((Serial)(s))->beh_now)
+#define STATE(s)    DATA(((Serial)(s))->beh_now)
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
@@ -103,8 +103,8 @@ struct value {
 
 struct serial {
     ACTOR       _act;
-    Actor       beh_0;      // current "behavior" actor
-    Actor       beh_1;      // "behavior" for next event
+    Actor       beh_now;      // current "behavior" actor
+    Actor       beh_next;      // "behavior" for next event
 };
 
 struct event {

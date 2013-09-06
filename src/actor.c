@@ -131,7 +131,7 @@ inline Actor
 serial_with_value(Config cfg, Actor v)  // create a "serialized" actor with "behavior" value
 {
     Serial s = (Serial)config_create(cfg, sizeof(SERIAL), act_serial);
-    s->beh_0 = v;  // an "unserialzed" behavior actor
+    s->beh_now = v;  // an "unserialzed" behavior actor
     return (Actor)s;
 }
 inline Actor
@@ -143,16 +143,16 @@ inline void
 actor_become(Actor s, Actor v)
 {
     if (act_serial != BEH(s)) { halt("actor_become: serialized actor required"); }
-    ((Serial)s)->beh_1 = v;  // remember "behavior" for later commit
+    ((Serial)s)->beh_next = v;  // remember "behavior" for later commit
 }
 void
 act_serial(Event e)  // "serialized" actor behavior
 {
     TRACE(fprintf(stderr, "act_serial{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Serial s = (Serial)SELF(e);
-    s->beh_1 = s->beh_0;  // default behavior for next event
-    (CODE(s->beh_0))(e);  // INVOKE CURRENT SERIALIZED BEHAVIOR
-    s->beh_0 = s->beh_1;  // commit behavior change (if any)
+    s->beh_next = s->beh_now;  // default behavior for next event
+    (CODE(s->beh_now))(e);  // INVOKE CURRENT SERIALIZED BEHAVIOR
+    s->beh_now = s->beh_next;  // commit behavior change (if any)
 }
 
 void
