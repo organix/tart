@@ -30,7 +30,13 @@ THE SOFTWARE.
 #include "expr.h"
 #include "number.h"
 
-PAIR the_nil_pair_actor = { { beh_pair }, NIL, NIL };
+inline Actor
+actor_match_method(Config cfg, Actor this, Actor that)
+{
+    return (this == that) ? a_true : a_false;
+}
+
+PAIR the_nil_pair_actor = { { beh_pair, actor_match_method }, NIL, NIL };
 inline Actor
 pair_new(Config cfg, Actor h, Actor t)
 {
@@ -82,7 +88,7 @@ deque_take(Config cfg, Actor queue)
     return item;
 }
 
-ACTOR the_empty_dict_actor = { expr_env_empty };
+ACTOR the_empty_dict_actor = { expr_env_empty, actor_match_method };
 inline Actor
 dict_lookup(Config cfg, Actor dict, Actor key)
 {
@@ -92,7 +98,7 @@ dict_lookup(Config cfg, Actor dict, Actor key)
         Actor a = p->h;
         if (beh_pair != BEH(a)) { halt("dict_lookup: non-pair entry"); }
         Pair q = (Pair)a;
-        if (q->h == key) {
+        if (actor_match(cfg, key, q->h) == a_true) {
             return q->t;  // value
         }
         dict = p->t;  // next
@@ -183,6 +189,7 @@ root_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     Actor a = ALLOC(n_bytes);
     BEH(a) = beh;
+    a->match = actor_match_method;  // default to identity comparison
     return a;
 }
 inline static void
@@ -230,9 +237,9 @@ config_dispatch(Config cfg)
     }
     return a;
 }
-static PAIR the_root_event_q = { { beh_deque }, NIL, NIL };
+static PAIR the_root_event_q = { { beh_deque, actor_match_method }, NIL, NIL };
 CONFIG the_root_config = {
-    { beh_config }, 
+    { beh_config, actor_match_method }, 
     root_config_fail, 
     root_config_create, 
     root_config_destroy, 
@@ -396,7 +403,7 @@ comb_true(Event e)
 /**
 CREATE true_oper WITH oper_true_beh
 **/
-ACTOR the_true_actor = { comb_true };
+ACTOR the_true_actor = { comb_true, actor_match_method };
 
 /**
 LET oper_false_beh = \msg.[
@@ -434,14 +441,14 @@ comb_false(Event e)
 /**
 CREATE false_oper WITH oper_false_beh
 **/
-ACTOR the_false_actor = { comb_false };
+ACTOR the_false_actor = { comb_false, actor_match_method };
 
 static void
 beh_ignore(Event e)
 {
     TRACE(fprintf(stderr, "beh_ignore{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
-ACTOR the_ignore_actor = { beh_ignore };
+ACTOR the_ignore_actor = { beh_ignore, actor_match_method };
 
 void
 beh_halt(Event e)
@@ -449,4 +456,4 @@ beh_halt(Event e)
     TRACE(fprintf(stderr, "beh_halt{event=%p}\n", e));
     halt("HALT!");
 }
-VALUE the_halt_actor = { { beh_halt }, NOTHING };  // qualifies as both VALUE and SERIAL
+VALUE the_halt_actor = { { beh_halt, actor_match_method }, NOTHING };  // qualifies as both VALUE and SERIAL

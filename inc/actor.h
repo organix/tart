@@ -87,6 +87,7 @@ typedef void (*Action)(Event e);
 
 struct actor {
     Action      beh;
+    Actor       (*match)(Config cfg, Actor pattern, Actor value);  // polymorphic value matching (pattern == self)
 };
 
 struct pair {
@@ -121,6 +122,9 @@ struct config {
     void        (*send)(Config cfg, Actor target, Actor msg);  // event creation procedure
     Actor       events;     // queue of messages in-transit
 };
+
+extern Actor    actor_match_method(Config cfg, Actor this, Actor that);
+#define         actor_match(cfg, ptrn, value)   (((ptrn)->match)((cfg), (ptrn), (value)))
 
 extern Actor    pair_new(Config cfg, Actor h, Actor t);
 

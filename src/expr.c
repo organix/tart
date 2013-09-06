@@ -245,7 +245,7 @@ LET env_beh((key, value), next) = \msg.[
     LET ((ok, fail), req) = $msg IN
     CASE req OF
     (#lookup, $key) : [ SEND value TO ok ]
-    (#lookup, _) : [ SEND msg TO parent ]
+    (#lookup, _) : [ SEND msg TO next ]
     (#bind, key', value') : [
         CREATE dict' WITH env_beh((key', value'), SELF)
         SEND dict' TO ok
@@ -309,7 +309,7 @@ ptrn_skip(Event e)
 /**
 CREATE skip_ptrn WITH skip_ptrn_beh
 **/
-ACTOR the_ptrn_skip_actor = { ptrn_skip };
+ACTOR the_ptrn_skip_actor = { ptrn_skip, actor_match_method };
 
 /**
 LET bind_ptrn_beh(name) = \msg.[

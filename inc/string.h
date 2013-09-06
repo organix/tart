@@ -44,7 +44,7 @@ struct string {
 extern Actor    cstring_new(Config cfg, char * p);
 extern Actor    pstring_new(Config cfg, char * p, int n);
 extern Actor    string_length_method(Config cfg, Actor this);
-extern Actor    string_intern_method(Config cfg, Actor this);
+//extern Actor    string_intern_method(Config cfg, Actor this);
 extern Actor    string_match_method(Config cfg, Actor this, Actor that);
 extern Actor    string_diff_method(Config cfg, Actor this, Actor that);
 

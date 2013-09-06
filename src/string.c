@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "number.h"
 #include "expr.h"
 
+/*
 struct cache {
     ACTOR       _act;
     int         n;  // number of entries in use
@@ -113,14 +114,16 @@ cache_intern(Config cfg, struct cache * cache, Actor value)
     return p;
 }
 static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, sizeof(STRING), NULL };
+*/
 
-STRING the_empty_string_actor = { { beh_string }, "", a_zero };
+STRING the_empty_string_actor = { { beh_string, string_match_method }, "", a_zero };
 
 inline Actor
 cstring_new(Config cfg, char * p)
 {
     if (*p == '\0') { return a_empty_string; }
     String s = (String)config_create(cfg, sizeof(STRING), beh_string);
+    s->_act.match = string_match_method;  // override match procedure
     s->p = p;  // must have '\0' terminator
     s->n = a_minus_one;  // unknown length
     return (Actor)s;
@@ -131,6 +134,7 @@ pstring_new(Config cfg, char * p, int n)
 {
     if (n <= 0) { return a_empty_string; }
     String s = (String)config_create(cfg, sizeof(STRING), beh_string);
+    s->_act.match = string_match_method;  // override match procedure
     s->p = p;  // may, or may not, have '\0' terminator
     s->n = integer_new(cfg, n);  // pre-defined length
     return (Actor)s;
@@ -152,14 +156,16 @@ string_length_method(Config cfg, Actor this)
     return s->n;
 }
 
+/*
 inline Actor
 string_intern_method(Config cfg, Actor this)  // return the canonical String instance with this value
 {
     string_length_method(cfg, this);  // ensure that string length is cached
     return cache_intern(cfg, &string_cache, this);
 }
+*/
 
-inline Actor
+Actor
 string_match_method(Config cfg, Actor this, Actor that)
 {
     if (this == that) {
