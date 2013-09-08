@@ -102,9 +102,9 @@ struct pair {
 
 struct fifo {
     ACTOR       _act;
-    int         h;  // offset for next "take"
-    int         t;  // offset for next "give"
-    int         m;  // wrap-around offset mask
+    size_t      h;  // offset for next "take"
+    size_t      t;  // offset for next "give"
+    size_t      m;  // wrap-around offset mask
     Actor       p[0];  // managed actor references
 };
 
@@ -155,7 +155,7 @@ extern Actor    deque_take(Config cfg, Actor queue);
 extern Actor    dict_lookup(Config cfg, Actor dict, Actor key);
 extern Actor    dict_bind(Config cfg, Actor dict, Actor key, Actor value);
 
-extern Actor    fifo_new(Config cfg, int n);  // WARNING! n must be a power of 2
+extern Actor    fifo_new(Config cfg, size_t n);  // WARNING! n must be a power of 2
 extern Actor    fifo_empty_p(Actor q);
 extern Actor    fifo_give(Actor q, Actor item);
 extern Actor    fifo_take(Actor q);

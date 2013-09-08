@@ -121,7 +121,7 @@ beh_fifo(Event e)
     expr_value(e);
 }
 inline Actor
-fifo_new(Config cfg, int n)  // WARNING! n must be a power of 2
+fifo_new(Config cfg, size_t n)  // WARNING! n must be a power of 2
 {
     size_t b = sizeof(FIFO) + (n * sizeof(Actor));
     Fifo f = (Fifo)config_create(cfg, b, beh_fifo);
@@ -142,8 +142,8 @@ fifo_give(Actor q, Actor item)
 {
     if (beh_fifo != BEH(q)) { halt("fifo_give: fifo required"); }
     Fifo f = (Fifo)q;
-    int h = f->h;
-    int t = f->t;
+    size_t h = f->h;
+    size_t t = f->t;
     f->p[t] = item;
     t = (t + 1) & f->m;
     if (h == t) {
@@ -157,7 +157,7 @@ fifo_take(Actor q)
 {
     if (fifo_empty_p(q) == a_true) { halt("fifo_take from empty!"); }
     Fifo f = (Fifo)q;
-    int h = f->h;
+    size_t h = f->h;
     Actor item = f->p[h];
     f->h = (h + 1) & f->m;
     return item;
