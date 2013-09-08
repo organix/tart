@@ -60,6 +60,7 @@ Pair   [*|*|*|*]
 
 typedef struct actor ACTOR, *Actor;
 typedef struct pair PAIR, *Pair;
+typedef struct fifo FIFO, *Fifo;
 typedef struct value VALUE, *Value;
 typedef struct serial SERIAL, *Serial;
 typedef struct event EVENT, *Event;
@@ -99,6 +100,14 @@ struct pair {
     Actor       t;
 };
 
+struct fifo {
+    ACTOR       _act;
+    int         h;  // offset for next "take"
+    int         t;  // offset for next "give"
+    int         m;  // wrap-around offset mask
+    Actor       p[0];  // managed actor references
+};
+
 struct value {
     ACTOR       _act;
     Any         data;
@@ -106,15 +115,15 @@ struct value {
 
 struct serial {
     ACTOR       _act;
-    Actor       beh_now;      // current "behavior" actor
-    Actor       beh_next;      // "behavior" for next event
+    Actor       beh_now;  // current "behavior" actor
+    Actor       beh_next;  // "behavior" for next event
 };
 
 struct event {
     ACTOR       _act;
-    Config      sponsor;    // sponsor configuration
-    Actor       target;     // target actor
-    Actor       message;    // message to deliver
+    Config      sponsor;  // sponsor configuration
+    Actor       target;  // target actor
+    Actor       message;  // message to deliver
 };
 
 struct config {
@@ -123,7 +132,7 @@ struct config {
     Actor       (*create)(Config cfg, size_t n_bytes, Action beh);  // actor creation procedure
     void        (*destroy)(Config cfg, Actor victim);  // reclaim actor resources
     void        (*send)(Config cfg, Actor target, Actor msg);  // event creation procedure
-    Actor       events;     // queue of messages in-transit
+    Actor       events;  // queue of messages in-transit
 };
 
 extern Actor    actor_match_method(Config cfg, Actor this, Actor that);
@@ -146,6 +155,11 @@ extern Actor    deque_take(Config cfg, Actor queue);
 extern Actor    dict_lookup(Config cfg, Actor dict, Actor key);
 extern Actor    dict_bind(Config cfg, Actor dict, Actor key, Actor value);
 
+extern Actor    fifo_new(Config cfg, int n);  // WARNING! n must be a power of 2
+extern Actor    fifo_empty_p(Actor q);
+extern Actor    fifo_give(Actor q, Actor item);
+extern Actor    fifo_take(Actor q);
+
 extern Actor    actor_new(Config cfg, Action beh);
 extern Actor    value_new(Config cfg, Action beh, Any data);
 extern Actor    serial_with_value(Config cfg, Actor v);
@@ -163,6 +177,7 @@ extern Actor    config_dispatch(Config cfg);
 
 extern void     beh_pair(Event e);
 extern void     beh_deque(Event e);
+extern void     beh_fifo(Event e);
 extern void     beh_event(Event e);
 extern void     beh_config(Event e);
 extern void     act_serial(Event e);  // "serialized" actor behavior

@@ -114,6 +114,55 @@ dict_bind(Config cfg, Actor dict, Actor key, Actor value)
     return (Actor)p;
 }
 
+void
+beh_fifo(Event e)
+{
+    TRACE(fprintf(stderr, "beh_fifo{event=%p}\n", e));
+    expr_value(e);
+}
+inline Actor
+fifo_new(Config cfg, int n)  // WARNING! n must be a power of 2
+{
+    size_t b = sizeof(FIFO) + (n * sizeof(Actor));
+    Fifo f = (Fifo)config_create(cfg, b, beh_fifo);
+    f->h = 0;
+    f->t = 0;
+    f->m = (n - 1);
+    return (Actor)f;
+}
+inline Actor
+fifo_empty_p(Actor q)
+{
+    if (beh_fifo != BEH(q)) { halt("fifo_take: fifo required"); }
+    Fifo f = (Fifo)q;
+    return (f->h == f->t) ? a_true : a_false;
+}
+inline Actor
+fifo_give(Actor q, Actor item)
+{
+    if (beh_fifo != BEH(q)) { halt("fifo_give: fifo required"); }
+    Fifo f = (Fifo)q;
+    int h = f->h;
+    int t = f->t;
+    f->p[t] = item;
+    t = (t + 1) & f->m;
+    if (h == t) {
+        return a_false;
+    }
+    f->t = t;
+    return a_true;
+}
+inline Actor
+fifo_take(Actor q)
+{
+    if (fifo_empty_p(q) == a_true) { halt("fifo_take from empty!"); }
+    Fifo f = (Fifo)q;
+    int h = f->h;
+    Actor item = f->p[h];
+    f->h = (h + 1) & f->m;
+    return item;
+}
+
 inline Actor
 actor_new(Config cfg, Action beh)  // create an actor with only a behavior procedure
 {
