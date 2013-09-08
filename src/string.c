@@ -290,7 +290,7 @@ test_string()
     String s, t;
 
     TRACE(fprintf(stderr, "---- test_string ----\n"));
-    Config cfg = config_new(a_root_config);
+    Config cfg = quota_config_new(a_root_config, 2000);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_empty_string = %p\n", a_empty_string));
     a = string_length_method(cfg, a_empty_string);
