@@ -221,7 +221,7 @@ event_new(Config cfg, Actor a, Actor m)
     return (Actor)e;
 }
 
-static ACTOR e_no_mem = { beh_halt, actor_match_method };  // "out of memory" failure reason
+ACTOR out_of_memory_error = { beh_halt, actor_match_method };  // "out of memory" failure reason
 void
 beh_config(Event e)
 {
@@ -239,7 +239,7 @@ root_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     TRACE(fprintf(stderr, "root_config_create: n_bytes=%d\n", (int)n_bytes));
     Actor a = ALLOC(n_bytes);
-    if (!a) { config_fail(cfg, &e_no_mem); }
+    if (!a) { config_fail(cfg, e_no_mem); }
     BEH(a) = beh;
     a->match = actor_match_method;  // default to identity comparison
     return a;
@@ -255,20 +255,6 @@ root_config_send(Config cfg, Actor target, Actor msg)
     TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     config_enqueue(cfg, event_new(cfg, target, msg));
 }
-/*
-inline Config
-config_new(Config sponsor)
-{
-    Config cfg = (Config)config_create(sponsor, sizeof(CONFIG), beh_config);
-    TRACE(fprintf(stderr, "config_new: sponsor=%p cfg=%p\n", sponsor, cfg));
-    cfg->fail = root_config_fail;  // error reporting procedure
-    cfg->create = root_config_create;  // actor creation procedure
-    cfg->destroy = root_config_destroy;  // reclaim actor resources
-    cfg->send = root_config_send;  // event creation procedure
-    cfg->events = deque_new(cfg);
-    return cfg;
-}
-*/
 static inline Actor
 config_dequeue(Config cfg)
 {
@@ -320,7 +306,7 @@ quota_config_create(Config cfg, size_t n_bytes, Action beh)
     struct quota_config * self = (struct quota_config *)cfg;
     n_bytes = (n_bytes + self->mask) & ~self->mask;  // round up to next quanta
     TRACE(fprintf(stderr, "quota_config_create: n_bytes=%d\n", (int)n_bytes));
-    if (self->n_bytes < n_bytes) { config_fail(cfg, &e_no_mem); }
+    if (self->n_bytes < n_bytes) { config_fail(cfg, e_no_mem); }
     Actor a = (Actor)(self->free);
     self->free += n_bytes;
     self->n_bytes -= n_bytes;

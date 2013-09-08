@@ -90,6 +90,8 @@ typedef void (*Action)(Event e);
 #define a_ignore ((Actor)(&the_ignore_actor))
 #define a_halt ((Actor)(&the_halt_actor))
 
+#define e_no_mem ((Actor)(&out_of_memory_error))
+
 struct actor {
     Action      beh;
     Actor       (*match)(Config cfg, Actor pattern, Actor value);  // polymorphic value matching (pattern == self)
@@ -169,7 +171,6 @@ extern void     actor_become(Actor s, Actor v);
 
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
-//extern Config   config_new(Config sponsor);
 #define         config_fail(cfg, reason)        (((cfg)->fail)((cfg), (reason)))
 #define         config_create(cfg, size, beh)   (((cfg)->create)((cfg), (size), (beh)))
 #define         config_destroy(cfg, victim)     (((cfg)->destroy)((cfg), (victim)))
@@ -194,5 +195,7 @@ extern ACTOR the_true_actor;
 extern ACTOR the_false_actor;
 extern ACTOR the_ignore_actor;
 extern VALUE the_halt_actor;
+
+extern ACTOR out_of_memory_error;
 
 #endif /* _ACTOR_H_ */
