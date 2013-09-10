@@ -81,6 +81,9 @@ typedef void (*Action)(Event e);
 #define STATE(s)    DATA(((Serial)(s))->beh_now)
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
 
+#define ACTOR_INIT(a,beh)   ( ((a)->match = actor_match_method), (BEH(a) = (beh)), (a) )
+#define ACTOR_DECL(beh)     { (beh), actor_match_method }
+
 #define a_root_config (&the_root_config)
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
@@ -89,8 +92,6 @@ typedef void (*Action)(Event e);
 #define a_false ((Actor)(&the_false_actor))
 #define a_ignore ((Actor)(&the_ignore_actor))
 #define a_halt ((Actor)(&the_halt_actor))
-
-#define e_no_mem ((Actor)(&out_of_memory_error))
 
 struct actor {
     Action      beh;
@@ -138,9 +139,6 @@ struct config {
     Actor       events;  // queue of messages in-transit
 };
 
-extern Actor    actor_match_method(Config cfg, Actor this, Actor that);
-#define         actor_match(cfg, ptrn, value)   (((ptrn)->match)((cfg), (ptrn), (value)))
-
 extern Actor    pair_new(Config cfg, Actor h, Actor t);
 
 #define         list_new(cfg)                   (a_empty_list)
@@ -168,6 +166,8 @@ extern Actor    value_new(Config cfg, Action beh, Any data);
 extern Actor    serial_with_value(Config cfg, Actor v);
 extern Actor    serial_new(Config cfg, Action beh, Any data);
 extern void     actor_become(Actor s, Actor v);
+extern Actor    actor_match_method(Config cfg, Actor this, Actor that);
+#define         actor_match(cfg, ptrn, value)   (((ptrn)->match)((cfg), (ptrn), (value)))
 
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
@@ -196,6 +196,10 @@ extern ACTOR the_false_actor;
 extern ACTOR the_ignore_actor;
 extern VALUE the_halt_actor;
 
-extern ACTOR out_of_memory_error;
+#define e_nomem ((Actor)(&fail_reason_nomem))
+#define e_inval ((Actor)(&fail_reason_inval))
+
+extern ACTOR fail_reason_nomem;
+extern ACTOR fail_reason_inval;
 
 #endif /* _ACTOR_H_ */

@@ -54,7 +54,7 @@ run_tests()
     TRACE(fprintf(stderr, "NOTHING = %p\n", NOTHING));
     TRACE(fprintf(stderr, "a_halt = %p\n", a_halt));
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
-    TRACE(fprintf(stderr, "e_no_mem = %p\n", e_no_mem));
+    TRACE(fprintf(stderr, "e_nomem = %p\n", e_nomem));
     test_number();
     test_string();
     test_expr();

@@ -116,7 +116,8 @@ cache_intern(Config cfg, struct cache * cache, Actor value)
 static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, sizeof(STRING), NULL };
 */
 
-STRING the_empty_string_actor = { { beh_string, string_match_method }, "", a_zero };
+#define STRING_ACTOR_DECL(beh)     { (beh), string_match_method }
+STRING the_empty_string_actor = { STRING_ACTOR_DECL(beh_string), "", a_zero };
 
 inline Actor
 cstring_new(Config cfg, char * p)

@@ -309,7 +309,7 @@ ptrn_skip(Event e)
 /**
 CREATE skip_ptrn WITH skip_ptrn_beh
 **/
-ACTOR the_ptrn_skip_actor = { ptrn_skip, actor_match_method };
+ACTOR the_ptrn_skip_actor = ACTOR_DECL(ptrn_skip);
 
 /**
 LET bind_ptrn_beh(name) = \msg.[

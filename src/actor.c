@@ -36,7 +36,7 @@ actor_match_method(Config cfg, Actor this, Actor that)
     return (this == that) ? a_true : a_false;
 }
 
-PAIR the_nil_pair_actor = { { beh_pair, actor_match_method }, NIL, NIL };
+PAIR the_nil_pair_actor = { ACTOR_DECL(beh_pair), NIL, NIL };
 inline Actor
 pair_new(Config cfg, Actor h, Actor t)
 {
@@ -88,7 +88,7 @@ deque_take(Config cfg, Actor queue)
     return item;
 }
 
-ACTOR the_empty_dict_actor = { expr_env_empty, actor_match_method };
+ACTOR the_empty_dict_actor = ACTOR_DECL(expr_env_empty);
 inline Actor
 dict_lookup(Config cfg, Actor dict, Actor key)
 {
@@ -144,12 +144,12 @@ fifo_give(Actor q, Actor item)
     Fifo f = (Fifo)q;
     size_t h = f->h;
     size_t t = f->t;
-    f->p[t] = item;
-    t = (t + 1) & f->m;
-    if (h == t) {
+    size_t tt = (t + 1) & f->m;
+    if (h == tt) {
         return a_false;
     }
-    f->t = t;
+    f->p[t] = item;
+    f->t = tt;
     return a_true;
 }
 inline Actor
@@ -221,7 +221,6 @@ event_new(Config cfg, Actor a, Actor m)
     return (Actor)e;
 }
 
-ACTOR out_of_memory_error = { beh_halt, actor_match_method };  // "out of memory" failure reason
 void
 beh_config(Event e)
 {
@@ -239,10 +238,8 @@ root_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     TRACE(fprintf(stderr, "root_config_create: n_bytes=%d\n", (int)n_bytes));
     Actor a = ALLOC(n_bytes);
-    if (!a) { config_fail(cfg, e_no_mem); }
-    BEH(a) = beh;
-    a->match = actor_match_method;  // default to identity comparison
-    return a;
+    if (!a) { config_fail(cfg, e_nomem); }
+    return ACTOR_INIT(a, beh);
 }
 inline static void
 root_config_destroy(Config cfg, Actor victim)
@@ -277,9 +274,9 @@ config_dispatch(Config cfg)
     }
     return a;
 }
-static PAIR the_root_event_q = { { beh_deque, actor_match_method }, NIL, NIL };
+static PAIR the_root_event_q = { ACTOR_DECL(beh_deque), NIL, NIL };
 CONFIG the_root_config = {
-    { beh_config, actor_match_method }, 
+    ACTOR_DECL(beh_config), 
     root_config_fail, 
     root_config_create, 
     root_config_destroy, 
@@ -305,14 +302,12 @@ quota_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     struct quota_config * self = (struct quota_config *)cfg;
     n_bytes = (n_bytes + self->mask) & ~self->mask;  // round up to next quanta
-    TRACE(fprintf(stderr, "quota_config_create: n_bytes=%d\n", (int)n_bytes));
-    if (self->n_bytes < n_bytes) { config_fail(cfg, e_no_mem); }
+    DEBUG(fprintf(stderr, "quota_config_create: n_bytes=%d\n", (int)n_bytes));
+    if (self->n_bytes < n_bytes) { config_fail(cfg, e_nomem); }
     Actor a = (Actor)(self->free);
     self->free += n_bytes;
     self->n_bytes -= n_bytes;
-    BEH(a) = beh;
-    a->match = actor_match_method;  // default to identity comparison
-    return a;
+    return ACTOR_INIT(a, beh);
 }
 inline static void
 quota_config_destroy(Config cfg, Actor victim)
@@ -499,7 +494,7 @@ comb_true(Event e)
 /**
 CREATE true_oper WITH oper_true_beh
 **/
-ACTOR the_true_actor = { comb_true, actor_match_method };
+ACTOR the_true_actor = ACTOR_DECL(comb_true);
 
 /**
 LET oper_false_beh = \msg.[
@@ -537,14 +532,14 @@ comb_false(Event e)
 /**
 CREATE false_oper WITH oper_false_beh
 **/
-ACTOR the_false_actor = { comb_false, actor_match_method };
+ACTOR the_false_actor = ACTOR_DECL(comb_false);
 
 static void
 beh_ignore(Event e)
 {
     TRACE(fprintf(stderr, "beh_ignore{self=%p, msg=%p}\n", SELF(e), MSG(e)));
 }
-ACTOR the_ignore_actor = { beh_ignore, actor_match_method };
+ACTOR the_ignore_actor = ACTOR_DECL(beh_ignore);
 
 void
 beh_halt(Event e)
@@ -552,4 +547,7 @@ beh_halt(Event e)
     TRACE(fprintf(stderr, "beh_halt{event=%p}\n", e));
     halt("HALT!");
 }
-VALUE the_halt_actor = { { beh_halt, actor_match_method }, NOTHING };  // qualifies as both VALUE and SERIAL
+VALUE the_halt_actor = { ACTOR_DECL(beh_halt), NOTHING };  // qualifies as both VALUE and SERIAL
+
+ACTOR fail_reason_nomem = ACTOR_DECL(expr_value);  // "out of memory" failure reason
+ACTOR fail_reason_inval = ACTOR_DECL(expr_value);  // "invalid argument" failure reason
