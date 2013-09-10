@@ -57,14 +57,14 @@ deque_new(Config cfg)
 inline Actor
 deque_empty_p(Config cfg, Actor queue)
 {
-    if (beh_deque != BEH(queue)) { halt("deque_empty_p: deque required"); }
+    if (beh_deque != BEH(queue)) { config_fail(cfg, e_inval); }  // deque required
     Pair q = (Pair)queue;
     return ((q->h == NIL) ? a_true : a_false);
 }
 inline void
 deque_give(Config cfg, Actor queue, Actor item)
 {
-    if (beh_deque != BEH(queue)) { halt("deque_give: deque required"); }
+    if (beh_deque != BEH(queue)) { config_fail(cfg, e_inval); }  // deque required
     Pair q = (Pair)queue;
     Actor p = pair_new(cfg, item, NIL);
     if (q->h == NIL) {
@@ -78,8 +78,8 @@ deque_give(Config cfg, Actor queue, Actor item)
 inline Actor
 deque_take(Config cfg, Actor queue)
 {
-    if (deque_empty_p(cfg, queue) != a_false) { halt("deque_take from empty!"); }
-//    if (beh_deque != BEH(queue)) { halt("deque_take: deque required"); }
+    if (deque_empty_p(cfg, queue) != a_false) { config_fail(cfg, e_inval); }  // deque_take from empty
+//    if (beh_deque != BEH(queue)) { config_fail(cfg, e_inval); }  // deque required
     Pair q = (Pair)queue;
     Pair p = (Pair)(q->h);
     Actor item = p->h;
@@ -93,10 +93,10 @@ inline Actor
 dict_lookup(Config cfg, Actor dict, Actor key)
 {
     while (dict_empty_p(cfg, dict) == a_false) {
-        if (expr_env != BEH(dict)) { halt("dict_lookup: non-dict in chain"); }
+        if (expr_env != BEH(dict)) { config_fail(cfg, e_inval); }  // non-dict in chain
         Pair p = (Pair)dict;
         Actor a = p->h;
-        if (beh_pair != BEH(a)) { halt("dict_lookup: non-pair entry"); }
+        if (beh_pair != BEH(a)) { config_fail(cfg, e_inval); }  // non-pair entry
         Pair q = (Pair)a;
         if (actor_match(cfg, key, q->h) == a_true) {
             return q->t;  // value
@@ -213,7 +213,7 @@ beh_event(Event e)
 inline Actor
 event_new(Config cfg, Actor a, Actor m)
 {
-    if (beh_config != BEH(cfg)) { halt("event_new: config actor required"); }
+    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); }  // config actor required
     Event e = (Event)config_create(cfg, sizeof(EVENT), beh_event);
     e->sponsor = cfg;
     e->target = a;
@@ -255,7 +255,7 @@ root_config_send(Config cfg, Actor target, Actor msg)
 static inline Actor
 config_dequeue(Config cfg)
 {
-    if (beh_config != BEH(cfg)) { halt("config_dequeue: config actor required"); }
+    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); }  // config actor required
     if (deque_empty_p(cfg, cfg->events) != a_false) {
         TRACE(fprintf(stderr, "config_dequeue: <EMPTY>\n"));
         return NOTHING;
@@ -375,7 +375,7 @@ void
 beh_pair(Event e)
 {
     TRACE(fprintf(stderr, "beh_pair{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("beh_pair: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "beh_pair: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
@@ -428,7 +428,7 @@ void
 beh_deque(Event e)
 {
     TRACE(fprintf(stderr, "beh_deque{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("beh_deque: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "beh_deque: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
@@ -473,7 +473,7 @@ static void
 comb_true(Event e)
 {
     TRACE(fprintf(stderr, "comb_true{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("comb_true: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "comb_true: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_combine == BEH(r->req)) {  // (#comb, (expr, _), env)
@@ -511,7 +511,7 @@ static void
 comb_false(Event e)
 {
     TRACE(fprintf(stderr, "comb_false{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("comb_false: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "comb_false: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_combine == BEH(r->req)) {  // (#comb, (_, expr), env)
