@@ -152,7 +152,7 @@ ser_scope(Event e)  // SERIALIZED
         Actor value = p->t;
         TRACE(fprintf(stderr, "ser_scope: (#bind, %p, %p)\n", name, value));
         dict = dict_bind(SPONSOR(e), dict, name, value);
-//        actor_become(SELF(e), value_new(SPONSOR(e), ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
+//        actor_become(e, value_new(SPONSOR(e), ser_scope, PR(dict, parent)));  -- see next two lines for equivalent
         p = (Pair)STATE(SELF(e));  // (dict, parent)
         p->h = dict;  // WARNING! this directly manipulates the data in this behavior
         config_send(SPONSOR(e), ok, SELF(e));
@@ -991,10 +991,10 @@ act_both(Event e)  // SERIALIZED
     p = (Pair)MSG(e);
     if (p->h == k_head) {  // ($k_head, head)
         Actor head = p->t;
-        actor_become(SELF(e), value_new(SPONSOR(e), act_both_0, PR((Actor)cust, PR(head, k_tail))));
+        actor_become(e, value_new(SPONSOR(e), act_both_0, PR((Actor)cust, PR(head, k_tail))));
     } else if (p->h == k_tail) {  // ($k_tail, tail)
         Actor tail = p->t;
-        actor_become(SELF(e), value_new(SPONSOR(e), act_both_1, PR((Actor)cust, PR(k_head, tail))));
+        actor_become(e, value_new(SPONSOR(e), act_both_1, PR((Actor)cust, PR(k_head, tail))));
     } else {
         TRACE(fprintf(stderr, "act_both: FAIL!\n"));
         config_send(SPONSOR(e), fail, MSG(e));
@@ -1039,7 +1039,7 @@ act_par_0(Event e)  // SERIALIZED
     Actor k_tail = value_new(SPONSOR(e), val_tag, SELF(e));
     config_send(SPONSOR(e), head_expr, PR(PR(k_head, fail), req));
     config_send(SPONSOR(e), tail_expr, PR(PR(k_tail, fail), req));
-    actor_become(SELF(e), value_new(SPONSOR(e), act_both, PR((Actor)cust, PR(k_head, k_tail))));
+    actor_become(e, value_new(SPONSOR(e), act_both, PR((Actor)cust, PR(k_head, k_tail))));
 }
 /**
 LET par_expr_beh(head_expr, tail_expr) = \msg.[  # parallel evaluation

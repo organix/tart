@@ -157,18 +157,18 @@ extern Actor    dict_lookup(Config cfg, Actor dict, Actor key);
 extern Actor    dict_bind(Config cfg, Actor dict, Actor key, Actor value);
 
 extern Actor    fifo_new(Config cfg, size_t n);  // WARNING! n must be a power of 2
-extern Actor    fifo_empty_p(Actor q);
-extern Actor    fifo_give(Actor q, Actor item);
-extern Actor    fifo_take(Actor q);
+extern Actor    fifo_empty_p(Config cfg, Actor q);
+extern Actor    fifo_give(Config cfg, Actor q, Actor item);
+extern Actor    fifo_take(Config cfg, Actor q);
 
 extern Actor    actor_new(Config cfg, Action beh);
 extern Actor    value_new(Config cfg, Action beh, Any data);
 extern Actor    serial_with_value(Config cfg, Actor v);
 extern Actor    serial_new(Config cfg, Action beh, Any data);
-extern void     actor_become(Actor s, Actor v);
 extern Actor    actor_match_method(Config cfg, Actor this, Actor that);
 #define         actor_match(cfg, ptrn, value)   (((ptrn)->match)((cfg), (ptrn), (value)))
 
+extern void     actor_become(Event e, Actor v);
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
 #define         config_fail(cfg, reason)        (((cfg)->fail)((cfg), (reason)))

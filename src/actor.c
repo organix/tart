@@ -131,16 +131,16 @@ fifo_new(Config cfg, size_t n)  // WARNING! n must be a power of 2
     return (Actor)f;
 }
 inline Actor
-fifo_empty_p(Actor q)
+fifo_empty_p(Config cfg, Actor q)
 {
-    if (beh_fifo != BEH(q)) { halt("fifo_take: fifo required"); }
+    if (beh_fifo != BEH(q)) { config_fail(cfg, e_inval); }  // fifo required
     Fifo f = (Fifo)q;
     return (f->h == f->t) ? a_true : a_false;
 }
 inline Actor
-fifo_give(Actor q, Actor item)
+fifo_give(Config cfg, Actor q, Actor item)
 {
-    if (beh_fifo != BEH(q)) { halt("fifo_give: fifo required"); }
+    if (beh_fifo != BEH(q)) { config_fail(cfg, e_inval); }  // fifo required
     Fifo f = (Fifo)q;
     size_t h = f->h;
     size_t t = f->t;
@@ -153,9 +153,9 @@ fifo_give(Actor q, Actor item)
     return a_true;
 }
 inline Actor
-fifo_take(Actor q)
+fifo_take(Config cfg, Actor q)
 {
-    if (fifo_empty_p(q) == a_true) { halt("fifo_take from empty!"); }
+    if (fifo_empty_p(cfg, q) == a_true) { config_fail(cfg, e_inval); }  // fifo_take from empty!
     Fifo f = (Fifo)q;
     size_t h = f->h;
     Actor item = f->p[h];
@@ -188,12 +188,6 @@ serial_new(Config cfg, Action beh, Any data)  // create a "serialized" actor
 {
     return serial_with_value(cfg, value_new(cfg, beh, data));
 }
-inline void
-actor_become(Actor s, Actor v)
-{
-    if (act_serial != BEH(s)) { halt("actor_become: serialized actor required"); }
-    ((Serial)s)->beh_next = v;  // remember "behavior" for later commit
-}
 void
 act_serial(Event e)  // "serialized" actor behavior
 {
@@ -204,6 +198,13 @@ act_serial(Event e)  // "serialized" actor behavior
     s->beh_now = s->beh_next;  // commit behavior change (if any)
 }
 
+inline void
+actor_become(Event e, Actor v)
+{
+    if (act_serial != BEH(SELF(e))) { config_fail(SPONSOR(e), e_inval); }  // serialized actor required
+    Serial s = (Serial)SELF(e);
+    s->beh_next = v;  // remember "behavior" for later commit
+}
 void
 beh_event(Event e)
 {
@@ -545,7 +546,7 @@ void
 beh_halt(Event e)
 {
     TRACE(fprintf(stderr, "beh_halt{event=%p}\n", e));
-    halt("HALT!");
+    config_fail(SPONSOR(e), e_inval);  // HALT!
 }
 VALUE the_halt_actor = { ACTOR_DECL(beh_halt), NOTHING };  // qualifies as both VALUE and SERIAL
 
