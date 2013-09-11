@@ -190,7 +190,7 @@ void
 expr_value(Event e)
 {
     TRACE(fprintf(stderr, "expr_value{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("expr_value: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "expr_value: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
@@ -227,7 +227,7 @@ void
 expr_env_empty(Event e)
 {
     TRACE(fprintf(stderr, "expr_env_empty{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("expr_env_empty: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "expr_env_empty: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
@@ -258,7 +258,7 @@ void
 expr_env(Event e)
 {
     TRACE(fprintf(stderr, "expr_env{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("expr_env: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "expr_env: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_lookup == BEH(r->req)) {  // (#lookup, _)
@@ -295,7 +295,7 @@ static void
 ptrn_skip(Event e)
 {
     TRACE(fprintf(stderr, "ptrn_skip{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("ptrn_skip: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "ptrn_skip: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_match == BEH(r->req)) {  // (#match, _, env)
@@ -325,7 +325,7 @@ ptrn_bind(Event e)
 {
     TRACE(fprintf(stderr, "ptrn_bind{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor name = DATA(SELF(e));  // (name)
-    if (val_request != BEH(MSG(e))) { halt("ptrn_bind: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "ptrn_bind: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_match == BEH(r->req)) {  // (#match, value, env)
@@ -350,7 +350,7 @@ void
 expr_name(Event e)
 {
     TRACE(fprintf(stderr, "expr_name{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("expr_name: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "expr_name: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, env)
@@ -373,11 +373,11 @@ beh_eval_body(Event e)
 {
     TRACE(fprintf(stderr, "beh_eval_body{self=%p, msg=%p}\n", SELF(e), MSG(e)));
     Actor a = DATA(SELF(e));  // ((ok, fail), body)
-    if (beh_pair != BEH(a)) { halt("beh_eval_body: (cust, body) required"); }
+    if (beh_pair != BEH(a)) { config_fail(SPONSOR(e), e_inval); }  // (cust, body) required
     Pair p = (Pair)a;
     Actor body = p->t;
     a = p->h;
-    if (beh_pair != BEH(a)) { halt("beh_eval_body: (ok, fail) required"); }
+    if (beh_pair != BEH(a)) { config_fail(SPONSOR(e), e_inval); }  // (ok, fail) required
     Pair cust = (Pair)a;
     Actor ok = cust->h;
     Actor fail = cust->t;
@@ -393,7 +393,7 @@ val_expect(Event e)
     Actor actual = MSG(e);
     if (expect != actual) {
         TRACE(fprintf(stderr, "val_expect: %p != %p\n", expect, actual));
-        halt("unexpected");
+        config_fail(SPONSOR(e), e_inval);  // unexpected message
     }
 }
 #define a_empty_env (a_empty_dict)

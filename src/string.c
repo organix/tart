@@ -53,7 +53,7 @@ static void
 beh_cache(Event e)
 {
     TRACE(fprintf(stderr, "beh_cache{event=%p}\n", e));
-    halt("HALT!");
+    beh_halt(e);
 }
 static Actor
 cache_intern(Config cfg, struct cache * cache, Actor value)
@@ -144,7 +144,7 @@ pstring_new(Config cfg, char * p, int n)
 inline Actor
 string_length_method(Config cfg, Actor this)
 {
-    if (beh_string != BEH(this)) { halt("string_length_method: string required"); }
+    if (beh_string != BEH(this)) { config_fail(cfg, e_inval); }  // string required
     String s = (String)this;
     if (s->n == a_minus_one) {  // unknown length
         int n = 0;
@@ -172,7 +172,7 @@ string_match_method(Config cfg, Actor this, Actor that)
     if (this == that) {
         return a_true;
     }
-    if (beh_string != BEH(this)) { halt("string_match_method: string required"); }
+    if (beh_string != BEH(this)) { config_fail(cfg, e_inval); }  // string required
     String s = (String)this;
     if (beh_string == BEH(that)) {
         String t = (String)that;
@@ -201,11 +201,11 @@ Actor
 string_diff_method(Config cfg, Actor this, Actor that)
 // (this < that) -> <0, (this == that) -> 0, (this > that) -> >0.
 {
-    if (beh_string != BEH(this)) { halt("string_match_method: string required"); }
+    if (beh_string != BEH(this)) { config_fail(cfg, e_inval); }  // string required
     String s = (String)this;
     Actor n = string_length_method(cfg, this);
     int i = ((Integer)(n))->i;
-    if (beh_string != BEH(that)) { halt("string_match_method: string required"); }
+    if (beh_string != BEH(that)) { config_fail(cfg, e_inval); }  // string required
     String t = (String)that;
     Actor m = string_length_method(cfg, that);
     int j = ((Integer)(m))->i;
@@ -248,7 +248,7 @@ void
 beh_string(Event e)
 {
     TRACE(fprintf(stderr, "beh_string{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    if (val_request != BEH(MSG(e))) { halt("beh_string: request msg required"); }
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
     Request r = (Request)MSG(e);
     TRACE(fprintf(stderr, "beh_string: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)

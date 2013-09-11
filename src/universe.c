@@ -38,7 +38,7 @@ static inline void
 beh_fail(Event e)
 {
     TRACE(fprintf(stderr, "beh_fail{self=%p, msg=%p}\n", SELF(e), MSG(e)));
-    halt("FAIL!");
+    config_fail(SPONSOR(e), e_inval);  // FAIL!
 }
 ACTOR fail_actor = ACTOR_DECL(beh_fail);
 
@@ -1219,7 +1219,7 @@ val_expect(Event e)
     Actor actual = MSG(e);
     if (expect != actual) {
         TRACE(fprintf(stderr, "val_expect: %p != %p\n", expect, actual));
-        halt("unexpected");
+        config_fail(SPONSOR(e), e_inval);  // unexpected message
     }
 }
 void

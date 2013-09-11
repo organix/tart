@@ -435,7 +435,7 @@ number_match_method(Config cfg, Actor this, Actor that)
     if (this == that) {
         return a_true;
     }
-    if (beh_integer != BEH(this)) { halt("number_match_method: number required"); }
+    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
@@ -449,7 +449,7 @@ number_match_method(Config cfg, Actor this, Actor that)
 inline Actor
 number_diff_method(Config cfg, Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { halt("number_diff_method: number required"); }
+    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
@@ -461,7 +461,7 @@ number_diff_method(Config cfg, Actor this, Actor that)
 inline Actor
 number_plus_method(Config cfg, Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { halt("number_plus_method: number required"); }
+    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
@@ -473,7 +473,7 @@ number_plus_method(Config cfg, Actor this, Actor that)
 inline Actor
 number_times_method(Config cfg, Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { halt("number_times_method: number required"); }
+    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
@@ -539,7 +539,7 @@ void
 beh_integer(Event e)
 {
     TRACE(fprintf(stderr, "beh_integer{event=%p}\n", e));
-    halt("HALT!");
+    beh_halt(e);
 }
 
 void
