@@ -250,10 +250,10 @@ root_config_destroy(Config cfg, Actor victim)
     FREE(victim);
 }
 inline static void
-root_config_send(Config cfg, Actor target, Actor msg)
+root_config_send(Event e, Actor target, Actor msg)
 {
     TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
-    config_enqueue(cfg, event_new(cfg, target, msg));
+    deque_give(SPONSOR(e), e->events, event_new(SPONSOR(e), target, msg));
 }
 static inline Actor
 config_dequeue(Config cfg)
@@ -266,6 +266,17 @@ config_dequeue(Config cfg)
     Actor a = deque_take(cfg, cfg->events);
     return a;
 }
+static inline Actor
+effects_events_dequeue(Config cfg, Event e) 
+{
+    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); } // config actor required
+    if (deque_empty_p(cfg, e->events) != a_false) {
+        TRACE(fprintf(stderr, "effects_events_dequeue: <EMPTY>\n"));
+        return NOTHING;
+    }
+    Actor a = deque_take(cfg, e->events);
+    return a;
+}
 Actor
 config_dispatch(Config cfg)
 {
@@ -274,8 +285,20 @@ config_dispatch(Config cfg)
         Event e = (Event)a;
         TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
         (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
+        config_apply_effects(cfg, e);
     }
     return a;
+}
+void
+config_apply_effects(Config cfg, Event e)
+{
+    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); } // config actor required
+    if (beh_event != BEH(e)) { config_fail(cfg, e_inval); } // event actor required
+    Actor e_fx;
+    while ((e_fx = effects_events_dequeue(cfg, e)) != NOTHING) {
+        TRACE(fprintf(stderr, "config_dispatch: applying effect event=%p\n", e_fx));
+        config_enqueue(cfg, e_fx);        
+    }
 }
 static PAIR the_root_event_q = { ACTOR_DECL(beh_deque), NIL, NIL };
 CONFIG the_root_config = {
@@ -318,10 +341,10 @@ quota_config_destroy(Config cfg, Actor victim)
     // quota is not re-usable in this implementation
 }
 inline static void
-quota_config_send(Config cfg, Actor target, Actor msg)
+quota_config_send(Event e, Actor target, Actor msg)
 {
     TRACE(fprintf(stderr, "quota_config_send: actor=%p, msg=%p\n", target, msg));
-    config_enqueue(cfg, event_new(cfg, target, msg));
+    deque_give(SPONSOR(e), e->events, event_new(SPONSOR(e), target, msg));
 }
 inline Config
 quota_config_new(Config sponsor, size_t n_bytes)
@@ -354,7 +377,7 @@ beh_pair_0(Event e)
     ReqMatch rm = (ReqMatch)r->req;
     Actor tail = rm->env;  // extract hijacked target
     rm->env = (Actor)MSG(e);  // replace with extended environment
-    config_send(SPONSOR(e), tail, (Actor)r);
+    config_send(e, tail, (Actor)r);
 }
 /**
 LET pair_beh(head, tail) = \msg.[
@@ -383,32 +406,32 @@ beh_pair(Event e)
     TRACE(fprintf(stderr, "beh_pair: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
         TRACE(fprintf(stderr, "beh_pair: (#eval, _)\n"));
-        config_send(SPONSOR(e), r->ok, SELF(e));
+        config_send(e, r->ok, SELF(e));
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "beh_pair: (#match, %p, %p)\n", rm->value, rm->env));
         if (SELF(e) == rm->value) {
-            config_send(SPONSOR(e), r->ok, rm->env);
+            config_send(e, r->ok, rm->env);
         } else if (beh_pair == BEH(rm->value)) {
             Pair p = (Pair)SELF(e);
             Pair q = (Pair)rm->value;
             Actor ok = value_new(SPONSOR(e), beh_pair_0, req_match_new(SPONSOR(e), r->ok, r->fail, q->t, p->t));
-            config_send(SPONSOR(e), p->h, req_match_new(SPONSOR(e), ok, r->fail, q->h, rm->env));
+            config_send(e, p->h, req_match_new(SPONSOR(e), ok, r->fail, q->h, rm->env));
         } else {
             TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         }
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
         TRACE(fprintf(stderr, "beh_pair: (#read) -> (%p, %p)\n", p->h, p->t));
-        config_send(SPONSOR(e), r->ok, (Actor)list_pop(SPONSOR(e), SELF(e)));
+        config_send(e, r->ok, (Actor)list_pop(SPONSOR(e), SELF(e)));
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_pair: (#write, %p)\n", rw->value));
-        config_send(SPONSOR(e), r->ok, list_push(SPONSOR(e), SELF(e), rw->value));
+        config_send(e, r->ok, list_push(SPONSOR(e), SELF(e), rw->value));
     } else {
         TRACE(fprintf(stderr, "beh_pair: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, (Actor)e);
+        config_send(e, r->fail, (Actor)e);
     }
 }
 
@@ -436,28 +459,28 @@ beh_deque(Event e)
     TRACE(fprintf(stderr, "beh_deque: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
         TRACE(fprintf(stderr, "beh_deque: (#eval, _)\n"));
-        config_send(SPONSOR(e), r->ok, SELF(e));
+        config_send(e, r->ok, SELF(e));
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "beh_deque: (#match, %p, %p)\n", rm->value, rm->env));
         if (SELF(e) == rm->value) {
-            config_send(SPONSOR(e), r->ok, rm->env);
+            config_send(e, r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "beh_deque: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         }
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
         TRACE(fprintf(stderr, "beh_deque: (#read) -> (%p, %p)\n", p->h, p->t));
-        config_send(SPONSOR(e), r->ok, PR(deque_take(SPONSOR(e), SELF(e)), SELF(e)));
+        config_send(e, r->ok, PR(deque_take(SPONSOR(e), SELF(e)), SELF(e)));
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_deque: (#write, %p)\n", rw->value));
         deque_give(SPONSOR(e), SELF(e), rw->value);
-        config_send(SPONSOR(e), r->ok, SELF(e));
+        config_send(e, r->ok, SELF(e));
     } else {
         TRACE(fprintf(stderr, "beh_deque: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, (Actor)e);
+        config_send(e, r->fail, (Actor)e);
     }
 }
 
@@ -485,10 +508,10 @@ comb_true(Event e)
         if (beh_pair == BEH(rc->opnd)) {
             Pair p = (Pair)rc->opnd;
             Actor expr = p->h;
-            config_send(SPONSOR(e), expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
+            config_send(e, expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
         } else {
             TRACE(fprintf(stderr, "comb_true: opnd must be a Pair\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         }
     } else {
         expr_value(e);  // delegate
@@ -523,10 +546,10 @@ comb_false(Event e)
         if (beh_pair == BEH(rc->opnd)) {
             Pair p = (Pair)rc->opnd;
             Actor expr = p->t;
-            config_send(SPONSOR(e), expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
+            config_send(e, expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
         } else {
             TRACE(fprintf(stderr, "comb_false: opnd must be a Pair\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         }
     } else {
         expr_value(e);  // delegate

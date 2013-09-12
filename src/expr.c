@@ -195,19 +195,19 @@ expr_value(Event e)
     TRACE(fprintf(stderr, "expr_value: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
         TRACE(fprintf(stderr, "expr_value: (#eval, _)\n"));
-        config_send(SPONSOR(e), r->ok, SELF(e));
+        config_send(e, r->ok, SELF(e));
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "expr_value: (#match, %p, %p)\n", rm->value, rm->env));
         if (SELF(e) == rm->value) {
-            config_send(SPONSOR(e), r->ok, rm->env);
+            config_send(e, r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "expr_value: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         }
     } else {
         TRACE(fprintf(stderr, "expr_value: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, (Actor)e);
+        config_send(e, r->fail, (Actor)e);
     }
 }
 
@@ -234,7 +234,7 @@ expr_env_empty(Event e)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env_empty: (#bind, %p -> %p)\n", rb->key, rb->value));
         Actor dict = dict_bind(SPONSOR(e), SELF(e), rb->key, rb->value);
-        config_send(SPONSOR(e), r->ok, dict);
+        config_send(e, r->ok, dict);
     } else {
         expr_value(e);  // delegate
     }
@@ -268,15 +268,15 @@ expr_env(Event e)
         TRACE(fprintf(stderr, "expr_env: (#lookup, %p) -> %p\n", rl->key, value));
         if (value == NOTHING) {
             TRACE(fprintf(stderr, "expr_env: FAIL!\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         } else {
-            config_send(SPONSOR(e), r->ok, value);
+            config_send(e, r->ok, value);
         }
     } else if (val_req_bind == BEH(r->req)) {  // (#bind, key, value)
         ReqBind rb = (ReqBind)r->req;
         TRACE(fprintf(stderr, "expr_env: (#bind, %p -> %p)\n", rb->key, rb->value));
         Actor dict = dict_bind(SPONSOR(e), SELF(e), rb->key, rb->value);
-        config_send(SPONSOR(e), r->ok, dict);
+        config_send(e, r->ok, dict);
     } else {
         expr_value(e);  // delegate
     }
@@ -301,7 +301,7 @@ ptrn_skip(Event e)
     if (val_req_match == BEH(r->req)) {  // (#match, _, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "ptrn_skip: (#match, %p, %p)\n", rm->value, rm->env));
-        config_send(SPONSOR(e), r->ok, rm->env);
+        config_send(e, r->ok, rm->env);
     } else {
         expr_value(e);  // delegate
     }
@@ -331,7 +331,7 @@ ptrn_bind(Event e)
     if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "ptrn_bind: (#match, %p, %p)\n", rm->value, rm->env));
-        config_send(SPONSOR(e), rm->env, req_bind_new(SPONSOR(e), r->ok, r->fail, name, rm->value));
+        config_send(e, rm->env, req_bind_new(SPONSOR(e), r->ok, r->fail, name, rm->value));
     } else {
         expr_value(e);  // delegate
     }
@@ -356,10 +356,10 @@ expr_name(Event e)
     if (val_req_eval == BEH(r->req)) {  // (#eval, env)
         ReqEval re = (ReqEval)r->req;
         TRACE(fprintf(stderr, "expr_name: (#eval, %p)\n", re->env));
-        config_send(SPONSOR(e), re->env, req_lookup_new(SPONSOR(e), r->ok, r->fail, SELF(e)));
+        config_send(e, re->env, req_lookup_new(SPONSOR(e), r->ok, r->fail, SELF(e)));
     } else {
         TRACE(fprintf(stderr, "expr_name: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, (Actor)e);
+        config_send(e, r->fail, (Actor)e);
     }
 }
 
@@ -383,7 +383,7 @@ beh_eval_body(Event e)
     Actor fail = cust->t;
     Actor env = MSG(e);  // (env)
     TRACE(fprintf(stderr, "beh_eval_body: ok=%p, fail=%p, body=%p, env=%p\n", ok, fail, body, env));
-    config_send(SPONSOR(e), body, req_eval_new(SPONSOR(e), ok, fail, env));
+    config_send(e, body, req_eval_new(SPONSOR(e), ok, fail, env));
 }
 static inline void
 val_expect(Event e)
@@ -404,7 +404,7 @@ test_expr()
     Actor cust;
 
     TRACE(fprintf(stderr, "---- test_expr ----\n"));
-    Config cfg = quota_config_new(a_root_config, 4000);
+    Config cfg = quota_config_new(a_root_config, 8000);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_empty_env = %p\n", a_empty_env));
     /* empty environment evaluates to itself */
@@ -412,13 +412,17 @@ test_expr()
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     cust = value_new(cfg, val_expect, a_empty_env);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    config_send(cfg, expr, req_eval_new(cfg, cust, a_halt, a_empty_env));
+    // bootstrapping event to provide SPONSOR(e) only
+    Event boot_e = (Event)event_new(cfg, NOTHING, NOTHING);
+    config_send(boot_e, expr, req_eval_new(cfg, cust, a_halt, a_empty_env));
+    config_apply_effects(cfg, boot_e);
     /* the configuration evaluates to itself */
     expr = (Actor)cfg;
     TRACE(fprintf(stderr, "expr = %p\n", expr));
     cust = value_new(cfg, val_expect, cfg);
     TRACE(fprintf(stderr, "cust = %p\n", cust));
-    config_send(cfg, expr, req_eval_new(cfg, cust, a_halt, a_empty_env));
+    config_send(boot_e, expr, req_eval_new(cfg, cust, a_halt, a_empty_env));
+    config_apply_effects(cfg, boot_e);
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;
@@ -430,7 +434,8 @@ test_expr()
     TRACE(fprintf(stderr, "s_x = %p\n", s_x));
     expr = value_new(cfg, beh_eval_body, pair_new(cfg, pair_new(cfg, cust, a_halt), s_x));
     TRACE(fprintf(stderr, "expr = %p\n", expr));
-    config_send(cfg, a_empty_dict, req_bind_new(cfg, expr, a_halt, s_x, (Actor)cfg));
+    config_send(boot_e, a_empty_dict, req_bind_new(cfg, expr, a_halt, s_x, (Actor)cfg));
+    config_apply_effects(cfg, boot_e);
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;
@@ -443,8 +448,10 @@ test_expr()
     Actor q = pair_new(cfg, a_true, a_false);
     TRACE(fprintf(stderr, "q = %p\n", q));
     if (p == q) { halt("expected p != q"); }
-    config_send(cfg, p, req_match_new(cfg, cust, a_halt, p, a_empty_env));  // match p to itself
-    config_send(cfg, q, req_match_new(cfg, cust, a_halt, p, a_empty_env));  // match p to q
+    config_send(boot_e, p, req_match_new(cfg, cust, a_halt, p, a_empty_env));  // match p to itself
+    config_apply_effects(cfg, boot_e);
+    config_send(boot_e, q, req_match_new(cfg, cust, a_halt, p, a_empty_env));  // match p to q
+    config_apply_effects(cfg, boot_e);
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;

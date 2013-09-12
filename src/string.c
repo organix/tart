@@ -253,15 +253,15 @@ beh_string(Event e)
     TRACE(fprintf(stderr, "beh_string: ok=%p, fail=%p\n", r->ok, r->fail));
     if (val_req_eval == BEH(r->req)) {  // (#eval, _)
         TRACE(fprintf(stderr, "beh_string: (#eval, _)\n"));
-        config_send(SPONSOR(e), r->ok, SELF(e));
+        config_send(e, r->ok, SELF(e));
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "beh_string: (#match, %p, %p)\n", rm->value, rm->env));
         if (string_eqv_method(SPONSOR(e), SELF(e), rm->value) == a_true) {
-            config_send(SPONSOR(e), r->ok, rm->env);
+            config_send(e, r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "beh_string: MISMATCH!\n"));
-            config_send(SPONSOR(e), r->fail, (Actor)e);
+            config_send(e, r->fail, (Actor)e);
         }
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         String s = (String)SELF(e);
@@ -269,17 +269,17 @@ beh_string(Event e)
             char *p = s->p;
             Actor c = integer_new(SPONSOR(e), (int)*p++);
             TRACE(fprintf(stderr, "beh_string: (#read) -> (%d, @%p)\n", ((Integer)c)->i, p));
-            config_send(SPONSOR(e), r->ok, PR(c, cstring_new(SPONSOR(e), p)));
+            config_send(e, r->ok, PR(c, cstring_new(SPONSOR(e), p)));
         } else {
             char *p = s->p;
             Actor c = integer_new(SPONSOR(e), (int)*p++);
             int n = ((Integer)(s->n))->i - 1;
             TRACE(fprintf(stderr, "beh_string: (#read) -> (%d, %d@%p)\n", ((Integer)c)->i, n, p));
-            config_send(SPONSOR(e), r->ok, PR(c, pstring_new(SPONSOR(e), p, n)));
+            config_send(e, r->ok, PR(c, pstring_new(SPONSOR(e), p, n)));
         }
     } else {
         TRACE(fprintf(stderr, "beh_string: FAIL!\n"));
-        config_send(SPONSOR(e), r->fail, (Actor)e);
+        config_send(e, r->fail, (Actor)e);
     }
 }
 

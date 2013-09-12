@@ -137,7 +137,7 @@ struct config {
     void        (*fail)(Config cfg, Actor reason);  // error reporting procedure
     Actor       (*create)(Config cfg, size_t n_bytes, Action beh);  // actor creation procedure
     void        (*destroy)(Config cfg, Actor victim);  // reclaim actor resources
-    void        (*send)(Config cfg, Actor target, Actor msg);  // event creation procedure
+    void        (*send)(Event e, Actor target, Actor msg);  // event creation procedure
     Actor       events;  // queue of messages in-transit
 };
 
@@ -177,8 +177,9 @@ extern Actor    event_new(Config cfg, Actor a, Actor msg);
 #define         config_create(cfg, size, beh)   (((cfg)->create)((cfg), (size), (beh)))
 #define         config_destroy(cfg, victim)     (((cfg)->destroy)((cfg), (victim)))
 #define         config_enqueue(cfg, e)          (deque_give((cfg), (cfg)->events, (e)))
-#define         config_send(cfg, target, msg)   (((cfg)->send)((cfg), (target), (msg)))
+#define         config_send(e, target, msg)     (((SPONSOR(e))->send)((e), (target), (msg)))
 extern Actor    config_dispatch(Config cfg);
+extern void     config_apply_effects(Config cfg, Event e);
 
 extern Config   quota_config_new(Config sponsor, size_t n_bytes);
 
