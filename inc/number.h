@@ -48,7 +48,7 @@ struct integer {
 extern INTEGER small_integers[2*N_SMALL + N_SMALL + 1];
 
 extern Actor    integer_new(Config cfg, int i);
-extern Actor    number_match_method(Config cfg, Actor this, Actor that);
+extern Actor    number_eqv_method(Config cfg, Actor this, Actor that);
 extern Actor    number_diff_method(Config cfg, Actor this, Actor that);
 extern Actor    number_plus_method(Config cfg, Actor this, Actor that);
 extern Actor    number_times_method(Config cfg, Actor this, Actor that);

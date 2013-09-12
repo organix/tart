@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "number.h"
 
 inline Actor
-actor_match_method(Config cfg, Actor this, Actor that)
+actor_eqv_method(Config cfg, Actor this, Actor that)
 {
     return (this == that) ? a_true : a_false;
 }
@@ -98,7 +98,7 @@ dict_lookup(Config cfg, Actor dict, Actor key)
         Actor a = p->h;
         if (beh_pair != BEH(a)) { config_fail(cfg, e_inval); }  // non-pair entry
         Pair q = (Pair)a;
-        if (actor_match(cfg, key, q->h) == a_true) {
+        if (actor_eqv(cfg, key, q->h) == a_true) {
             return q->t;  // value
         }
         dict = p->t;  // next

@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include "number.h"
 
-#define INTEGER_ACTOR_DECL(beh)     { (beh), number_match_method }
+#define INTEGER_ACTOR_DECL(beh)     { (beh), number_eqv_method }
 INTEGER small_integers[2*N_SMALL + N_SMALL + 1] = {
     { INTEGER_ACTOR_DECL(beh_integer), -128 },
     { INTEGER_ACTOR_DECL(beh_integer), -127 },
@@ -424,13 +424,13 @@ integer_new(Config cfg, int i)
         return ((Actor)(&small_integers[N_SMALL + i]));
     }
     Integer n = (Integer)config_create(cfg, sizeof(INTEGER), beh_integer);
-    n->_act.match = number_match_method;  // override match procedure
+    n->_act.eqv = number_eqv_method;  // override eqv procedure
     n->i = i;
     return (Actor)n;
 }
 
 Actor
-number_match_method(Config cfg, Actor this, Actor that)
+number_eqv_method(Config cfg, Actor this, Actor that)
 {
     if (this == that) {
         return a_true;
@@ -570,7 +570,7 @@ test_number()
     TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
     a = integer_new(cfg, 0);
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (number_match_method(cfg, a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
+    if (number_eqv_method(cfg, a, a_zero) != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
     a = number_plus_method(cfg, a, a_one);
     if (a_one != a) { halt("expected a_one == a"); }
     a = number_diff_method(cfg, a, a_two);
@@ -590,7 +590,7 @@ test_number()
     m = (Integer)b;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (n->i != m->i) { halt("expected n->i == m->i"); }
-    if (number_match_method(cfg, a, b) != a_true) { halt("expected number_match_method(a, b) == a_true"); }
+    if (number_eqv_method(cfg, a, b) != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
 /*
 */
     a = integer_new(cfg, N_SMALL);

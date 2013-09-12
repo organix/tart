@@ -116,7 +116,7 @@ cache_intern(Config cfg, struct cache * cache, Actor value)
 static struct cache string_cache = { { beh_cache }, 0, 0, string_diff_method, sizeof(STRING), NULL };
 */
 
-#define STRING_ACTOR_DECL(beh)     { (beh), string_match_method }
+#define STRING_ACTOR_DECL(beh)     { (beh), string_eqv_method }
 STRING the_empty_string_actor = { STRING_ACTOR_DECL(beh_string), "", a_zero };
 
 inline Actor
@@ -124,7 +124,7 @@ cstring_new(Config cfg, char * p)
 {
     if (*p == '\0') { return a_empty_string; }
     String s = (String)config_create(cfg, sizeof(STRING), beh_string);
-    s->_act.match = string_match_method;  // override match procedure
+    s->_act.eqv = string_eqv_method;  // override eqv procedure
     s->p = p;  // must have '\0' terminator
     s->n = a_minus_one;  // unknown length
     return (Actor)s;
@@ -135,7 +135,7 @@ pstring_new(Config cfg, char * p, int n)
 {
     if (n <= 0) { return a_empty_string; }
     String s = (String)config_create(cfg, sizeof(STRING), beh_string);
-    s->_act.match = string_match_method;  // override match procedure
+    s->_act.eqv = string_eqv_method;  // override eqv procedure
     s->p = p;  // may, or may not, have '\0' terminator
     s->n = integer_new(cfg, n);  // pre-defined length
     return (Actor)s;
@@ -167,7 +167,7 @@ string_intern_method(Config cfg, Actor this)  // return the canonical String ins
 */
 
 Actor
-string_match_method(Config cfg, Actor this, Actor that)
+string_eqv_method(Config cfg, Actor this, Actor that)
 {
     if (this == that) {
         return a_true;
@@ -181,7 +181,7 @@ string_match_method(Config cfg, Actor this, Actor that)
         }
         Actor n = string_length_method(cfg, this);
         Actor m = string_length_method(cfg, that);
-        if (number_match_method(cfg, n, m) != a_true) {
+        if (actor_eqv(cfg, n, m) != a_true) {
             return a_false;
         }
         int i = ((Integer)(n))->i;
@@ -257,7 +257,7 @@ beh_string(Event e)
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "beh_string: (#match, %p, %p)\n", rm->value, rm->env));
-        if (string_match_method(SPONSOR(e), SELF(e), rm->value) == a_true) {
+        if (string_eqv_method(SPONSOR(e), SELF(e), rm->value) == a_true) {
             config_send(SPONSOR(e), r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "beh_string: MISMATCH!\n"));
@@ -296,7 +296,7 @@ test_string()
     TRACE(fprintf(stderr, "a_empty_string = %p\n", a_empty_string));
     a = string_length_method(cfg, a_empty_string);
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (number_match_method(cfg, a, a_zero) != a_true) { halt("expected number_match_method(a, a_zero) == a_true"); }
+    if (actor_eqv(cfg, a, a_zero) != a_true) { halt("expected actor_eqv(a, a_zero) == a_true"); }
     n = (Integer)a;
     if (n->i != 0) { halt("expected n->i == 0"); }
     s = (String)a_empty_string;
@@ -315,7 +315,7 @@ test_string()
     t = (String)b;
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
-    if (string_match_method(cfg, a, b) != a_true) { halt("expected string_match_method(a, b) == a_true"); }
+    if (string_eqv_method(cfg, a, b) != a_true) { halt("expected string_eqv_method(a, b) == a_true"); }
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
 /*

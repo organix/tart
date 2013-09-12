@@ -33,12 +33,12 @@ THE SOFTWARE.
 
 /**
 Request [*|*|*|*|*]
-         | | | | +------> [*|*|*|*] ReqCall
-         | | | +-> fail    | | | +--> parameter
-         | | +-> ok        | | +--> selector
-         | +-> match()     | +-> match()
-         V                 V
-      val_request       val_req_call
+         | | | | +-----> [*|*|*|*] ReqCall
+         | | | +-> fail   | | | +--> parameter
+         | | +-> ok       | | +--> selector
+         | +-> eqv()      | +-> eqv()
+         V                V
+      val_request      val_req_call
 **/
 
 typedef struct request REQUEST, *Request;

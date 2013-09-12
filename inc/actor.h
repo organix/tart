@@ -32,28 +32,28 @@ THE SOFTWARE.
 
 /**
 Actor  [*|*|...]
-        | +--> match()
+        | +--> eqv()
         V
        BEH
 
 Value  [*|*|*]
         | | +--> DATA
-        | +--> match()
+        | +--> eqv()
         V
        CODE
 
-Serial [*|*|*|*]-------+
+Serial [*|*|*|*]------+
         | | |          V
-        | | +-------> [*|*]
-        | +-> match()  |
-        V              | +--> STATE
-   act_serial          V
-                      STRATEGY
+        | | +------> [*|*]
+        | +-> eqv()   |
+        V             | +--> STATE
+   act_serial         V
+                     STRATEGY
 
 Pair   [*|*|*|*]
         | | | +--> tail
         | | +--> head
-        | +--> match()
+        | +--> eqv()
         V
      beh_pair
 **/
@@ -81,8 +81,8 @@ typedef void (*Action)(Event e);
 #define STATE(s)    DATA(((Serial)(s))->beh_now)
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
 
-#define ACTOR_INIT(a,beh)   ( ((a)->match = actor_match_method), (BEH(a) = (beh)), (a) )
-#define ACTOR_DECL(beh)     { (beh), actor_match_method }
+#define ACTOR_INIT(a,beh)   ( ((a)->eqv = actor_eqv_method), (BEH(a) = (beh)), (a) )
+#define ACTOR_DECL(beh)     { (beh), actor_eqv_method }
 
 #define a_root_config (&the_root_config)
 
@@ -95,7 +95,7 @@ typedef void (*Action)(Event e);
 
 struct actor {
     Action      beh;
-    Actor       (*match)(Config cfg, Actor pattern, Actor value);  // polymorphic value matching (pattern == self)
+    Actor       (*eqv)(Config cfg, Actor pattern, Actor value);  // polymorphic equivalence relation
 };
 
 struct pair {
@@ -165,8 +165,8 @@ extern Actor    actor_new(Config cfg, Action beh);
 extern Actor    value_new(Config cfg, Action beh, Any data);
 extern Actor    serial_with_value(Config cfg, Actor v);
 extern Actor    serial_new(Config cfg, Action beh, Any data);
-extern Actor    actor_match_method(Config cfg, Actor this, Actor that);
-#define         actor_match(cfg, ptrn, value)   (((ptrn)->match)((cfg), (ptrn), (value)))
+extern Actor    actor_eqv_method(Config cfg, Actor this, Actor that);
+#define         actor_eqv(cfg, this, that)   (((this)->eqv)((cfg), (this), (that)))
 
 extern void     actor_become(Event e, Actor v);
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
