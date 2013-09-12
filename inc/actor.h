@@ -128,6 +128,8 @@ struct event {
     Config      sponsor;  // sponsor configuration
     Actor       target;  // target actor
     Actor       message;  // message to deliver
+    Actor       actors;  // effects: newly created actors
+    Actor       events;  // effects: newly created events
 };
 
 struct config {
