@@ -255,6 +255,18 @@ root_config_send(Event e, Actor target, Actor msg)
     TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
     deque_give(SPONSOR(e), e->events, event_new(SPONSOR(e), target, msg));
 }
+inline static Actor
+root_config_event_new(Event e, Actor target, Actor msg)
+{
+    TRACE(fprintf(stderr, "config_event_new: actor=%p, msg=%p\n", target, msg));
+    Event ne = (Event)config_create(SPONSOR(e), sizeof(EVENT), beh_event);
+    ne->sponsor = SPONSOR(e);
+    ne->target = target;
+    ne->message = msg;
+    ne->actors = deque_new(SPONSOR(e));
+    ne->events = deque_new(SPONSOR(e));
+    return (Actor)ne;
+}
 static inline Actor
 config_dequeue(Config cfg)
 {
@@ -307,6 +319,7 @@ CONFIG the_root_config = {
     root_config_create, 
     root_config_destroy, 
     root_config_send, 
+    root_config_event_new,
     ((Actor)&the_root_event_q)
 };
 
@@ -346,6 +359,18 @@ quota_config_send(Event e, Actor target, Actor msg)
     TRACE(fprintf(stderr, "quota_config_send: actor=%p, msg=%p\n", target, msg));
     deque_give(SPONSOR(e), e->events, event_new(SPONSOR(e), target, msg));
 }
+inline static Actor 
+quota_config_event_new(Event e, Actor target, Actor msg)
+{
+    TRACE(fprintf(stderr, "config_event_new: actor=%p, msg=%p\n", target, msg));
+    Event ne = (Event)config_create(SPONSOR(e), sizeof(EVENT), beh_event);
+    ne->sponsor = SPONSOR(e);
+    ne->target = target;
+    ne->message = msg;
+    ne->actors = deque_new(SPONSOR(e));
+    ne->events = deque_new(SPONSOR(e));
+    return (Actor)ne;
+}
 inline Config
 quota_config_new(Config sponsor, size_t n_bytes)
 {
@@ -359,7 +384,8 @@ quota_config_new(Config sponsor, size_t n_bytes)
     cfg->fail = quota_config_fail;  // error reporting procedure
     cfg->create = quota_config_create;  // actor creation procedure
     cfg->destroy = quota_config_destroy;  // reclaim actor resources
-    cfg->send = quota_config_send;  // event creation procedure
+    cfg->send = quota_config_send;  // message send procedure
+    cfg->event_new = quota_config_event_new; // event creation procedure
     cfg->events = deque_new(cfg);
     return cfg;
 }

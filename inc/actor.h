@@ -137,7 +137,8 @@ struct config {
     void        (*fail)(Config cfg, Actor reason);  // error reporting procedure
     Actor       (*create)(Config cfg, size_t n_bytes, Action beh);  // actor creation procedure
     void        (*destroy)(Config cfg, Actor victim);  // reclaim actor resources
-    void        (*send)(Event e, Actor target, Actor msg);  // event creation procedure
+    void        (*send)(Event e, Actor target, Actor msg);  // message send procedure
+    Actor       (*event_new)(Event e, Actor target, Actor msg); // event creation procedure
     Actor       events;  // queue of messages in-transit
 };
 
@@ -173,11 +174,12 @@ extern Actor    actor_eqv_method(Config cfg, Actor this, Actor that);
 extern void     actor_become(Event e, Actor v);
 extern Actor    event_new(Config cfg, Actor a, Actor msg);
 
-#define         config_fail(cfg, reason)        (((cfg)->fail)((cfg), (reason)))
-#define         config_create(cfg, size, beh)   (((cfg)->create)((cfg), (size), (beh)))
-#define         config_destroy(cfg, victim)     (((cfg)->destroy)((cfg), (victim)))
-#define         config_enqueue(cfg, e)          (deque_give((cfg), (cfg)->events, (e)))
-#define         config_send(e, target, msg)     (((SPONSOR(e))->send)((e), (target), (msg)))
+#define         config_fail(cfg, reason)            (((cfg)->fail)((cfg), (reason)))
+#define         config_create(cfg, size, beh)       (((cfg)->create)((cfg), (size), (beh)))
+#define         config_destroy(cfg, victim)         (((cfg)->destroy)((cfg), (victim)))
+#define         config_enqueue(cfg, e)              (deque_give((cfg), (cfg)->events, (e)))
+#define         config_send(e, target, msg)         (((SPONSOR(e))->send)((e), (target), (msg)))
+#define         config_event_new(e, target, msg)    (((SPONSOR(e))->event_new)((e), (target), (msg)))
 extern Actor    config_dispatch(Config cfg);
 extern void     config_apply_effects(Config cfg, Event e);
 
