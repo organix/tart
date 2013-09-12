@@ -1232,7 +1232,7 @@ test_universe()
     Actor test;
 
     TRACE(fprintf(stderr, "---- test_universe ----\n"));
-    Config cfg = quota_config_new(a_root_config, 8000);
+    Config cfg = quota_config_new(a_root_config, 16000);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     universe_init(cfg);
 
