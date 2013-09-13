@@ -90,7 +90,15 @@ deque_take(Config cfg, Actor queue)
 
 ACTOR the_empty_dict_actor = ACTOR_DECL(expr_env_empty);
 inline Actor
-dict_lookup(Config cfg, Actor dict, Actor key)
+dict_bind(Config cfg, Actor dict, Actor key, Actor value)
+{
+    Pair p = (Pair)config_create(cfg, sizeof(PAIR), expr_env);
+    p->h = pair_new(cfg, key, value);
+    p->t = dict;
+    return (Actor)p;
+}
+static inline Actor
+do_dict_lookup(Config cfg, Actor dict, Actor key)
 {
     while (dict_empty_p(cfg, dict) == a_false) {
         if (expr_env != BEH(dict)) { config_fail(cfg, e_inval); }  // non-dict in chain
@@ -105,13 +113,36 @@ dict_lookup(Config cfg, Actor dict, Actor key)
     }
     return NOTHING;  // not found
 }
-inline Actor
-dict_bind(Config cfg, Actor dict, Actor key, Actor value)
+static void
+proc_dict_lookup(Event e)
 {
-    Pair p = (Pair)config_create(cfg, sizeof(PAIR), expr_env);
-    p->h = pair_new(cfg, key, value);
-    p->t = dict;
-    return (Actor)p;
+    TRACE(fprintf(stderr, "proc_dict_lookup{event=%p}\n", e));
+    if (val_request != BEH(MSG(e))) { config_fail(SPONSOR(e), e_inval); }  // request msg required
+    Request r = (Request)MSG(e);
+    if (val_req_combine == BEH(r->req)) {  // (#combine, opnd, env)
+        ReqCombine rc = (ReqCombine)r->req;
+        TRACE(fprintf(stderr, "proc_dict_lookup: (#combine, %p, %p)\n", rc->opnd, rc->env));
+        Actor a = do_dict_lookup(SPONSOR(e), rc->env, rc->opnd);
+        TRACE(fprintf(stderr, "proc_dict_lookup: a=%p\n", a));
+        config_send(SPONSOR(e), r->ok, a);
+    } else {
+        expr_value(e);
+    }
+}
+ACTOR the_dict_lookup_proc = ACTOR_DECL(proc_dict_lookup);
+inline Actor
+dict_lookup(Config cfg, Actor dict, Actor key)
+{
+    TRACE(fprintf(stderr, "dict_lookup{cfg=%p, dict=%p, key=%p}\n", cfg, dict, key));
+    Actor req = req_combine_new(cfg, a_true, a_false, key, dict);
+    TRACE(fprintf(stderr, "dict_lookup: req=%p\n", req));
+    Config sync = sync_config_new(cfg, &the_dict_lookup_proc, req);
+    TRACE(fprintf(stderr, "dict_lookup: sync=%p\n", sync));
+    config_dispatch(sync);
+    Event e = sync_config_reply(sync);
+    TRACE(fprintf(stderr, "dict_lookup: e->target=%p, e->message=%p\n", e->target, e->message));
+    if (e->target != a_true) { config_fail(cfg, e_inval); }
+    return e->message;
 }
 
 void
@@ -362,13 +393,13 @@ inline static Actor
 sync_config_create(Config cfg, size_t n_bytes, Action beh)
 {
     struct sync_config * self = (struct sync_config *)cfg;
-    return config_create(self->request.sponsor, n_bytes, beh);
+    return config_create(self->reply.sponsor, n_bytes, beh);
 }
 inline static void
 sync_config_destroy(Config cfg, Actor victim)
 {
     struct sync_config * self = (struct sync_config *)cfg;
-    config_destroy(self->request.sponsor, victim);
+    config_destroy(self->reply.sponsor, victim);
 }
 inline static void
 sync_config_send(Config cfg, Actor target, Actor msg)
@@ -376,22 +407,23 @@ sync_config_send(Config cfg, Actor target, Actor msg)
     TRACE(fprintf(stderr, "sync_config_send: actor=%p, msg=%p\n", target, msg));
     struct sync_config * self = (struct sync_config *)cfg;
     Event e = ACTOR_INIT(&self->reply, beh_event);
-    if (beh_halt != BEH(e)) { config_fail(cfg, e_nomem); }  // only one (reply) event allowed
-    if (e->sponsor != cfg) { config_fail(cfg, e_inval); }  // wrong sponsor!
+    if (e->target != (Actor)e->sponsor) { config_fail(cfg, e_nomem); }  // only one (reply) event allowed
     e->target = target;
     e->message = msg;
     TRACE(fprintf(stderr, "sync_config_send: reply=%p\n", e));
 }
-inline Config
+Config
 sync_config_new(Config sponsor, Actor target, Actor msg)
 {
     Config cfg = (Config)config_create(sponsor, sizeof(struct sync_config), beh_config);
     TRACE(fprintf(stderr, "sync_config_new: sponsor=%p cfg=%p\n", sponsor, cfg));
     struct sync_config * self = (struct sync_config *)cfg;
     Event e = ACTOR_INIT(&self->reply, beh_halt);
-    e->sponsor = cfg;
-    e = ACTOR_INIT(&self->request, beh_event);
     e->sponsor = sponsor;
+    e->target = (Actor)sponsor;
+    e->message = NOTHING;
+    e = ACTOR_INIT(&self->request, beh_event);
+    e->sponsor = cfg;
     e->target = target;
     e->message = msg;
     TRACE(fprintf(stderr, "sync_config_new: request=%p\n", e));
@@ -402,6 +434,12 @@ sync_config_new(Config sponsor, Actor target, Actor msg)
     cfg->events = deque_new(cfg);
     config_enqueue(cfg, e);
     return cfg;
+}
+Event
+sync_config_reply(Config cfg)
+{
+    struct sync_config * self = (struct sync_config *)cfg;
+    return &self->reply;
 }
 
 /**

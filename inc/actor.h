@@ -182,6 +182,7 @@ extern Config   quota_config_new(Config sponsor, size_t n_bytes);
 extern void     quota_config_report(Config cfg);
 
 extern Config   sync_config_new(Config sponsor, Actor target, Actor msg);
+extern Event    sync_config_reply(Config cfg);  // extract reply event from sync_config
 
 extern void     beh_pair(Event e);
 extern void     beh_deque(Event e);
