@@ -1232,7 +1232,7 @@ test_universe()
     Actor test;
 
     TRACE(fprintf(stderr, "---- test_universe ----\n"));
-    Config cfg = quota_config_new(a_root_config, 8000);
+    Config cfg = quota_config_new(a_root_config, 64000);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     universe_init(cfg);
 
@@ -1292,4 +1292,6 @@ test_universe()
     config_send(cfg, comb, pair_new(cfg, pair_new(cfg, test, a_fail), pair_new(cfg, s_eval, a_empty_env)));
     while (config_dispatch(cfg) != NOTHING)
         ;
+
+    quota_config_report(cfg);  // report on resource usage
 }

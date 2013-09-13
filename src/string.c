@@ -336,5 +336,7 @@ test_string()
     if (n->i >= 0) { halt("expected \"foo\" < \"foobar\""); }
     m = (Integer)string_diff_method(cfg, b, a);
     TRACE(fprintf(stderr, "(\"foobar\" - \"foo\") -> %d\n", m->i));
-    if (m->i <= 0) { halt("expected \"foobar\" > \"foo\""); }    
+    if (m->i <= 0) { halt("expected \"foobar\" > \"foo\""); }
+
+    quota_config_report(cfg);  // report on resource usage
 }

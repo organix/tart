@@ -338,6 +338,14 @@ quota_config_new(Config sponsor, size_t n_bytes)
     cfg->events = deque_new(cfg);
     return cfg;
 }
+void
+quota_config_report(Config cfg)
+{
+    TRACE(fprintf(stderr, "quota_config_report: cfg=%p\n", cfg));
+    struct quota_config * self = (struct quota_config *)cfg;
+    int used = (self->free - self->memory);
+    TRACE(fprintf(stderr, "quota_config_report: n_bytes=%d, used=%d\n", (int)self->n_bytes, used));
+}
 
 /**
 LET pair_beh_0((ok, fail), t, tail) = \env'.[

@@ -676,4 +676,6 @@ test_number()
     test_getbits(14, 32, 0x80000001);
     test_getbits(15, 32, 0x80000001);
     test_getbits(16, 32, 0x80000001);
+
+    quota_config_report(cfg);  // report on resource usage
 }

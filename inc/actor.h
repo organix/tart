@@ -179,6 +179,7 @@ extern Actor    event_new(Config cfg, Actor a, Actor msg);
 extern Actor    config_dispatch(Config cfg);
 
 extern Config   quota_config_new(Config sponsor, size_t n_bytes);
+extern void     quota_config_report(Config cfg);
 
 extern void     beh_pair(Event e);
 extern void     beh_deque(Event e);
