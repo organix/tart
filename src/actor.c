@@ -30,29 +30,60 @@ THE SOFTWARE.
 #include "expr.h"
 #include "number.h"
 
-inline Actor
-actor_eqv_method(Config cfg, Actor this, Actor that)
+inline void
+actor_eqv_method(Event e, Actor cust, Actor this, Actor that)
 {
-    return (this == that) ? a_true : a_false;
+    // return (this == that) ? a_true : a_false;
+    if (this == that) {
+        config_send(e, cust, a_true);
+        return;
+    } else {
+        config_send(e, cust, a_false);
+        return;
+    }
 }
 
 PAIR the_nil_pair_actor = { ACTOR_DECL(beh_pair), NIL, NIL };
-inline Actor
-pair_new(Config cfg, Actor h, Actor t)
+inline void
+pair_new(Event e, Actor cust, Actor h, Actor t)
 {
-    Pair p = (Pair)config_create(cfg, sizeof(PAIR), beh_pair);
+    // Pair p = (Pair)config_create(cfg, sizeof(PAIR), beh_pair);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    TRACE(fprintf(stderr, "pair_new: creating pair e=%p\n", e));
+    config_create(groundout, NOTHING, sizeof(PAIR), beh_pair);
+    TRACE(fprintf(stderr, "pair_new: pair created e=%p\n", e));
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Pair p = (Pair)effect->message;
+    if (p == NOTHING) { 
+        TRACE(fprintf(stderr, "pair_new: go->events=%p, go->es->h=%p, go->es->h->h=%p\n", groundout->events, ((Pair)groundout->events)->h, ((Pair)((Pair)groundout->events)->h)->h));
+        TRACE(fprintf(stderr, "pair_new: sponsor=%p, e=%p, groundout=%p\n", SPONSOR(e), e, groundout));
+        TRACE(fprintf(stderr, "pair_new: NOTHING=%p\n", NOTHING));
+        halt("pair_new: created NOTHING!"); 
+    }
     p->h = h;
     p->t = t;
-    return (Actor)p;
+    config_send(e, cust, (Actor)p);
+    // return (Actor)p;
 }
 
-inline Actor
-deque_new(Config cfg)
+inline void
+deque_new(Event e, Actor cust)
 {
-    Pair p = (Pair)config_create(cfg, sizeof(PAIR), beh_deque);
+    TRACE(fprintf(stderr, "deque_new: e=%p\n", e));
+    // Pair p = (Pair)config_create(cfg, sizeof(PAIR), beh_deque);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_create(groundout, NOTHING, sizeof(PAIR), beh_deque);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Pair p = (Pair)effect->message;
+    if (p == NOTHING) { halt("new deque is NOTHING!"); }
     p->h = NIL;
     p->t = NIL;
-    return (Actor)p;
+    if (e == &the_groundout_event) {
+        e->message = (Actor)p;
+    } else {
+        config_send(e, cust, (Actor)p);
+    }
+    // return (Actor)p;
 }
 inline Actor
 deque_empty_p(Config cfg, Actor queue)
@@ -62,11 +93,25 @@ deque_empty_p(Config cfg, Actor queue)
     return ((q->h == NIL) ? a_true : a_false);
 }
 inline void
-deque_give(Config cfg, Actor queue, Actor item)
+deque_give(Event e, Actor cust, Actor queue, Actor item)
 {
-    if (beh_deque != BEH(queue)) { config_fail(cfg, e_inval); }  // deque required
+    if (beh_deque != BEH(queue)) { 
+        TRACE(fprintf(stderr, "deque_give: e_inval=%p, deque required\n", e_inval));
+        config_fail(SPONSOR(e), e_inval); 
+    }
     Pair q = (Pair)queue;
-    Actor p = pair_new(cfg, item, NIL);
+    if (q->h == NOTHING) {
+        TRACE(fprintf(stderr, "deque_give: deque head is NOTHING!\n"));
+    }
+    // Actor p = pair_new(cfg, item, NIL);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    pair_new(groundout, NOTHING, item, NIL);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Actor p = effect->message;
+    if (p == NOTHING) { 
+        TRACE(fprintf(stderr, "deque_give: queue=%p, item=%p\n", queue, item));
+        halt("deque_give: giving NOTHING to deque!"); 
+    }
     if (q->h == NIL) {
         q->h = p;
     } else {
@@ -74,44 +119,67 @@ deque_give(Config cfg, Actor queue, Actor item)
         t->t = p;
     }
     q->t = p;
+    TRACE(fprintf(stderr, "deque_give: q=%p, q->h=%p, p->h=%p, q->t=%p\n", q, q->h, ((Pair)p)->h, q->t));
+    if (q->h == NOTHING) { halt("deque_give: deque head is NOTHING!"); }
 }
 inline Actor
 deque_take(Config cfg, Actor queue)
 {
+    if (((Pair)queue)->h == NOTHING) { halt("deque_take(start): deque head is NOTHING!"); }
     if (deque_empty_p(cfg, queue) != a_false) { config_fail(cfg, e_inval); }  // deque_take from empty
 //    if (beh_deque != BEH(queue)) { config_fail(cfg, e_inval); }  // deque required
     Pair q = (Pair)queue;
     Pair p = (Pair)(q->h);
+    TRACE(fprintf(stderr, "deque_take: q=%p, q->h=%p, q->h->h=%p, q->t=%p\n", q, q->h, p->h, q->t));
     Actor item = p->h;
     q->h = p->t;
+    TRACE(fprintf(stderr, "deque_take: item=%p, q=%p, q->h=%p, q->t=%p\n", item, q, q->h, q->t));
     config_destroy(cfg, (Actor)p);
+    if (((Pair)queue)->h == NOTHING) { halt("deque_take(done): deque head is NOTHING!"); }
     return item;
 }
 
 ACTOR the_empty_dict_actor = ACTOR_DECL(expr_env_empty);
-inline Actor
-dict_lookup(Config cfg, Actor dict, Actor key)
+inline void
+dict_lookup(Event e, Actor cust, Actor dict, Actor key)
 {
     while (dict_empty_p(cfg, dict) == a_false) {
-        if (expr_env != BEH(dict)) { config_fail(cfg, e_inval); }  // non-dict in chain
+        if (expr_env != BEH(dict)) { config_fail(SPONSOR(e), e_inval); }  // non-dict in chain
         Pair p = (Pair)dict;
         Actor a = p->h;
-        if (beh_pair != BEH(a)) { config_fail(cfg, e_inval); }  // non-pair entry
+        if (beh_pair != BEH(a)) { config_fail(SPONSOR(e), e_inval); }  // non-pair entry
         Pair q = (Pair)a;
-        if (actor_eqv(cfg, key, q->h) == a_true) {
-            return q->t;  // value
+        // if (actor_eqv(cfg, key, q->h) == a_true) {
+        //     return q->t;  // value
+        // }
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        actor_eqv(groundout, NOTHING, key, q->h);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Actor eqv = effect->message;
+        if (eqv == a_true) {
+            config_send(e, cust, q->t); // value
         }
         dict = p->t;  // next
     }
-    return NOTHING;  // not found
+    // return NOTHING;  // not found
+    config_send(e, cust, NOTHING); // not found
 }
-inline Actor
-dict_bind(Config cfg, Actor dict, Actor key, Actor value)
+inline void
+dict_bind(Event e, Actor cust, Actor dict, Actor key, Actor value)
 {
-    Pair p = (Pair)config_create(cfg, sizeof(PAIR), expr_env);
-    p->h = pair_new(cfg, key, value);
+    // Pair p = (Pair)config_create(cfg, sizeof(PAIR), expr_env);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_create(groundout, NOTHING, sizeof(PAIR), beh_pair);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Pair p = (Pair)effect->message;
+    // p->h = pair_new(cfg, key, value);
+    groundout = config_event_new(e, NOTHING, NOTHING);
+    pair_new(groundout, NOTHING, key, value);
+    effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    p->h = effect->message;    
     p->t = dict;
-    return (Actor)p;
+    config_send(e, cust, (Actor)p);
+    // return (Actor)p;
 }
 
 void
@@ -120,15 +188,20 @@ beh_fifo(Event e)
     TRACE(fprintf(stderr, "beh_fifo{event=%p}\n", e));
     expr_value(e);
 }
-inline Actor
-fifo_new(Config cfg, size_t n)  // WARNING! n must be a power of 2
+inline void
+fifo_new(Event e, Actor cust, size_t n)  // WARNING! n must be a power of 2
 {
     size_t b = sizeof(FIFO) + (n * sizeof(Actor));
-    Fifo f = (Fifo)config_create(cfg, b, beh_fifo);
+    // Fifo f = (Fifo)config_create(cfg, b, beh_fifo);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_create(groundout, NOTHING, sizeof(b), beh_pair);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Fifo f = (Fifo)effect->message;
     f->h = 0;
     f->t = 0;
     f->m = (n - 1);
-    return (Actor)f;
+    config_send(e, cust, (Actor)f);
+    // return (Actor)f;
 }
 inline Actor
 fifo_empty_p(Config cfg, Actor q)
@@ -163,30 +236,45 @@ fifo_take(Config cfg, Actor q)
     return item;
 }
 
-inline Actor
-actor_new(Config cfg, Action beh)  // create an actor with only a behavior procedure
+inline void
+actor_new(Event e, Actor cust, Action beh)  // create an actor with only a behavior procedure
 {
-    return config_create(cfg, sizeof(ACTOR), beh);
+    config_create(e, cust, sizeof(ACTOR), beh);
 }
-inline Actor
-value_new(Config cfg, Action beh, Any data)  // create a "unserialized" (value) actor
+inline void
+value_new(Event e, Actor cust, Action beh, Any data)  // create a "unserialized" (value) actor
 {
-    Value v = (Value)config_create(cfg, sizeof(VALUE), beh);
+    // Value v = (Value)config_create(cfg, sizeof(VALUE), beh);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_create(groundout, NOTHING, sizeof(VALUE), beh);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Value v = (Value)effect->message;
 //    CODE(v) = beh;  <-- already set by config_create()
     DATA(v) = data;
-    return (Actor)v;
+    // return (Actor)v;
+    config_send(e, cust, (Actor)v);
 }
-inline Actor
-serial_with_value(Config cfg, Actor v)  // create a "serialized" actor with "behavior" value
+inline void
+serial_with_value(Event e, Actor cust, Actor v)  // create a "serialized" actor with "behavior" value
 {
-    Serial s = (Serial)config_create(cfg, sizeof(SERIAL), act_serial);
+    // Serial s = (Serial)config_create(cfg, sizeof(SERIAL), act_serial);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_create(groundout, NOTHING, sizeof(SERIAL), act_serial);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Serial s = (Serial)effect->message;
     s->beh_now = v;  // an "unserialzed" behavior actor
-    return (Actor)s;
+    // return (Actor)s;
+    config_send(e, cust, (Actor)s);
 }
-inline Actor
-serial_new(Config cfg, Action beh, Any data)  // create a "serialized" actor
+inline void
+serial_new(Event e, Actor cust, Action beh, Any data)  // create a "serialized" actor
 {
-    return serial_with_value(cfg, value_new(cfg, beh, data));
+    // return serial_with_value(cfg, value_new(cfg, beh, data));
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    value_new(groundout, NOTHING, beh, data);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Actor v = effect->message;
+    serial_with_value(e, cust, v);
 }
 void
 act_serial(Event e)  // "serialized" actor behavior
@@ -211,17 +299,14 @@ beh_event(Event e)
     TRACE(fprintf(stderr, "beh_event{event=%p}\n", e));
     expr_value(e);
 }
-inline Actor
-event_new(Config cfg, Actor a, Actor m)
+inline void
+event_new(Event e, Actor cust, Actor a, Actor m)
 {
-    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); }  // config actor required
-    Event e = (Event)config_create(cfg, sizeof(EVENT), beh_event);
-    e->sponsor = cfg;
-    e->target = a;
-    e->message = m;
-    e->actors = deque_new(cfg);
-    e->events = deque_new(cfg);
-    return (Actor)e;
+    // Event ev = config_event_new(e, a, m);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_event_new(groundout, a, m);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    config_send(e, cust, effect->message);
 }
 
 void
@@ -236,13 +321,19 @@ root_config_fail(Config cfg, Actor reason)
     TRACE(fprintf(stderr, "config_fail: cfg=%p, reason=%p\n", cfg, reason));
     halt("root_config_fail!");
 }
-inline static Actor
-root_config_create(Config cfg, size_t n_bytes, Action beh)
+inline static void
+root_config_create(Event e, Actor cust, size_t n_bytes, Action beh)
 {
     TRACE(fprintf(stderr, "root_config_create: n_bytes=%d\n", (int)n_bytes));
     Actor a = ALLOC(n_bytes);
-    if (!a) { config_fail(cfg, e_nomem); }
-    return ACTOR_INIT(a, beh);
+    if (!a) { config_fail(SPONSOR(e), e_nomem); }
+    // return ACTOR_INIT(a, beh);
+    if (e == &the_groundout_event) {
+        // TRACE(fprintf(stderr, "root_config_create: the_groundout_event\n"));
+        e->message = ACTOR_INIT(a, beh);
+    } else {
+        config_send(e, cust, ACTOR_INIT(a, beh));
+    }
 }
 inline static void
 root_config_destroy(Config cfg, Actor victim)
@@ -252,30 +343,72 @@ root_config_destroy(Config cfg, Actor victim)
 inline static void
 root_config_send(Event e, Actor target, Actor msg)
 {
-    TRACE(fprintf(stderr, "config_send: actor=%p, msg=%p\n", target, msg));
-    deque_give(SPONSOR(e), e->events, event_new(SPONSOR(e), target, msg));
+    TRACE(fprintf(stderr, "root_config_send: e=%p, actor=%p, msg=%p\n", e, target, msg));
+    Event ne = config_event_new(e, target, msg);
+    // TRACE(fprintf(stderr, "root_config_send: e->events=%p, ne=%p\n", e->events, ne));
+    // deque_give(groundout, NOTHING, e->events, ne);
+    // deque_give grounds out by effecting e->events
+    // no effects to apply
+    Pair q = (Pair)e->events;
+    // create new pair
+    config_create(&the_groundout_event, NOTHING, sizeof(PAIR), beh_pair);
+    Pair p = (Pair)the_groundout_event.message;
+    the_groundout_event.message = NOTHING; // reset the_groundout_event
+    p->h = (Actor)ne;
+    p->t = NIL;
+    // deque_give
+    if (q->h == NIL) {
+        // TRACE(fprintf(stderr, "root_config_send: q->h == NIL\n"));
+        q->h = (Actor)p;
+    } else {
+        Pair t = (Pair)(q->t);
+        t->t = (Actor)p;
+    }
+    q->t = (Actor)p;
+    // TRACE(fprintf(stderr, "root_config_send: ne=%p, e->events->h=%p, e->events->t=%p\n", ne, ((Pair)e->events)->h, ((Pair)e->events)->t));
 }
-inline static Actor
+EVENT the_groundout_event = { 
+    ACTOR_DECL(beh_event), 
+    &the_root_config,
+    NOTHING,
+    NOTHING,
+    NOTHING
+};
+inline static Event
 root_config_event_new(Event e, Actor target, Actor msg)
-{
-    TRACE(fprintf(stderr, "config_event_new: actor=%p, msg=%p\n", target, msg));
-    Event ne = (Event)config_create(SPONSOR(e), sizeof(EVENT), beh_event);
+{ 
+    // TRACE(fprintf(stderr, "config_event_new: actor=%p, msg=%p\n", target, msg));
+    // Event ne = (Event)config_create(SPONSOR(e), sizeof(EVENT), beh_event);
+    config_create(&the_groundout_event, NOTHING, sizeof(EVENT), beh_event);
+    Event ne = (Event)the_groundout_event.message;
+    the_groundout_event.message = NOTHING; // reset the_groundout_event
     ne->sponsor = SPONSOR(e);
     ne->target = target;
     ne->message = msg;
-    ne->actors = deque_new(SPONSOR(e));
-    ne->events = deque_new(SPONSOR(e));
-    return (Actor)ne;
+    // TRACE(fprintf(stderr, "config_event_new: ne=%p\n", ne));
+    // ne->events = deque_new(SPONSOR(e));
+    // deque_new(&the_groundout_event, NOTHING);
+    config_create(&the_groundout_event, NOTHING, sizeof(PAIR), beh_deque);
+    Pair p = (Pair)the_groundout_event.message;
+    the_groundout_event.message = NOTHING; // reset the_groundout_event
+    p->h = NIL;
+    p->t = NIL;
+    ne->events = (Actor)p;
+    TRACE(fprintf(stderr, "root_config_event_new: sponsor=%p, e=%p, target=%p, msg=%p, ne=%p\n", SPONSOR(e), e, target, msg, ne));
+    return ne;
 }
 static inline Actor
 config_dequeue(Config cfg)
 {
+    if (((Pair)cfg->events)->h == NOTHING) { halt("config_deque(start): deque head is NOTHING!"); }
     if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); }  // config actor required
     if (deque_empty_p(cfg, cfg->events) != a_false) {
         TRACE(fprintf(stderr, "config_dequeue: <EMPTY>\n"));
         return NOTHING;
     }
     Actor a = deque_take(cfg, cfg->events);
+    TRACE(fprintf(stderr, "config_dequeue: taking a=%p\n", a));
+    if (((Pair)cfg->events)->h == NOTHING) { halt("config_deque(done): deque head is NOTHING!"); }
     return a;
 }
 static inline Actor
@@ -283,11 +416,29 @@ effects_events_dequeue(Config cfg, Event e)
 {
     if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); } // config actor required
     if (deque_empty_p(cfg, e->events) != a_false) {
-        TRACE(fprintf(stderr, "effects_events_dequeue: <EMPTY>\n"));
+        // TRACE(fprintf(stderr, "effects_events_dequeue: <EMPTY>\n"));
         return NOTHING;
     }
     Actor a = deque_take(cfg, e->events);
+    if (a == NOTHING) { halt("effects_events_dequeue: dequeud NOTHING"); }
     return a;
+}
+inline void
+config_apply_effects(Event se, Config cfg, Event e)
+{
+    if (((Pair)cfg->events)->h == NOTHING) { halt("config_apply_effects: deque head is NOTHING!"); }
+    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); } // config actor required
+    if (beh_event != BEH(e)) { config_fail(cfg, e_inval); } // event actor required
+    Actor e_fx;
+    while ((e_fx = effects_events_dequeue(cfg, e)) != NOTHING) {
+        TRACE(fprintf(stderr, "config_apply_effects: event=%p\n", e_fx));
+        // config_enqueue(cfg, e_fx);      
+        Event groundout = config_event_new(se, NOTHING, NOTHING);
+        TRACE(fprintf(stderr, "config_apply_effects: groundout=%p\n", groundout));
+        deque_give(groundout, NOTHING, cfg->events, e_fx);
+        // deque_give grounds out by effecting cfg->events
+        // no effects to apply
+    }
 }
 Actor
 config_dispatch(Config cfg)
@@ -297,20 +448,13 @@ config_dispatch(Config cfg)
         Event e = (Event)a;
         TRACE(fprintf(stderr, "config_dispatch: event=%p, actor=%p, msg=%p\n", e, SELF(e), MSG(e)));
         (CODE(SELF(e)))(e);  // INVOKE ACTION PROCEDURE
-        config_apply_effects(cfg, e);
+        Event groundout = config_event_new(&the_groundout_event, NOTHING, NOTHING);
+        the_groundout_event.message = NOTHING; // reset the_groundout_event
+        groundout->sponsor = cfg; // this configuration is the sponsor
+        config_apply_effects(groundout, cfg, e);
     }
-    return a;
-}
-void
-config_apply_effects(Config cfg, Event e)
-{
-    if (beh_config != BEH(cfg)) { config_fail(cfg, e_inval); } // config actor required
-    if (beh_event != BEH(e)) { config_fail(cfg, e_inval); } // event actor required
-    Actor e_fx;
-    while ((e_fx = effects_events_dequeue(cfg, e)) != NOTHING) {
-        TRACE(fprintf(stderr, "config_dispatch: applying effect event=%p\n", e_fx));
-        config_enqueue(cfg, e_fx);        
-    }
+    if (((Pair)cfg->events)->h == NOTHING) { halt("config_dispatch: deque head is NOTHING!"); }
+    return a;   
 }
 static PAIR the_root_event_q = { ACTOR_DECL(beh_deque), NIL, NIL };
 CONFIG the_root_config = {
@@ -336,17 +480,26 @@ quota_config_fail(Config cfg, Actor reason)
     TRACE(fprintf(stderr, "quota_config_fail: cfg=%p, reason=%p\n", cfg, reason));
     halt("quota_config_fail!");
 }
-inline static Actor
-quota_config_create(Config cfg, size_t n_bytes, Action beh)
+inline static void
+quota_config_create(Event e, Actor cust, size_t n_bytes, Action beh)
 {
-    struct quota_config * self = (struct quota_config *)cfg;
+    struct quota_config * self = (struct quota_config *)SELF(e);
     n_bytes = (n_bytes + self->mask) & ~self->mask;  // round up to next quanta
-    DEBUG(fprintf(stderr, "quota_config_create: n_bytes=%d\n", (int)n_bytes));
-    if (self->n_bytes < n_bytes) { config_fail(cfg, e_nomem); }
+    TRACE(fprintf(stderr, "quota_config_create: n_bytes=%d\n", (int)n_bytes));
+    if (self->n_bytes < n_bytes) { config_fail(SPONSOR(e), e_nomem); }
     Actor a = (Actor)(self->free);
     self->free += n_bytes;
     self->n_bytes -= n_bytes;
-    return ACTOR_INIT(a, beh);
+    // return ACTOR_INIT(a, beh);
+    a = ACTOR_INIT(a, beh);
+    TRACE(fprintf(stderr, "quota_config_create: created a=%p\n", a));
+    if (e == &the_groundout_event) {
+        TRACE(fprintf(stderr, "quota_config_create: groundout handling\n"));
+        e->message = a;
+    } else {
+        TRACE(fprintf(stderr, "quota_config_create: message send handling, e=%p\n", e));
+        config_send(e, cust, a);
+    }
 }
 inline static void
 quota_config_destroy(Config cfg, Actor victim)
@@ -356,38 +509,96 @@ quota_config_destroy(Config cfg, Actor victim)
 inline static void
 quota_config_send(Event e, Actor target, Actor msg)
 {
-    TRACE(fprintf(stderr, "quota_config_send: actor=%p, msg=%p\n", target, msg));
-    deque_give(SPONSOR(e), e->events, event_new(SPONSOR(e), target, msg));
+    TRACE(fprintf(stderr, "quota_config_send: sponsor=%p, e=%p, actor=%p, msg=%p\n", SPONSOR(e), e, target, msg));
+    Event ne = config_event_new(e, NOTHING, NOTHING);
+    // deque_give(groundout, NOTHING, e->events, (Actor)config_event_new(e, target, msg));
+    // // deque_give grounds out by effecting e->events
+    // // no effects to apply
+    Pair q = (Pair)e->events;
+    // create new pair
+    the_groundout_event.target = (Actor)SPONSOR(e);
+    the_groundout_event.sponsor = SPONSOR(e);
+    config_create(&the_groundout_event, NOTHING, sizeof(PAIR), beh_pair);
+    Pair p = (Pair)the_groundout_event.message;
+    the_groundout_event.message = NOTHING; // reset the_groundout_event
+    the_groundout_event.target = NOTHING; // reset the_groundout_event
+    the_groundout_event.sponsor = &the_root_config; // reset the_groundout_event
+    p->h = (Actor)ne;
+    p->t = NIL;
+    // deque_give
+    if (q->h == NIL) {
+        q->h = (Actor)p;
+    } else {
+        Pair t = (Pair)(q->t);
+        t->t = (Actor)p;
+    }
+    q->t = (Actor)p;
+    if (q->h == NOTHING) { halt("quota_config_send: head is NOTHING!"); }
 }
-inline static Actor 
+inline static Event 
 quota_config_event_new(Event e, Actor target, Actor msg)
 {
-    TRACE(fprintf(stderr, "config_event_new: actor=%p, msg=%p\n", target, msg));
-    Event ne = (Event)config_create(SPONSOR(e), sizeof(EVENT), beh_event);
+    // TRACE(fprintf(stderr, "quota_config_event_new: actor=%p, msg=%p\n", target, msg));
+    // Event ne = (Event)config_create(SPONSOR(e), sizeof(EVENT), beh_event);
+    the_groundout_event.target = (Actor)SPONSOR(e);
+    the_groundout_event.sponsor = SPONSOR(e);
+    config_create(&the_groundout_event, NOTHING, sizeof(EVENT), beh_event);
+    Event ne = (Event)the_groundout_event.message;
+    the_groundout_event.message = NOTHING; // reset the_groundout_event
+    the_groundout_event.target = NOTHING; // reset the_groundout_event
+    the_groundout_event.sponsor = &the_root_config; // reset the_groundout_event
     ne->sponsor = SPONSOR(e);
     ne->target = target;
     ne->message = msg;
-    ne->actors = deque_new(SPONSOR(e));
-    ne->events = deque_new(SPONSOR(e));
-    return (Actor)ne;
+    // ne->events = deque_new(SPONSOR(e));
+    // Event groundout = config_event_new(e, NOTHING, NOTHING);
+    // deque_new(groundout, NOTHING);
+    // Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    // ne->events = effect->message;  
+    the_groundout_event.target = (Actor)SPONSOR(e); 
+    the_groundout_event.sponsor = SPONSOR(e);
+    config_create(&the_groundout_event, NOTHING, sizeof(PAIR), beh_deque);
+    Pair p = (Pair)the_groundout_event.message;
+    the_groundout_event.message = NOTHING; // reset the_groundout_event
+    the_groundout_event.target = NOTHING; // reset the_groundout_event
+    the_groundout_event.sponsor = &the_root_config; // reset the_groundout_event
+    p->h = NIL;
+    p->t = NIL;
+    ne->events = (Actor)p;     
+    if (p->h == NOTHING) { halt("quota_config_new: deque head is NOTHING!"); }
+    if (((Pair)ne->events)->h == NOTHING) { halt("quota_config_new: deque head is NOTHING!"); }
+    TRACE(fprintf(stderr, "quota_config_event_new: sponsor=%p, e=%p, target=%p, msg=%p, ne=%p\n", SPONSOR(e), e, target, msg, ne));
+    return ne;
 }
-inline Config
-quota_config_new(Config sponsor, size_t n_bytes)
+inline void
+quota_config_new(Event e, Actor cust, size_t n_bytes)
 {
-    Config cfg = (Config)config_create(sponsor, sizeof(struct quota_config) + n_bytes, beh_config);
-    TRACE(fprintf(stderr, "quota_config_new: sponsor=%p cfg=%p\n", sponsor, cfg));
+    // TRACE(fprintf(stderr, "quota_config_new: sponsor=%p, e=%p, n_bytes=%d\n", SPONSOR(e), e, (int)n_bytes));
+    // Config cfg = (Config)config_create(sponsor, sizeof(struct quota_config) + n_bytes, beh_config); 
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    // TRACE(fprintf(stderr, "quota_config_new: groundout=%p\n", groundout));
+    config_create(groundout, NOTHING, sizeof(struct quota_config) + n_bytes, beh_config);
+    // TRACE(fprintf(stderr, "quota_config_new: groundout->events=%p, go->events->h=%p\n", groundout->events, ((Pair)groundout->events)->h));
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Config cfg = (Config)effect->message;
+    // TRACE(fprintf(stderr, "quota_config_new: sponsor=%p cfg=%p\n", SPONSOR(e), cfg));
     struct quota_config * self = (struct quota_config *)cfg;
     self->n_bytes = n_bytes;  // available storage
     self->mask = (1 << 4) - 1;  // allocation/alignment granularity mask (2^n - 1)
     self->free = &self->memory[0];  // pointer to start of next allocation
-    TRACE(fprintf(stderr, "quota_config_new: n_bytes=%d\n", (int)n_bytes));
+    // TRACE(fprintf(stderr, "quota_config_new: n_bytes=%d\n", (int)n_bytes));
     cfg->fail = quota_config_fail;  // error reporting procedure
     cfg->create = quota_config_create;  // actor creation procedure
     cfg->destroy = quota_config_destroy;  // reclaim actor resources
     cfg->send = quota_config_send;  // message send procedure
     cfg->event_new = quota_config_event_new; // event creation procedure
-    cfg->events = deque_new(cfg);
-    return cfg;
+    // cfg->events = deque_new(cfg);
+    groundout = config_event_new(e, NOTHING, NOTHING);
+    deque_new(groundout, NOTHING);
+    effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    cfg->events = effect->message;
+    if (cfg->events == NOTHING) { halt("cfg->events deque is NOTHING!"); }
+    config_send(e, cust, (Actor)cfg);
 }
 
 /**
@@ -441,8 +652,22 @@ beh_pair(Event e)
         } else if (beh_pair == BEH(rm->value)) {
             Pair p = (Pair)SELF(e);
             Pair q = (Pair)rm->value;
-            Actor ok = value_new(SPONSOR(e), beh_pair_0, req_match_new(SPONSOR(e), r->ok, r->fail, q->t, p->t));
-            config_send(e, p->h, req_match_new(SPONSOR(e), ok, r->fail, q->h, rm->env));
+            // Actor ok = value_new(SPONSOR(e), beh_pair_0, req_match_new(SPONSOR(e), r->ok, r->fail, q->t, p->t));
+            // value_new(groundout, NOTHING, beh_pair_0, req_match_new(SPONSOR(e), r->ok, r->fail, q->t, p->t));
+            Event groundout = config_event_new(e, NOTHING, NOTHING);
+            req_match_new(groundout, NOTHING, r->ok, r->fail, q->t, p->t);
+            Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+            Actor rm_new_1 = effect->message;
+            groundout = config_event_new(e, NOTHING, NOTHING);
+            value_new(groundout, NOTHING, beh_pair_0, rm_new_1);
+            effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+            Actor ok = effect->message;
+            // config_send(e, p->h, req_match_new(SPONSOR(e), ok, r->fail, q->h, rm->env));
+            groundout = config_event_new(e, NOTHING, NOTHING);
+            req_match_new(groundout, NOTHING, ok, r->fail, q->h, rm->env);
+            effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+            Actor rm_new_2 = effect->message;
+            config_send(e, p->h, rm_new_2);
         } else {
             TRACE(fprintf(stderr, "beh_pair: MISMATCH!\n"));
             config_send(e, r->fail, (Actor)e);
@@ -454,7 +679,12 @@ beh_pair(Event e)
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_pair: (#write, %p)\n", rw->value));
-        config_send(e, r->ok, list_push(SPONSOR(e), SELF(e), rw->value));
+        // config_send(e, r->ok, list_push(SPONSOR(e), SELF(e), rw->value));
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        pair_new(groundout, NOTHING, rw->value, SELF(e));
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Actor new_list = effect->message;
+        config_send(e, r->ok, new_list);
     } else {
         TRACE(fprintf(stderr, "beh_pair: FAIL!\n"));
         config_send(e, r->fail, (Actor)e);
@@ -497,12 +727,21 @@ beh_deque(Event e)
         }
     } else if (val_req_read == BEH(r->req)) {  // (#read)
         Pair p = (Pair)SELF(e);
-        TRACE(fprintf(stderr, "beh_deque: (#read) -> (%p, %p)\n", p->h, p->t));
-        config_send(e, r->ok, PR(deque_take(SPONSOR(e), SELF(e)), SELF(e)));
+        TRACE(fprintf(stderr, "beh_deque: (#read) -> (%p, %p)\n", p->h, p->t));        
+        // config_send(e, r->ok, PR(deque_take(SPONSOR(e), SELF(e)), SELF(e)));
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        pair_new(groundout, NOTHING, deque_take(SPONSOR(e), SELF(e)), SELF(e));
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Actor pair = effect->message;
+        config_send(e, r->ok, pair);
     } else if (val_req_write == BEH(r->req)) {  // (#write, value)
         ReqWrite rw = (ReqWrite)r->req;
         TRACE(fprintf(stderr, "beh_deque: (#write, %p)\n", rw->value));
-        deque_give(SPONSOR(e), SELF(e), rw->value);
+        // deque_give(SPONSOR(e), SELF(e), rw->value);
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        deque_give(groundout, NOTHING, SELF(e), rw->value);
+        // deque_give grounds out by effecting SELF(e)
+        // no effects to apply
         config_send(e, r->ok, SELF(e));
     } else {
         TRACE(fprintf(stderr, "beh_deque: FAIL!\n"));
@@ -534,7 +773,12 @@ comb_true(Event e)
         if (beh_pair == BEH(rc->opnd)) {
             Pair p = (Pair)rc->opnd;
             Actor expr = p->h;
-            config_send(e, expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
+            // config_send(e, expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
+            Event groundout = config_event_new(e, NOTHING, NOTHING);
+            req_eval_new(groundout, NOTHING, r->ok, r->fail, rc->env);
+            Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+            ReqEval re = (ReqEval)effect->message;
+            config_send(e, expr, (Actor)re);
         } else {
             TRACE(fprintf(stderr, "comb_true: opnd must be a Pair\n"));
             config_send(e, r->fail, (Actor)e);
@@ -572,7 +816,12 @@ comb_false(Event e)
         if (beh_pair == BEH(rc->opnd)) {
             Pair p = (Pair)rc->opnd;
             Actor expr = p->t;
-            config_send(e, expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
+            // config_send(e, expr, req_eval_new(SPONSOR(e), r->ok, r->fail, rc->env));
+            Event groundout = config_event_new(e, NOTHING, NOTHING);
+            req_eval_new(groundout, NOTHING, r->ok, r->fail, rc->env);
+            Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+            ReqEval re = (ReqEval)effect->message;
+            config_send(e, expr, (Actor)re);
         } else {
             TRACE(fprintf(stderr, "comb_false: opnd must be a Pair\n"));
             config_send(e, r->fail, (Actor)e);

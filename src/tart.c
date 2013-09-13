@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "expr.h"
 #include "number.h"
 #include "string.h"
-#include "universe.h"
+// #include "universe.h"
 
 void
 halt(char * msg)
@@ -56,10 +56,12 @@ run_tests()
     TRACE(fprintf(stderr, "a_ignore = %p\n", a_ignore));
     TRACE(fprintf(stderr, "e_nomem = %p\n", e_nomem));
     TRACE(fprintf(stderr, "e_inval = %p\n", e_inval));
+    TRACE(fprintf(stderr, "the_root_config = %p\n", &the_root_config));
+    TRACE(fprintf(stderr, "the_groundout_event = %p\n", &the_groundout_event));
     test_number();
     test_string();
     test_expr();
-    test_universe();
+    // test_universe();
 }
 
 /*

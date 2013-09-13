@@ -11,12 +11,12 @@ INCS=	$(INC)/tart.h \
 		$(INC)/expr.h \
 		$(INC)/number.h \
 		$(INC)/string.h \
-		$(INC)/universe.h
+		# $(INC)/universe.h
 OBJS=	actor.o \
 		expr.o \
 		number.o \
 		string.o \
-		universe.o
+		#universe.o
 PROGS=	tart
 
 #CFLAGS=	-I$(INC)

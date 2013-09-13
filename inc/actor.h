@@ -85,6 +85,7 @@ typedef void (*Action)(Event e);
 #define ACTOR_DECL(beh)     { (beh), actor_eqv_method }
 
 #define a_root_config (&the_root_config)
+#define a_groundout_event (&the_groundout_event)
 
 #define a_empty_list ((Actor)(&the_nil_pair_actor))
 #define a_empty_dict ((Actor)(&the_empty_dict_actor))
@@ -95,7 +96,7 @@ typedef void (*Action)(Event e);
 
 struct actor {
     Action      beh;
-    Actor       (*eqv)(Config cfg, Actor pattern, Actor value);  // polymorphic equivalence relation
+    void        (*eqv)(Event e, Actor cust, Actor pattern, Actor value);  // polymorphic equivalence relation
 };
 
 struct pair {
@@ -128,62 +129,61 @@ struct event {
     Config      sponsor;  // sponsor configuration
     Actor       target;  // target actor
     Actor       message;  // message to deliver
-    Actor       actors;  // effects: newly created actors
     Actor       events;  // effects: newly created events
 };
 
 struct config {
     ACTOR       _act;
     void        (*fail)(Config cfg, Actor reason);  // error reporting procedure
-    Actor       (*create)(Config cfg, size_t n_bytes, Action beh);  // actor creation procedure
+    void        (*create)(Event e, Actor cust, size_t n_bytes, Action beh);  // actor creation procedure
     void        (*destroy)(Config cfg, Actor victim);  // reclaim actor resources
     void        (*send)(Event e, Actor target, Actor msg);  // message send procedure
-    Actor       (*event_new)(Event e, Actor target, Actor msg); // event creation procedure
+    Event       (*event_new)(Event e, Actor target, Actor msg); // event creation procedure
     Actor       events;  // queue of messages in-transit
 };
 
-extern Actor    pair_new(Config cfg, Actor h, Actor t);
+extern void     pair_new(Event e, Actor cust, Actor h, Actor t);
 
 #define         list_new(cfg)                   (a_empty_list)
 #define         list_empty_p(cfg, list)         ((a_empty_list == (list)) ? a_true : a_false)
 #define         list_pop(cfg, list)             ((Pair)(list))      // returns: (first, rest)
 #define         list_push(cfg, list, item)      (pair_new((cfg),(item),(list)))
 
-extern Actor    deque_new(Config cfg);
+extern void     deque_new(Event e, Actor cust);
 extern Actor    deque_empty_p(Config cfg, Actor queue);
-extern void     deque_give(Config cfg, Actor queue, Actor item);
+extern void     deque_give(Event e, Actor cust, Actor queue, Actor item); // grounds out and causes side-effects to queue
 extern Actor    deque_take(Config cfg, Actor queue);
 
 #define         dict_new(cfg)                   (a_empty_dict)
 #define         dict_empty_p(cfg, dict)         ((a_empty_dict == (dict)) ? a_true : a_false)
-extern Actor    dict_lookup(Config cfg, Actor dict, Actor key);
-extern Actor    dict_bind(Config cfg, Actor dict, Actor key, Actor value);
+extern void     dict_lookup(Event e, Actor cust, Actor dict, Actor key);
+extern void     dict_bind(Event e, Actor cust, Actor dict, Actor key, Actor value);
 
-extern Actor    fifo_new(Config cfg, size_t n);  // WARNING! n must be a power of 2
+extern void     fifo_new(Event e, Actor cust, size_t n);  // WARNING! n must be a power of 2
 extern Actor    fifo_empty_p(Config cfg, Actor q);
 extern Actor    fifo_give(Config cfg, Actor q, Actor item);
 extern Actor    fifo_take(Config cfg, Actor q);
 
-extern Actor    actor_new(Config cfg, Action beh);
-extern Actor    value_new(Config cfg, Action beh, Any data);
-extern Actor    serial_with_value(Config cfg, Actor v);
-extern Actor    serial_new(Config cfg, Action beh, Any data);
-extern Actor    actor_eqv_method(Config cfg, Actor this, Actor that);
-#define         actor_eqv(cfg, this, that)   (((this)->eqv)((cfg), (this), (that)))
+extern void     actor_new(Event e, Actor cust, Action beh);
+extern void     value_new(Event e, Actor cust, Action beh, Any data);
+extern void     serial_with_value(Event e, Actor cust, Actor v);
+extern void     serial_new(Event e, Actor cust, Action beh, Any data);
+extern void     actor_eqv_method(Event e, Actor cust, Actor this, Actor that);
+#define         actor_eqv(e, cust, this, that)   (((this)->eqv)((e), (cust), (this), (that)))
 
 extern void     actor_become(Event e, Actor v);
-extern Actor    event_new(Config cfg, Actor a, Actor msg);
+extern void     event_new(Event e, Actor cust, Actor a, Actor msg);
 
 #define         config_fail(cfg, reason)            (((cfg)->fail)((cfg), (reason)))
-#define         config_create(cfg, size, beh)       (((cfg)->create)((cfg), (size), (beh)))
+#define         config_create(e, cust, size, beh)   (((SPONSOR(e))->create)((e), (cust), (size), (beh)))
 #define         config_destroy(cfg, victim)         (((cfg)->destroy)((cfg), (victim)))
 #define         config_enqueue(cfg, e)              (deque_give((cfg), (cfg)->events, (e)))
 #define         config_send(e, target, msg)         (((SPONSOR(e))->send)((e), (target), (msg)))
 #define         config_event_new(e, target, msg)    (((SPONSOR(e))->event_new)((e), (target), (msg)))
 extern Actor    config_dispatch(Config cfg);
-extern void     config_apply_effects(Config cfg, Event e);
+extern void     config_apply_effects(Event se, Config cfg, Event e);
 
-extern Config   quota_config_new(Config sponsor, size_t n_bytes);
+extern void     quota_config_new(Event e, Actor cust, size_t n_bytes);
 
 extern void     beh_pair(Event e);
 extern void     beh_deque(Event e);
@@ -196,6 +196,7 @@ extern void     beh_halt(Event e);
 extern PAIR the_nil_pair_actor;
 extern ACTOR the_empty_dict_actor;
 extern CONFIG the_root_config;
+extern EVENT the_groundout_event;
 extern ACTOR the_true_actor;
 extern ACTOR the_false_actor;
 extern ACTOR the_ignore_actor;

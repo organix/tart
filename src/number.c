@@ -417,69 +417,97 @@ INTEGER small_integers[2*N_SMALL + N_SMALL + 1] = {
     { INTEGER_ACTOR_DECL(beh_integer), 256 }
 };
 
-inline Actor
-integer_new(Config cfg, int i)
+inline void
+integer_new(Event e, Actor cust, int i)
 {
     if ((i <= 2*N_SMALL) && (i >= -N_SMALL)) {  // check for cached objects
-        return ((Actor)(&small_integers[N_SMALL + i]));
+        // return ((Actor)(&small_integers[N_SMALL + i]));
+        config_send(e, cust, ((Actor)(&small_integers[N_SMALL + i])));
+        return;
     }
-    Integer n = (Integer)config_create(cfg, sizeof(INTEGER), beh_integer);
+    // Integer n = (Integer)config_create(cfg, sizeof(INTEGER), beh_integer);
+    Event groundout = config_event_new(e, NOTHING, NOTHING);
+    config_create(groundout, NOTHING, sizeof(INTEGER), beh_integer);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Integer n = (Integer)effect->message;
     n->_act.eqv = number_eqv_method;  // override eqv procedure
     n->i = i;
-    return (Actor)n;
+    // return (Actor)n;
+    config_send(e, cust, (Actor)n);
 }
 
-Actor
-number_eqv_method(Config cfg, Actor this, Actor that)
+void
+number_eqv_method(Event e, Actor cust, Actor this, Actor that)
 {
     if (this == that) {
-        return a_true;
+        // return a_true;
+        config_send(e, cust, a_true);
+        return;
     }
-    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
+    if (beh_integer != BEH(this)) { config_fail(SPONSOR(e), e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
         if (n->i == m->i) {
-            return a_true;
+            // return a_true;
+            config_send(e, cust, a_true);
+            return;
         }
     }
-    return a_false;
+    // return a_false;
+    config_send(e, cust, a_false);
+    return;
 }
 
-inline Actor
-number_diff_method(Config cfg, Actor this, Actor that)
+inline void
+number_diff_method(Event e, Actor cust, Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
+    if (beh_integer != BEH(this)) { config_fail(SPONSOR(e), e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
-        return integer_new(cfg, n->i - m->i);
+        // return integer_new(cfg, n->i - m->i);
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        integer_new(groundout, NOTHING, n->i - m->i);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        config_send(e, cust, effect->message);
     }
-    return this;
+    // return this;
+    config_send(e, cust, this);
 }
 
-inline Actor
-number_plus_method(Config cfg, Actor this, Actor that)
+inline void
+number_plus_method(Event e, Actor cust, Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
+    if (beh_integer != BEH(this)) { config_fail(SPONSOR(e), e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
-        return integer_new(cfg, n->i + m->i);
+        // return integer_new(cfg, n->i + m->i);
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        integer_new(groundout, NOTHING, n->i + m->i);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        config_send(e, cust, effect->message);        
     }
-    return this;
+    // return this;
+    config_send(e, cust, this);
 }
 
-inline Actor
-number_times_method(Config cfg, Actor this, Actor that)
+inline void
+number_times_method(Event e, Actor cust, Actor this, Actor that)
 {
-    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
+    if (beh_integer != BEH(this)) { config_fail(SPONSOR(e), e_inval); }  // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
-        return integer_new(cfg, n->i * m->i);
+        // return integer_new(cfg, n->i * m->i);
+        Event groundout = config_event_new(e, NOTHING, NOTHING);
+        integer_new(groundout, NOTHING, n->i * m->i);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        config_send(e, cust, effect->message);          
     }
-    return this;
+    // return this;
+    config_send(e, cust, this);
 }
 
 inline uint16_t
@@ -565,52 +593,148 @@ test_number()
     int i;
 
     TRACE(fprintf(stderr, "---- test_number ----\n"));
-    Config cfg = quota_config_new(a_root_config, 1000);
+    // Config cfg = quota_config_new(a_root_config, 1000);
+    Event bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING);
+    TRACE(fprintf(stderr, "bootstrap=%p\n", bootstrap));
+    a_groundout_event->message = NOTHING; // reset groundout event
+    quota_config_new(bootstrap, NOTHING, 1000);
+    Event effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    Config cfg = (Config)effect->message;
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
-    a = integer_new(cfg, 0);
+    // a = integer_new(cfg, 0);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING);    
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, 0);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (number_eqv_method(cfg, a, a_zero) != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
-    a = number_plus_method(cfg, a, a_one);
+    // if (number_eqv_method(cfg, a, a_zero) != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
+bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_eqv_method(bootstrap, NOTHING, a, a_zero);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    Actor tst = effect->message;
+    if (tst != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
+    // a = number_plus_method(cfg, a, a_one);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_plus_method(bootstrap, NOTHING, a, a_one);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;    
     if (a_one != a) { halt("expected a_one == a"); }
-    a = number_diff_method(cfg, a, a_two);
+    // a = number_diff_method(cfg, a, a_two);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_diff_method(bootstrap, NOTHING, a, a_two);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;  
     if (a_minus_one != a) { halt("expected a_minus_one == a"); }
 /*
 */
-    a = integer_new(cfg, 100);
-    a = number_times_method(cfg, a, a);
+    // a = integer_new(cfg, 100);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, 100);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;    
+    // a = number_times_method(cfg, a, a);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_times_method(bootstrap, NOTHING, a, a);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;     
     TRACE(fprintf(stderr, "a = %p\n", a));
     if (beh_integer != BEH(a)) { halt("expected beh_integer == BEH(a)"); }
     n = (Integer)a;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
-    b = integer_new(cfg, 100 * 100);
+    // b = integer_new(cfg, 100 * 100);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, 100 * 100);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    b = effect->message;     
     TRACE(fprintf(stderr, "b = %p\n", b));
     if (a == b) { halt("expected a != b"); }
     if (beh_integer != BEH(b)) { halt("expected beh_integer == BEH(b)"); }
     m = (Integer)b;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (n->i != m->i) { halt("expected n->i == m->i"); }
-    if (number_eqv_method(cfg, a, b) != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
+    // if (number_eqv_method(cfg, a, b) != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_eqv_method(bootstrap, NOTHING, a, b);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    tst = effect->message;
+    if (tst != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
 /*
 */
-    a = integer_new(cfg, N_SMALL);
-    b = number_times_method(cfg, a, a_minus_one);
+    // a = integer_new(cfg, N_SMALL);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, N_SMALL);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;     
+    // b = number_times_method(cfg, a, a_minus_one);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_times_method(bootstrap, NOTHING, a, a_minus_one);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    b = effect->message;      
     n = (Integer)b;
     TRACE(fprintf(stderr, "n->i = %d\n", n->i));
-    if (b != integer_new(cfg, -N_SMALL)) { halt("expected b == integer_new(-N_SMALL)"); }
-    a = number_times_method(cfg, a, a_two);
-    a = number_plus_method(cfg, a, a_minus_one);
+    // if (b != integer_new(cfg, -N_SMALL)) { halt("expected b == integer_new(-N_SMALL)"); }
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, -N_SMALL);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    tst = effect->message;     
+    if (b != tst) { halt("expected b == integer_new(-N_SMALL)"); }  
+    // a = number_times_method(cfg, a, a_two);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_times_method(bootstrap, NOTHING, a, a_two);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;     
+    // a = number_plus_method(cfg, a, a_minus_one);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_plus_method(bootstrap, NOTHING, a, a_minus_one);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;         
     m = (Integer)a;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
-    if (a != integer_new(cfg, 2*N_SMALL - 1)) { halt("expected a == integer_new(2*N_SMALL - 1)"); }
-    a = number_plus_method(cfg, a, a_one);
+    // if (a != integer_new(cfg, 2*N_SMALL - 1)) { halt("expected a == integer_new(2*N_SMALL - 1)"); }
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, 2*N_SMALL - 1);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    tst = effect->message;        
+    if (a != tst) { halt("expected a == integer_new(2*N_SMALL - 1)"); }
+    // a = number_plus_method(cfg, a, a_one);
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    number_plus_method(bootstrap, NOTHING, a, a_one);
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    a = effect->message;            
     m = (Integer)a;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
-    if (a != integer_new(cfg, 2*N_SMALL)) { halt("expected a == integer_new(2*N_SMALL)"); }
+    // if (a != integer_new(cfg, 2*N_SMALL)) { halt("expected a == integer_new(2*N_SMALL)"); }
+    bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+    a_groundout_event->message = NOTHING; // reset groundout event
+    integer_new(bootstrap, NOTHING, 2*N_SMALL);    
+    effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+    tst = effect->message;  
+    if (a != tst) { halt("expected a == integer_new(2*N_SMALL)"); }     
 /*
 */
     for (i = -N_SMALL; i <= 2*N_SMALL; ++i) {
-        a = integer_new(cfg, i);
+        // a = integer_new(cfg, i);
+        bootstrap = config_event_new(a_groundout_event, NOTHING, NOTHING); 
+        a_groundout_event->message = NOTHING; // reset groundout event
+        integer_new(bootstrap, NOTHING, i);    
+        effect = (Event)((Pair)((Pair)((Pair)bootstrap->events)->h)->h);
+        a = effect->message;             
         n = (Integer)a;
         if (n->i != i) {
             TRACE(fprintf(stderr, "expected:%d was:%d\n", n->i, i));

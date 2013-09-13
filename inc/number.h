@@ -47,11 +47,11 @@ struct integer {
 
 extern INTEGER small_integers[2*N_SMALL + N_SMALL + 1];
 
-extern Actor    integer_new(Config cfg, int i);
-extern Actor    number_eqv_method(Config cfg, Actor this, Actor that);
-extern Actor    number_diff_method(Config cfg, Actor this, Actor that);
-extern Actor    number_plus_method(Config cfg, Actor this, Actor that);
-extern Actor    number_times_method(Config cfg, Actor this, Actor that);
+extern void     integer_new(Event e, Actor cust, int i);
+extern void     number_eqv_method(Event e, Actor cust, Actor this, Actor that);
+extern void     number_diff_method(Event e, Actor cust, Actor this, Actor that);
+extern void     number_plus_method(Event e, Actor cust, Actor this, Actor that);
+extern void     number_times_method(Event e, Actor cust, Actor this, Actor that);
 
 extern uint16_t u16_load(uint8_t* p);
 extern void     u16_store(uint8_t* p, uint16_t n);
