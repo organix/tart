@@ -347,6 +347,63 @@ quota_config_report(Config cfg)
     TRACE(fprintf(stderr, "quota_config_report: n_bytes=%d, used=%d\n", (int)self->n_bytes, used));
 }
 
+struct sync_config {
+    CONFIG      _cfg;
+    EVENT       request;
+    EVENT       reply;
+};
+inline static void
+sync_config_fail(Config cfg, Actor reason)
+{
+    TRACE(fprintf(stderr, "sync_config_fail: cfg=%p, reason=%p\n", cfg, reason));
+    halt("sync_config_fail!");
+}
+inline static Actor
+sync_config_create(Config cfg, size_t n_bytes, Action beh)
+{
+    struct sync_config * self = (struct sync_config *)cfg;
+    return config_create(self->request.sponsor, n_bytes, beh);
+}
+inline static void
+sync_config_destroy(Config cfg, Actor victim)
+{
+    struct sync_config * self = (struct sync_config *)cfg;
+    config_destroy(self->request.sponsor, victim);
+}
+inline static void
+sync_config_send(Config cfg, Actor target, Actor msg)
+{
+    TRACE(fprintf(stderr, "sync_config_send: actor=%p, msg=%p\n", target, msg));
+    struct sync_config * self = (struct sync_config *)cfg;
+    Event e = ACTOR_INIT(&self->reply, beh_event);
+    if (beh_halt != BEH(e)) { config_fail(cfg, e_nomem); }  // only one (reply) event allowed
+    if (e->sponsor != cfg) { config_fail(cfg, e_inval); }  // wrong sponsor!
+    e->target = target;
+    e->message = msg;
+    TRACE(fprintf(stderr, "sync_config_send: reply=%p\n", e));
+}
+inline Config
+sync_config_new(Config sponsor, Actor target, Actor msg)
+{
+    Config cfg = (Config)config_create(sponsor, sizeof(struct sync_config), beh_config);
+    TRACE(fprintf(stderr, "sync_config_new: sponsor=%p cfg=%p\n", sponsor, cfg));
+    struct sync_config * self = (struct sync_config *)cfg;
+    Event e = ACTOR_INIT(&self->reply, beh_halt);
+    e->sponsor = cfg;
+    e = ACTOR_INIT(&self->request, beh_event);
+    e->sponsor = sponsor;
+    e->target = target;
+    e->message = msg;
+    TRACE(fprintf(stderr, "sync_config_new: request=%p\n", e));
+    cfg->fail = sync_config_fail;  // error reporting procedure
+    cfg->create = sync_config_create;  // actor creation procedure
+    cfg->destroy = sync_config_destroy;  // reclaim actor resources
+    cfg->send = sync_config_send;  // event creation procedure
+    cfg->events = deque_new(cfg);
+    config_enqueue(cfg, e);
+    return cfg;
+}
+
 /**
 LET pair_beh_0((ok, fail), t, tail) = \env'.[
     SEND ((ok, fail), #match, t, env') TO tail

@@ -81,7 +81,7 @@ typedef void (*Action)(Event e);
 #define STATE(s)    DATA(((Serial)(s))->beh_now)
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
 
-#define ACTOR_INIT(a,beh)   ( ((a)->eqv = actor_eqv_method), (BEH(a) = (beh)), (a) )
+#define ACTOR_INIT(a,beh)   ( (((Actor)(a))->eqv = actor_eqv_method), (BEH(a) = (beh)), (a) )
 #define ACTOR_DECL(beh)     { (beh), actor_eqv_method }
 
 #define a_root_config (&the_root_config)
@@ -174,12 +174,14 @@ extern Actor    event_new(Config cfg, Actor a, Actor msg);
 #define         config_fail(cfg, reason)        (((cfg)->fail)((cfg), (reason)))
 #define         config_create(cfg, size, beh)   (((cfg)->create)((cfg), (size), (beh)))
 #define         config_destroy(cfg, victim)     (((cfg)->destroy)((cfg), (victim)))
-#define         config_enqueue(cfg, e)          (deque_give((cfg), (cfg)->events, (e)))
+#define         config_enqueue(cfg, e)          (deque_give((cfg), (cfg)->events, ((Actor)e)))
 #define         config_send(cfg, target, msg)   (((cfg)->send)((cfg), (target), (msg)))
 extern Actor    config_dispatch(Config cfg);
 
 extern Config   quota_config_new(Config sponsor, size_t n_bytes);
 extern void     quota_config_report(Config cfg);
+
+extern Config   sync_config_new(Config sponsor, Actor target, Actor msg);
 
 extern void     beh_pair(Event e);
 extern void     beh_deque(Event e);
