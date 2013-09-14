@@ -30,10 +30,19 @@ THE SOFTWARE.
 #include "expr.h"
 #include "number.h"
 
-inline Actor
-actor_eqv_method(Config cfg, Actor this, Actor that)
+// inline Actor
+// actor_eqv_method(Config cfg, Actor this, Actor that)
+// {
+//     return (this == that) ? a_true : a_false;
+// }
+inline void
+actor_eqv_method(Event e, Actor cust, Actor this, Actor that)
 {
-    return (this == that) ? a_true : a_false;
+    if (this == that) {
+        config_send(e, cust, a_true);
+    } else {
+        config_send(e, cust, a_false);
+    }
 }
 
 PAIR the_nil_pair_actor = { ACTOR_DECL(beh_pair), NIL, NIL };
@@ -98,8 +107,12 @@ dict_lookup(Config cfg, Actor dict, Actor key)
         Actor a = p->h;
         if (beh_pair != BEH(a)) { config_fail(cfg, e_inval); }  // non-pair entry
         Pair q = (Pair)a;
-        if (actor_eqv(cfg, key, q->h) == a_true) {
-            return q->t;  // value
+        Event groundout = (Event)event_new(cfg, NOTHING, NOTHING);
+        actor_eqv(groundout, NOTHING, key, q->h);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Actor tst = effect->message;
+        if (tst == a_true) {
+            return q->t; // value
         }
         dict = p->t;  // next
     }

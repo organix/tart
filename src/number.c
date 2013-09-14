@@ -429,21 +429,40 @@ integer_new(Config cfg, int i)
     return (Actor)n;
 }
 
-Actor
-number_eqv_method(Config cfg, Actor this, Actor that)
+// Actor
+// number_eqv_method(Config cfg, Actor this, Actor that)
+// {
+//     if (this == that) {
+//         return a_true;
+//     }
+//     if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
+//     Integer n = (Integer)this;
+//     if (beh_integer == BEH(that)) {
+//         Integer m = (Integer)that;
+//         if (n->i == m->i) {
+//             return a_true;
+//         }
+//     }
+//     return a_false;
+// }
+void
+number_eqv_method(Event e, Actor cust, Actor this, Actor that)
 {
     if (this == that) {
-        return a_true;
+        config_send(e, cust, a_true);
+        return;
     }
-    if (beh_integer != BEH(this)) { config_fail(cfg, e_inval); }  // number required
+    if (beh_integer != BEH(this)) { config_fail(SPONSOR(e), e_inval); } // number required
     Integer n = (Integer)this;
     if (beh_integer == BEH(that)) {
         Integer m = (Integer)that;
         if (n->i == m->i) {
-            return a_true;
+            config_send(e, cust, a_true);
+            return;
         }
     }
-    return a_false;
+    config_send(e, cust, a_false);
+    return;
 }
 
 inline Actor
@@ -570,7 +589,11 @@ test_number()
     TRACE(fprintf(stderr, "a_zero = %p\n", a_zero));
     a = integer_new(cfg, 0);
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (number_eqv_method(cfg, a, a_zero) != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
+    Event groundout = (Event)event_new(cfg, NOTHING, NOTHING);
+    number_eqv_method(groundout, NOTHING, a, a_zero);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Actor tst = effect->message;    
+    if (tst != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
     a = number_plus_method(cfg, a, a_one);
     if (a_one != a) { halt("expected a_one == a"); }
     a = number_diff_method(cfg, a, a_two);
@@ -590,7 +613,11 @@ test_number()
     m = (Integer)b;
     TRACE(fprintf(stderr, "m->i = %d\n", m->i));
     if (n->i != m->i) { halt("expected n->i == m->i"); }
-    if (number_eqv_method(cfg, a, b) != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
+    groundout = (Event)event_new(cfg, NOTHING, NOTHING);
+    number_eqv_method(groundout, NOTHING, a, b);
+    effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    tst = effect->message;  
+    if (tst != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
 /*
 */
     a = integer_new(cfg, N_SMALL);

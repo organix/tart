@@ -95,7 +95,8 @@ typedef void (*Action)(Event e);
 
 struct actor {
     Action      beh;
-    Actor       (*eqv)(Config cfg, Actor pattern, Actor value);  // polymorphic equivalence relation
+    // Actor       (*eqv)(Config cfg, Actor pattern, Actor value);  // polymorphic equivalence relation
+    void        (*eqv)(Event e, Actor cust, Actor pattern, Actor value);
 };
 
 struct pair {
@@ -167,8 +168,8 @@ extern Actor    actor_new(Config cfg, Action beh);
 extern Actor    value_new(Config cfg, Action beh, Any data);
 extern Actor    serial_with_value(Config cfg, Actor v);
 extern Actor    serial_new(Config cfg, Action beh, Any data);
-extern Actor    actor_eqv_method(Config cfg, Actor this, Actor that);
-#define         actor_eqv(cfg, this, that)   (((this)->eqv)((cfg), (this), (that)))
+extern void     actor_eqv_method(Event e, Actor cust, Actor this, Actor that);
+#define         actor_eqv(e, cust, this, that)   (((this)->eqv)((e), (cust), (this), (that)))
 
 extern void     actor_become(Event e, Actor v);
 extern Actor    event_new(Config cfg, Actor a, Actor msg);

@@ -166,36 +166,77 @@ string_intern_method(Config cfg, Actor this)  // return the canonical String ins
 }
 */
 
-Actor
-string_eqv_method(Config cfg, Actor this, Actor that)
+// Actor
+// string_eqv_method(Config cfg, Actor this, Actor that)
+// {
+//     if (this == that) {
+//         return a_true;
+//     }
+//     if (beh_string != BEH(this)) { config_fail(cfg, e_inval); }  // string required
+//     String s = (String)this;
+//     if (beh_string == BEH(that)) {
+//         String t = (String)that;
+//         if ((s->p == t->p) && (s->n == t->n)) {
+//             return a_true;
+//         }
+//         Actor n = string_length_method(cfg, this);
+//         Actor m = string_length_method(cfg, that);
+//         if (actor_eqv(cfg, n, m) != a_true) {
+//             return a_false;
+//         }
+//         int i = ((Integer)(n))->i;
+//         char* p = s->p;
+//         char* q = t->p;
+//         while (i-- > 0) {
+//             if (*p++ != *q++) {
+//                 return a_false;
+//             }
+//         }
+//         return a_true;
+//     }
+//     return a_false;
+// }
+void
+string_eqv_method(Event e, Actor cust, Actor this, Actor that)
 {
     if (this == that) {
-        return a_true;
+        config_send(e, cust, a_true);
+        return;
     }
-    if (beh_string != BEH(this)) { config_fail(cfg, e_inval); }  // string required
+    if (beh_string != BEH(this)) { config_fail(SPONSOR(e), e_inval); }  // string required
     String s = (String)this;
     if (beh_string == BEH(that)) {
         String t = (String)that;
         if ((s->p == t->p) && (s->n == t->n)) {
-            return a_true;
+            config_send(e, cust, a_true);
+            return;
         }
-        Actor n = string_length_method(cfg, this);
-        Actor m = string_length_method(cfg, that);
-        if (actor_eqv(cfg, n, m) != a_true) {
-            return a_false;
+        Actor n = string_length_method(SPONSOR(e), this);
+        Actor m = string_length_method(SPONSOR(e), that);
+        Event groundout = (Event)event_new(SPONSOR(e), NOTHING, NOTHING);
+        actor_eqv(groundout, NOTHING, n, m);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Actor tst = effect->message;        
+        if (tst != a_true) {
+            config_send(e, cust, a_false);
+            return;
         }
         int i = ((Integer)(n))->i;
         char* p = s->p;
         char* q = t->p;
         while (i-- > 0) {
             if (*p++ != *q++) {
-                return a_false;
+                config_send(e, cust, a_false);
+                return;
             }
         }
-        return a_true;
+        config_send(e, cust, a_true);
+        return;
     }
-    return a_false;
+    config_send(e, cust, a_false);
+    return;
 }
+
 
 Actor
 string_diff_method(Config cfg, Actor this, Actor that)
@@ -257,7 +298,11 @@ beh_string(Event e)
     } else if (val_req_match == BEH(r->req)) {  // (#match, value, env)
         ReqMatch rm = (ReqMatch)r->req;
         TRACE(fprintf(stderr, "beh_string: (#match, %p, %p)\n", rm->value, rm->env));
-        if (string_eqv_method(SPONSOR(e), SELF(e), rm->value) == a_true) {
+        Event groundout = (Event)event_new(SPONSOR(e), NOTHING, NOTHING);
+        string_eqv_method(groundout, NOTHING, SELF(e), rm->value);
+        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Actor tst = effect->message;
+        if (tst == a_true) {
             config_send(e, r->ok, rm->env);
         } else {
             TRACE(fprintf(stderr, "beh_string: MISMATCH!\n"));
@@ -296,7 +341,11 @@ test_string()
     TRACE(fprintf(stderr, "a_empty_string = %p\n", a_empty_string));
     a = string_length_method(cfg, a_empty_string);
     if (a_zero != a) { halt("expected a_zero == a"); }
-    if (actor_eqv(cfg, a, a_zero) != a_true) { halt("expected actor_eqv(a, a_zero) == a_true"); }
+    Event groundout = (Event)event_new(cfg, NOTHING, NOTHING);
+    actor_eqv(groundout, NOTHING, a, a_zero);
+    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Actor tst = effect->message;    
+    if (tst != a_true) { halt("expected actor_eqv(a, a_zero) == a_true"); }
     n = (Integer)a;
     if (n->i != 0) { halt("expected n->i == 0"); }
     s = (String)a_empty_string;
@@ -315,7 +364,11 @@ test_string()
     t = (String)b;
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
-    if (string_eqv_method(cfg, a, b) != a_true) { halt("expected string_eqv_method(a, b) == a_true"); }
+    groundout = (Event)event_new(cfg, NOTHING, NOTHING);
+    string_eqv_method(groundout, NOTHING, a, b);
+    effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    tst = effect->message;
+    if (tst != a_true) { halt("expected string_eqv_method(a, b) == a_true"); }
     m = (Integer)t->n;
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
 /*
