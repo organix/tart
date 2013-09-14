@@ -591,8 +591,7 @@ test_number()
     if (a_zero != a) { halt("expected a_zero == a"); }
     Event groundout = (Event)event_new(cfg, NOTHING, NOTHING);
     number_eqv_method(groundout, NOTHING, a, a_zero);
-    Actor tst = RESULT(groundout); 
-    if (tst != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
+    if (RESULT(groundout) != a_true) { halt("expected number_eqv_method(a, a_zero) == a_true"); }
     a = number_plus_method(cfg, a, a_one);
     if (a_one != a) { halt("expected a_one == a"); }
     a = number_diff_method(cfg, a, a_two);
@@ -614,8 +613,7 @@ test_number()
     if (n->i != m->i) { halt("expected n->i == m->i"); }
     groundout = (Event)event_new(cfg, NOTHING, NOTHING);
     number_eqv_method(groundout, NOTHING, a, b);
-    tst = RESULT(groundout);  
-    if (tst != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
+    if (RESULT(groundout) != a_true) { halt("expected number_eqv_method(a, b) == a_true"); }
 /*
 */
     a = integer_new(cfg, N_SMALL);
