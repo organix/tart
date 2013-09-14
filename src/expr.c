@@ -404,7 +404,7 @@ test_expr()
     Actor cust;
 
     TRACE(fprintf(stderr, "---- test_expr ----\n"));
-    Config cfg = quota_config_new(a_root_config, 8000);
+    Config cfg = quota_config_new(a_root_config, 16000);
     TRACE(fprintf(stderr, "cfg = %p\n", cfg));
     TRACE(fprintf(stderr, "a_empty_env = %p\n", a_empty_env));
     /* empty environment evaluates to itself */
@@ -455,4 +455,6 @@ test_expr()
     /* dispatch until empty */
     while (config_dispatch(cfg) != NOTHING)
         ;
+
+    quota_config_report(cfg);  // report on resource usage
 }
