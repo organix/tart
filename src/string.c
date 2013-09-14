@@ -213,7 +213,13 @@ string_eqv_method(Event e, Actor cust, Actor this, Actor that)
         }
         Actor n = string_length_method(SPONSOR(e), this);
         Actor m = string_length_method(SPONSOR(e), that);
-        Event groundout = (Event)event_new(SPONSOR(e), NOTHING, NOTHING);
+
+        if (!HAS_GROUNDOUT_CAP(e)) {
+            // TODO: resolve via actor message passing
+            // return; // short-circuit behavior
+        }
+
+        Event groundout = (Event)event_new(SPONSOR(e), NOTHING, NOTHING);            
         actor_eqv(groundout, NOTHING, n, m);
         if (RESULT(groundout) != a_true) {
             config_send(e, cust, a_false);

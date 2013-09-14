@@ -82,6 +82,8 @@ typedef void (*Action)(Event e);
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
 #define RESULT(e)   (((Event)((Pair)((Pair)((Pair)e->events)->h)->h))->message)
 
+#define HAS_GROUNDOUT_CAP(e)    (1) // some mechanism
+
 #define ACTOR_INIT(a,beh)   ( ((a)->eqv = actor_eqv_method), (BEH(a) = (beh)), (a) )
 #define ACTOR_DECL(beh)     { (beh), actor_eqv_method }
 
