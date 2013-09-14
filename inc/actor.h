@@ -80,7 +80,7 @@ typedef void (*Action)(Event e);
 #define STRATEGY(s) CODE(((Serial)(s))->beh_now)
 #define STATE(s)    DATA(((Serial)(s))->beh_now)
 #define PR(h,t)     (pair_new(SPONSOR(e),(h),(t)))
-#define EFFECT(e)   ((Event)((Pair)((Pair)((Pair)e->events)->h)->h))
+#define RESULT(e)   (((Event)((Pair)((Pair)((Pair)e->events)->h)->h))->message)
 
 #define ACTOR_INIT(a,beh)   ( ((a)->eqv = actor_eqv_method), (BEH(a) = (beh)), (a) )
 #define ACTOR_DECL(beh)     { (beh), actor_eqv_method }

@@ -109,8 +109,7 @@ dict_lookup(Config cfg, Actor dict, Actor key)
         Pair q = (Pair)a;
         Event groundout = (Event)event_new(cfg, NOTHING, NOTHING);
         actor_eqv(groundout, NOTHING, key, q->h);
-        Event effect = EFFECT(groundout);
-        Actor tst = effect->message;
+        Actor tst = RESULT(groundout);
         if (tst == a_true) {
             return q->t; // value
         }
