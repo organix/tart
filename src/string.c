@@ -215,7 +215,7 @@ string_eqv_method(Event e, Actor cust, Actor this, Actor that)
         Actor m = string_length_method(SPONSOR(e), that);
         Event groundout = (Event)event_new(SPONSOR(e), NOTHING, NOTHING);
         actor_eqv(groundout, NOTHING, n, m);
-        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Event effect = EFFECT(groundout);
         Actor tst = effect->message;        
         if (tst != a_true) {
             config_send(e, cust, a_false);
@@ -300,7 +300,7 @@ beh_string(Event e)
         TRACE(fprintf(stderr, "beh_string: (#match, %p, %p)\n", rm->value, rm->env));
         Event groundout = (Event)event_new(SPONSOR(e), NOTHING, NOTHING);
         string_eqv_method(groundout, NOTHING, SELF(e), rm->value);
-        Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+        Event effect = EFFECT(groundout);
         Actor tst = effect->message;
         if (tst == a_true) {
             config_send(e, r->ok, rm->env);
@@ -343,7 +343,7 @@ test_string()
     if (a_zero != a) { halt("expected a_zero == a"); }
     Event groundout = (Event)event_new(cfg, NOTHING, NOTHING);
     actor_eqv(groundout, NOTHING, a, a_zero);
-    Event effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    Event effect = EFFECT(groundout);
     Actor tst = effect->message;    
     if (tst != a_true) { halt("expected actor_eqv(a, a_zero) == a_true"); }
     n = (Integer)a;
@@ -366,7 +366,7 @@ test_string()
     TRACE(fprintf(stderr, "t = %d\"%.*s\"\n", m->i, m->i, t->p));
     groundout = (Event)event_new(cfg, NOTHING, NOTHING);
     string_eqv_method(groundout, NOTHING, a, b);
-    effect = (Event)((Pair)((Pair)((Pair)groundout->events)->h)->h);
+    effect = EFFECT(groundout);
     tst = effect->message;
     if (tst != a_true) { halt("expected string_eqv_method(a, b) == a_true"); }
     m = (Integer)t->n;
