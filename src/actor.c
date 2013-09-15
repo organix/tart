@@ -230,7 +230,6 @@ event_new(Config cfg, Actor a, Actor m)
     e->sponsor = cfg;
     e->target = a;
     e->message = m;
-    e->actors = deque_new(cfg);
     e->events = deque_new(cfg);
     return (Actor)e;
 }
